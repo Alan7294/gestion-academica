@@ -57,6 +57,16 @@ class CursoController extends Controller
 
     public function update(StoreCursoRequest $request, Curso $curso): RedirectResponse
     {
+        $nuevoDocente = $request->validated('docente_id');
+
+        if ($curso->horarios()->exists() && (int) $nuevoDocente !== (int) $curso->docente_id) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'docente_id' => 'No puedes cambiar el docente mientras el curso tenga horarios asignados. Elimínalos primero.',
+                ]);
+        }
+
         $this->cursos->actualizar($curso, $this->datos($request));
 
         return redirect()

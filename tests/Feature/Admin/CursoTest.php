@@ -91,6 +91,27 @@ it('impide que un docente registre cursos', function () {
         ->assertForbidden();
 });
 
+it('impide cambiar el docente si el curso ya tiene horarios', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $docente = usuarioConRol(Rol::Docente);
+    $otroDocente = usuarioConRol(Rol::Docente);
+    $datos = datosCurso(['docente_id' => $docente->id]);
+
+    $curso = Curso::factory()->create($datos);
+    $curso->horarios()->create([
+        'docente_id' => $docente->id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+    ]);
+
+    $this->actingAs($admin)
+        ->put("/admin/cursos/{$curso->id}", array_merge($datos, ['docente_id' => $otroDocente->id]))
+        ->assertSessionHasErrors('docente_id');
+
+    expect($curso->fresh()->docente_id)->toBe($docente->id);
+});
+
 it('muestra el detalle del curso con su horario', function () {
     $curso = Curso::factory()->create(['nombre' => 'Base de Datos II']);
 
