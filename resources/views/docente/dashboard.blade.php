@@ -7,11 +7,53 @@
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <h3 class="font-semibold text-gray-900">{{ __('Bienvenido, :nombre', ['nombre' => auth()->user()->name]) }}</h3>
-                <p class="mt-1 text-sm text-gray-600">
-                    {{ __('Aquí verás tus cursos asignados, los alumnos inscritos y el registro de calificaciones.') }}
-                </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                    <p class="text-sm font-medium text-gray-500">{{ __('Cursos asignados') }}</p>
+                    <p class="mt-2 text-3xl font-semibold text-gray-900">{{ $cursos->count() }}</p>
+                </div>
+
+                <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                    <p class="text-sm font-medium text-gray-500">{{ __('Alumnos inscritos') }}</p>
+                    <p class="mt-2 text-3xl font-semibold text-gray-900">{{ $totalAlumnos }}</p>
+                </div>
+            </div>
+
+            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h3 class="font-semibold text-gray-900">{{ __('Mis cursos') }}</h3>
+                </div>
+
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Curso') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Carrera') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Inscritos') }}</th>
+                            <th class="px-6 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse ($cursos as $curso)
+                            <tr>
+                                <td class="px-6 py-4 text-gray-900">{{ $curso->nombre }}</td>
+                                <td class="px-6 py-4 text-gray-600">{{ $curso->carrera->nombre }}</td>
+                                <td class="px-6 py-4 text-gray-600">{{ $curso->alumnos_inscritos_count }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="{{ route('docente.cursos.show', $curso) }}" class="text-indigo-600 hover:text-indigo-900">
+                                        {{ __('Ver alumnos') }}
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                    {{ __('Todavía no tienes cursos asignados.') }}
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Rol;
+use App\Models\Curso;
+use App\Models\Inscripcion;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,13 +34,31 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function docente(): View
+    public function docente(Request $request): View
     {
-        return view('docente.dashboard');
+        $cursos = Curso::query()
+            ->with('carrera')
+            ->withCount('alumnosInscritos')
+            ->delDocente($request->user())
+            ->orderBy('nombre')
+            ->get();
+
+        return view('docente.dashboard', [
+            'cursos' => $cursos,
+            'totalAlumnos' => $cursos->sum('alumnos_inscritos_count'),
+        ]);
     }
 
-    public function estudiante(): View
+    public function estudiante(Request $request): View
     {
-        return view('estudiante.dashboard');
+        $inscripciones = Inscripcion::query()
+            ->with(['curso.carrera', 'curso.docente'])
+            ->where('user_id', $request->user()->id)
+            ->activas()
+            ->get();
+
+        return view('estudiante.dashboard', [
+            'inscripciones' => $inscripciones,
+        ]);
     }
 }

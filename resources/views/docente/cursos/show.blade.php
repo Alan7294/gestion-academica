@@ -1,0 +1,78 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ $curso->nombre }}
+                <span class="ms-2 font-mono text-sm text-gray-500">{{ $curso->codigo }}</span>
+            </h2>
+
+            <a href="{{ route('docente.cursos.index') }}" class="text-sm text-gray-600 hover:text-gray-900">
+                {{ __('Volver') }}
+            </a>
+        </div>
+    </x-slot>
+
+    <div class="py-8">
+        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <div class="bg-white shadow-sm sm:rounded-lg p-6 grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
+                <div>
+                    <p class="text-gray-500">{{ __('Carrera') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">{{ $curso->carrera->nombre }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Periodo') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">{{ $curso->periodo->nombre }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Inscritos') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">
+                        {{ $curso->alumnosInscritos->count() }}{{ $curso->cupo > 0 ? ' / '.$curso->cupo : '' }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Horario') }}</p>
+                    <div class="mt-1 font-medium text-gray-900">
+                        @forelse ($curso->horarios as $horario)
+                            <div class="text-sm">{{ $horario->dia_semana->etiqueta() }} {{ $horario->rango_texto }}</div>
+                        @empty
+                            <span class="text-sm">{{ __('Por definir') }}</span>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h3 class="font-semibold text-gray-900">{{ __('Alumnos inscritos') }}</h3>
+                </div>
+
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Estudiante') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('CI') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Correo') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Inscrito') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse ($curso->alumnosInscritos as $inscripcion)
+                            <tr>
+                                <td class="px-6 py-4 text-gray-900">{{ $inscripcion->estudiante->name }}</td>
+                                <td class="px-6 py-4 text-gray-600">{{ $inscripcion->estudiante->ci ?? '—' }}</td>
+                                <td class="px-6 py-4 text-gray-600">{{ $inscripcion->estudiante->email }}</td>
+                                <td class="px-6 py-4 text-gray-600">{{ $inscripcion->inscrito_en->format('d/m/Y') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                    {{ __('Todavía no hay alumnos inscritos en este curso.') }}
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</x-app-layout>

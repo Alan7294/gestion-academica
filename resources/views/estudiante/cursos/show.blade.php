@@ -1,0 +1,80 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ $curso->nombre }}
+            </h2>
+
+            <a href="{{ route('estudiante.cursos.index') }}" class="text-sm text-gray-600 hover:text-gray-900">
+                {{ __('Volver a la oferta') }}
+            </a>
+        </div>
+    </x-slot>
+
+    <div class="py-8">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <div class="bg-white shadow-sm sm:rounded-lg p-6 grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
+                <div>
+                    <p class="text-gray-500">{{ __('Código') }}</p>
+                    <p class="mt-1 font-mono font-medium text-gray-900">{{ $curso->codigo }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Carrera') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">{{ $curso->carrera->nombre }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Periodo') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">{{ $curso->periodo->nombre }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Docente') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">{{ $curso->docente?->name ?? __('Por asignar') }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Créditos') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">{{ $curso->creditos }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">{{ __('Inscritos') }}</p>
+                    <p class="mt-1 font-medium text-gray-900">
+                        {{ $curso->alumnos_inscritos_count }}{{ $curso->cupo > 0 ? ' / '.$curso->cupo : '' }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                <h3 class="font-semibold text-gray-900">{{ __('Horario') }}</h3>
+
+                @if ($curso->horarios->isEmpty())
+                    <p class="mt-2 text-sm text-gray-600">{{ __('El horario todavía no fue definido.') }}</p>
+                @else
+                    <ul class="mt-3 divide-y divide-gray-100 text-sm">
+                        @foreach ($curso->horarios as $horario)
+                            <li class="py-2 flex justify-between">
+                                <span class="text-gray-900">{{ $horario->dia_semana->etiqueta() }}</span>
+                                <span class="text-gray-600">{{ $horario->rango_texto }} · {{ $horario->aula ?? __('Aula por definir') }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+
+            <div class="bg-white shadow-sm sm:rounded-lg p-6 flex items-center justify-between">
+                <p class="text-sm text-gray-600">
+                    {{ __('Al inscribirte aceptas cursar esta materia en el horario indicado.') }}
+                </p>
+
+                @if ($curso->estaInscrito(auth()->user()))
+                    <span class="inline-flex px-3 py-1 rounded text-sm font-medium bg-green-100 text-green-800">
+                        {{ __('Ya estás inscrito') }}
+                    </span>
+                @else
+                    <form method="POST" action="{{ route('estudiante.inscripciones.store', $curso) }}">
+                        @csrf
+                        <x-primary-button>{{ __('Inscribirme') }}</x-primary-button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    </div>
+</x-app-layout>

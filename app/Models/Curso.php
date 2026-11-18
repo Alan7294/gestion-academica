@@ -55,6 +55,33 @@ class Curso extends Model
         return $this->hasMany(Horario::class)->orderBy('dia_semana')->orderBy('hora_inicio');
     }
 
+    public function inscripciones(): HasMany
+    {
+        return $this->hasMany(Inscripcion::class);
+    }
+
+    public function alumnosInscritos(): HasMany
+    {
+        return $this->hasMany(Inscripcion::class)->where('estado', 'inscrito');
+    }
+
+    /**
+     * Indica si el curso tiene cupo disponible (cupo 0 = sin límite).
+     */
+    public function tieneCupoDisponible(): bool
+    {
+        if ($this->cupo === 0) {
+            return true;
+        }
+
+        return $this->alumnosInscritos()->count() < $this->cupo;
+    }
+
+    public function estaInscrito(User $estudiante): bool
+    {
+        return $this->alumnosInscritos()->where('user_id', $estudiante->id)->exists();
+    }
+
     public function scopeActivo(Builder $query): void
     {
         $query->where('activo', true);

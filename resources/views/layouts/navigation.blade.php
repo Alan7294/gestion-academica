@@ -27,6 +27,21 @@
                             {{ __('Cursos') }}
                         </x-nav-link>
                     @endif
+
+                    @if (Auth::user()->esDocente())
+                        <x-nav-link :href="route('docente.cursos.index')" :active="request()->routeIs('docente.cursos.*')">
+                            {{ __('Mis cursos') }}
+                        </x-nav-link>
+                    @endif
+
+                    @if (Auth::user()->esEstudiante())
+                        <x-nav-link :href="route('estudiante.cursos.index')" :active="request()->routeIs('estudiante.cursos.*')">
+                            {{ __('Oferta académica') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('estudiante.inscripciones.index')" :active="request()->routeIs('estudiante.inscripciones.*')">
+                            {{ __('Mis cursos') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -98,6 +113,21 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.cursos.index')" :active="request()->routeIs('admin.cursos.*')">
                     {{ __('Cursos') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if (Auth::user()->esDocente())
+                <x-responsive-nav-link :href="route('docente.cursos.index')" :active="request()->routeIs('docente.cursos.*')">
+                    {{ __('Mis cursos') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if (Auth::user()->esEstudiante())
+                <x-responsive-nav-link :href="route('estudiante.cursos.index')" :active="request()->routeIs('estudiante.cursos.*')">
+                    {{ __('Oferta académica') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('estudiante.inscripciones.index')" :active="request()->routeIs('estudiante.inscripciones.*')">
+                    {{ __('Mis cursos') }}
                 </x-responsive-nav-link>
             @endif
         </div>

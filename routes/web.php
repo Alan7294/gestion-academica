@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\CursoController;
 use App\Http\Controllers\Admin\HorarioController;
 use App\Http\Controllers\Admin\PeriodoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Docente\CursoController as CursoDocenteController;
+use App\Http\Controllers\Estudiante\CursoController as CursoEstudianteController;
+use App\Http\Controllers\Estudiante\InscripcionController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +40,9 @@ Route::middleware(['auth', 'verified', 'role:docente'])
     ->name('docente.')
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'docente'])->name('dashboard');
+
+        Route::get('cursos', [CursoDocenteController::class, 'index'])->name('cursos.index');
+        Route::get('cursos/{curso}', [CursoDocenteController::class, 'show'])->name('cursos.show');
     });
 
 Route::middleware(['auth', 'verified', 'role:estudiante'])
@@ -44,6 +50,13 @@ Route::middleware(['auth', 'verified', 'role:estudiante'])
     ->name('estudiante.')
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'estudiante'])->name('dashboard');
+
+        Route::get('cursos', [CursoEstudianteController::class, 'index'])->name('cursos.index');
+        Route::get('cursos/{curso}', [CursoEstudianteController::class, 'show'])->name('cursos.show');
+
+        Route::get('inscripciones', [InscripcionController::class, 'index'])->name('inscripciones.index');
+        Route::post('cursos/{curso}/inscribirse', [InscripcionController::class, 'store'])->name('inscripciones.store');
+        Route::delete('inscripciones/{inscripcion}', [InscripcionController::class, 'destroy'])->name('inscripciones.destroy');
     });
 
 Route::middleware('auth')->group(function () {
