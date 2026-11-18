@@ -15,6 +15,18 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Panel') }}
                     </x-nav-link>
+
+                    @if (Auth::user()->esAdministrador())
+                        <x-nav-link :href="route('admin.carreras.index')" :active="request()->routeIs('admin.carreras.*')">
+                            {{ __('Carreras') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.periodos.index')" :active="request()->routeIs('admin.periodos.*')">
+                            {{ __('Periodos') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.cursos.index')" :active="request()->routeIs('admin.cursos.*')">
+                            {{ __('Cursos') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -76,6 +88,18 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Panel') }}
             </x-responsive-nav-link>
+
+            @if (Auth::user()->esAdministrador())
+                <x-responsive-nav-link :href="route('admin.carreras.index')" :active="request()->routeIs('admin.carreras.*')">
+                    {{ __('Carreras') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.periodos.index')" :active="request()->routeIs('admin.periodos.*')">
+                    {{ __('Periodos') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.cursos.index')" :active="request()->routeIs('admin.cursos.*')">
+                    {{ __('Cursos') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

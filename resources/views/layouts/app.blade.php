@@ -29,6 +29,12 @@
 
             <!-- Page Content -->
             <main>
+                @if (session('status') || $errors->any())
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+                        <x-flash />
+                    </div>
+                @endif
+
                 {{ $slot }}
             </main>
         </div>

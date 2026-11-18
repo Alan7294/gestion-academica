@@ -1,0 +1,31 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Carrera;
+use App\Models\Curso;
+use App\Models\Periodo;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Curso>
+ */
+class CursoFactory extends Factory
+{
+    protected $model = Curso::class;
+
+    public function definition(): array
+    {
+        return [
+            'carrera_id' => Carrera::factory(),
+            'periodo_id' => Periodo::factory(),
+            'docente_id' => null,
+            'codigo' => strtoupper($this->faker->unique()->bothify('##??')),
+            'nombre' => ucfirst($this->faker->words(3, true)),
+            'creditos' => $this->faker->numberBetween(2, 6),
+            'semestre' => $this->faker->numberBetween(1, 8),
+            'cupo' => $this->faker->numberBetween(20, 60),
+            'activo' => true,
+        ];
+    }
+}

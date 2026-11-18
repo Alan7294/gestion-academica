@@ -8,14 +8,6 @@ beforeEach(function () {
     $this->seed(RolSeeder::class);
 });
 
-function usuarioConRol(Rol $rol): User
-{
-    $user = User::factory()->create();
-    $user->assignRole($rol->value);
-
-    return $user;
-}
-
 it('redirige al administrador a su panel', function () {
     $admin = usuarioConRol(Rol::Administrador);
 
