@@ -18,6 +18,14 @@ enum Rol: string
     }
 
     /**
+     * @return array<int, string>
+     */
+    public static function valores(): array
+    {
+        return array_map(fn (self $rol) => $rol->value, self::cases());
+    }
+
+    /**
      * Roles que un visitante puede elegir al registrarse.
      * El administrador solo se asigna desde el panel de gestión de usuarios (RF09).
      *

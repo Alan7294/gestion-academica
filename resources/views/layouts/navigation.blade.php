@@ -17,6 +17,9 @@
                     </x-nav-link>
 
                     @if (Auth::user()->esAdministrador())
+                        <x-nav-link :href="route('admin.usuarios.index')" :active="request()->routeIs('admin.usuarios.*')">
+                            {{ __('Usuarios') }}
+                        </x-nav-link>
                         <x-nav-link :href="route('admin.carreras.index')" :active="request()->routeIs('admin.carreras.*')">
                             {{ __('Carreras') }}
                         </x-nav-link>
@@ -26,11 +29,17 @@
                         <x-nav-link :href="route('admin.cursos.index')" :active="request()->routeIs('admin.cursos.*')">
                             {{ __('Cursos') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('admin.reportes.index')" :active="request()->routeIs('admin.reportes.*')">
+                            {{ __('Reportes') }}
+                        </x-nav-link>
                     @endif
 
                     @if (Auth::user()->esDocente())
                         <x-nav-link :href="route('docente.cursos.index')" :active="request()->routeIs('docente.cursos.*')">
                             {{ __('Mis cursos') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('docente.reportes.index')" :active="request()->routeIs('docente.reportes.*')">
+                            {{ __('Reportes') }}
                         </x-nav-link>
                     @endif
 
@@ -40,6 +49,9 @@
                         </x-nav-link>
                         <x-nav-link :href="route('estudiante.inscripciones.index')" :active="request()->routeIs('estudiante.inscripciones.*')">
                             {{ __('Mis cursos') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('estudiante.reportes.index')" :active="request()->routeIs('estudiante.reportes.*')">
+                            {{ __('Reportes') }}
                         </x-nav-link>
                     @endif
                 </div>
@@ -116,6 +128,9 @@
             </x-responsive-nav-link>
 
             @if (Auth::user()->esAdministrador())
+                <x-responsive-nav-link :href="route('admin.usuarios.index')" :active="request()->routeIs('admin.usuarios.*')">
+                    {{ __('Usuarios') }}
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.carreras.index')" :active="request()->routeIs('admin.carreras.*')">
                     {{ __('Carreras') }}
                 </x-responsive-nav-link>
@@ -125,11 +140,17 @@
                 <x-responsive-nav-link :href="route('admin.cursos.index')" :active="request()->routeIs('admin.cursos.*')">
                     {{ __('Cursos') }}
                 </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.reportes.index')" :active="request()->routeIs('admin.reportes.*')">
+                    {{ __('Reportes') }}
+                </x-responsive-nav-link>
             @endif
 
             @if (Auth::user()->esDocente())
                 <x-responsive-nav-link :href="route('docente.cursos.index')" :active="request()->routeIs('docente.cursos.*')">
                     {{ __('Mis cursos') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('docente.reportes.index')" :active="request()->routeIs('docente.reportes.*')">
+                    {{ __('Reportes') }}
                 </x-responsive-nav-link>
             @endif
 
@@ -139,6 +160,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('estudiante.inscripciones.index')" :active="request()->routeIs('estudiante.inscripciones.*')">
                     {{ __('Mis cursos') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('estudiante.reportes.index')" :active="request()->routeIs('estudiante.reportes.*')">
+                    {{ __('Reportes') }}
                 </x-responsive-nav-link>
             @endif
 

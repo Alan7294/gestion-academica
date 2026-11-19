@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Reports\Estudiante;
+
+use App\Models\Inscripcion;
+use App\Models\User;
+use App\Reports\Reporte;
+
+/**
+ * RF12: historial académico del alumno.
+ */
+class HistorialAcademicoReporte implements Reporte
+{
+    public function __construct(private readonly User $estudiante) {}
+
+    public function titulo(): string
+    {
+        return "Historial académico - {$this->estudiante->name}";
+    }
+
+    public function descripcion(): string
+    {
+        return 'Historial de todas las materias cursadas por el estudiante, con su resultado final.';
+    }
+
+    public function encabezados(): array
+    {
+        return [
+            'Periodo',
+            'Código',
+            'Materia',
+            'Docente',
+            'Créditos',
+            'Estado',
+            'Nota final',
+            'Resultado',
+        ];
+    }
+
+    public function filas(): array
+    {
+        return Inscripcion::query()
+            ->where('user_id', $this->estudiante->id)
+            ->with(['curso.periodo', 'curso.docente'])
+            ->get()
+            ->sortByDesc(fn (Inscripcion $inscripcion) => $inscripcion->curso->periodo->fecha_inicio)
+            ->map(fn (Inscripcion $inscripcion) => [
+                $inscripcion->curso->periodo->nombre,
+                $inscripcion->curso->codigo,
+                $inscripcion->curso->nombre,
+                $inscripcion->curso->docente?->name ?? 'Sin asignar',
+                $inscripcion->curso->creditos,
+                $inscripcion->estado->etiqueta(),
+                $inscripcion->nota_final === null ? '—' : number_format((float) $inscripcion->nota_final, 2),
+                $this->resultado($inscripcion->nota_final),
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function contexto(): array
+    {
+        return [
+            'Estudiante' => $this->estudiante->name,
+            'CI' => $this->estudiante->ci ?? '—',
+            'Correo' => $this->estudiante->email,
+        ];
+    }
+
+    private function resultado(string|float|null $nota): string
+    {
+        if ($nota === null) {
+            return 'Pendiente';
+        }
+
+        return (float) $nota >= 51 ? 'Aprobado' : 'Reprobado';
+    }
+}
