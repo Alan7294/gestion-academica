@@ -23,8 +23,8 @@
     </div>
 
     <label class="inline-flex items-center">
-        <input type="checkbox" name="activo" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm"
+        <input type="checkbox" name="activo" value="1" class="rounded border-slate-300 text-brand-600 shadow-sm"
                @checked(old('activo', $carrera?->activo ?? true))>
-        <span class="ms-2 text-sm text-gray-600">{{ __('Activa') }}</span>
+        <span class="ms-2 text-sm text-slate-600">{{ __('Activa') }}</span>
     </label>
 </div>

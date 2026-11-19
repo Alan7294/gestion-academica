@@ -1,12 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">
                 {{ __('Usuarios') }}
             </h2>
 
             <a href="{{ route('admin.usuarios.create') }}"
-               class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+               class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
                 {{ __('Nuevo usuario') }}
             </a>
         </div>
@@ -27,7 +27,7 @@
             @endif
 
             <form method="GET" action="{{ route('admin.usuarios.index') }}"
-                  class="bg-white shadow-sm sm:rounded-lg p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div class="sm:col-span-2">
                     <x-input-label for="busqueda" :value="__('Buscar')" />
                     <x-text-input id="busqueda" name="busqueda" type="text" class="mt-1 block w-full text-sm"
@@ -36,7 +36,7 @@
 
                 <div>
                     <x-input-label for="rol" :value="__('Rol')" />
-                    <select id="rol" name="rol" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                    <select id="rol" name="rol" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm text-sm">
                         <option value="">{{ __('Todos') }}</option>
                         @foreach ($roles as $rol)
                             <option value="{{ $rol->value }}" @selected($filtros['rol'] === $rol->value)>
@@ -48,33 +48,33 @@
 
                 <div class="flex items-end gap-2">
                     <x-primary-button>{{ __('Filtrar') }}</x-primary-button>
-                    <a href="{{ route('admin.usuarios.index') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Limpiar') }}</a>
+                    <a href="{{ route('admin.usuarios.index') }}" class="text-sm text-slate-600 hover:text-slate-900">{{ __('Limpiar') }}</a>
                 </div>
             </form>
 
-            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
+            <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card overflow-hidden">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50">
                         <tr>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Usuario') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('CI') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Teléfono') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Rol') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Estado') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Usuario') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('CI') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Teléfono') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Rol') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Estado') }}</th>
                             <th class="px-6 py-3"></th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody class="divide-y divide-slate-100">
                         @forelse ($usuarios as $usuario)
                             <tr>
                                 <td class="px-6 py-4">
-                                    <p class="font-medium text-gray-900">{{ $usuario->name }}</p>
-                                    <p class="text-xs text-gray-500">{{ $usuario->email }}</p>
+                                    <p class="font-medium text-slate-900">{{ $usuario->name }}</p>
+                                    <p class="text-xs text-slate-500">{{ $usuario->email }}</p>
                                 </td>
-                                <td class="px-6 py-4 text-gray-600">{{ $usuario->ci ?? '—' }}</td>
-                                <td class="px-6 py-4 text-gray-600">{{ $usuario->telefono ?? '—' }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $usuario->ci ?? '—' }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $usuario->telefono ?? '—' }}</td>
                                 <td class="px-6 py-4">
-                                    <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                    <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-brand-100 text-brand-800">
                                         {{ $usuario->rolPrincipal()?->etiqueta() ?? __('Sin rol') }}
                                     </span>
                                 </td>
@@ -82,11 +82,11 @@
                                     @if ($usuario->activo)
                                         <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{{ __('Activo') }}</span>
                                     @else
-                                        <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">{{ __('Inactivo') }}</span>
+                                        <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{{ __('Inactivo') }}</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-right space-x-3 whitespace-nowrap">
-                                    <a href="{{ route('admin.usuarios.edit', $usuario) }}" class="text-indigo-600 hover:text-indigo-900">
+                                    <a href="{{ route('admin.usuarios.edit', $usuario) }}" class="text-brand-600 hover:text-brand-900">
                                         {{ __('Editar') }}
                                     </a>
 
@@ -102,7 +102,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                <td colspan="6" class="px-6 py-8 text-center text-slate-500">
                                     {{ __('No hay usuarios que coincidan con los filtros.') }}
                                 </td>
                             </tr>

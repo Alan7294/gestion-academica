@@ -4,7 +4,7 @@
     <div>
         <x-input-label for="carrera_id" :value="__('Carrera')" />
         <select id="carrera_id" name="carrera_id" required
-                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
             <option value="" disabled @selected(! old('carrera_id', $curso?->carrera_id))>{{ __('Seleccione una carrera') }}</option>
             @foreach ($carreras as $carrera)
                 <option value="{{ $carrera->id }}" @selected(old('carrera_id', $curso?->carrera_id) == $carrera->id)>
@@ -18,7 +18,7 @@
     <div>
         <x-input-label for="periodo_id" :value="__('Periodo')" />
         <select id="periodo_id" name="periodo_id" required
-                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
             <option value="" disabled @selected(! old('periodo_id', $curso?->periodo_id))>{{ __('Seleccione un periodo') }}</option>
             @foreach ($periodos as $periodo)
                 <option value="{{ $periodo->id }}" @selected(old('periodo_id', $curso?->periodo_id) == $periodo->id)>
@@ -45,7 +45,7 @@
 
     <div>
         <x-input-label for="docente_id" :value="__('Docente')" />
-        <select id="docente_id" name="docente_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        <select id="docente_id" name="docente_id" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
             <option value="">{{ __('Sin asignar') }}</option>
             @foreach ($docentes as $docente)
                 <option value="{{ $docente->id }}" @selected(old('docente_id', $curso?->docente_id) == $docente->id)>
@@ -79,7 +79,7 @@
 </div>
 
 <label class="mt-6 inline-flex items-center">
-    <input type="checkbox" name="activo" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm"
+    <input type="checkbox" name="activo" value="1" class="rounded border-slate-300 text-brand-600 shadow-sm"
            @checked(old('activo', $curso?->activo ?? true))>
-    <span class="ms-2 text-sm text-gray-600">{{ __('Curso activo') }}</span>
+    <span class="ms-2 text-sm text-slate-600">{{ __('Curso activo') }}</span>
 </label>

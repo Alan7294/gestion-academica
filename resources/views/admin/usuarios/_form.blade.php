@@ -31,7 +31,7 @@
 
     <div>
         <x-input-label for="rol" :value="__('Rol')" />
-        <select id="rol" name="rol" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        <select id="rol" name="rol" required class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
             @foreach ($roles as $rol)
                 <option value="{{ $rol->value }}"
                         @selected(old('rol', $usuario?->rolPrincipal()?->value) === $rol->value)>
@@ -47,7 +47,7 @@
         <x-text-input id="password" name="password" type="password" class="mt-1 block w-full"
                       :required="$usuario === null" autocomplete="new-password" />
         @if ($usuario)
-            <p class="mt-1 text-xs text-gray-500">{{ __('Déjala vacía para conservar la contraseña actual.') }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ __('Déjala vacía para conservar la contraseña actual.') }}</p>
         @endif
         <x-input-error class="mt-2" :messages="$errors->get('password')" />
     </div>
@@ -60,7 +60,7 @@
 </div>
 
 <label class="mt-6 inline-flex items-center">
-    <input type="checkbox" name="activo" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm"
+    <input type="checkbox" name="activo" value="1" class="rounded border-slate-300 text-brand-600 shadow-sm"
            @checked(old('activo', $usuario?->activo ?? true))>
-    <span class="ms-2 text-sm text-gray-600">{{ __('Usuario activo') }}</span>
+    <span class="ms-2 text-sm text-slate-600">{{ __('Usuario activo') }}</span>
 </label>

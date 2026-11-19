@@ -1,66 +1,105 @@
+@php
+    $notas = $inscripciones->pluck('nota_final')->filter(fn ($nota) => $nota !== null);
+    $promedio = $notas->isEmpty() ? null : number_format($notas->avg(), 2);
+    $creditos = $inscripciones->sum(fn ($inscripcion) => $inscripcion->curso->creditos);
+@endphp
+
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Panel del estudiante') }}
-        </h2>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-600">{{ __('Panel del estudiante') }}</p>
+                <h2 class="text-xl font-semibold text-slate-900">{{ __('Hola, ') . auth()->user()->name }}</h2>
+            </div>
+
+            <a href="{{ route('estudiante.cursos.index') }}"
+               class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                <x-icon name="plus" class="h-4 w-4" />
+                {{ __('Inscribirme a un curso') }}
+            </a>
+        </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm font-medium text-gray-500">{{ __('Cursos inscritos') }}</p>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">{{ $inscripciones->count() }}</p>
-                </div>
-
-                <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm font-medium text-gray-500">{{ __('Créditos') }}</p>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">{{ $inscripciones->sum(fn ($i) => $i->curso->creditos) }}</p>
-                </div>
-
-                <div class="bg-white shadow-sm sm:rounded-lg p-6 flex items-center">
-                    <a href="{{ route('estudiante.cursos.index') }}"
-                       class="inline-flex items-center px-4 py-2 bg-gray-800 rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                        {{ __('Ver oferta de cursos') }}
-                    </a>
-                </div>
+        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-stat-card :title="__('Cursos inscritos')" :value="$inscripciones->count()" icon="book" tone="brand" />
+                <x-stat-card :title="__('Créditos')" :value="$creditos" icon="academic-cap" tone="ink" />
+                <x-stat-card :title="__('Promedio general')" :value="$promedio ?? '—'" icon="chart" tone="emerald" :hint="__('Sobre las materias con nota final')" />
             </div>
 
-            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100">
-                    <h3 class="font-semibold text-gray-900">{{ __('Mis cursos') }}</h3>
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div class="card overflow-hidden lg:col-span-2">
+                    <div class="card-header">
+                        <h3 class="card-title">{{ __('Mis cursos') }}</h3>
+                        <a href="{{ route('estudiante.inscripciones.index') }}" class="link-brand text-sm">{{ __('Ver todos') }}</a>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100 text-sm">
+                            <thead class="bg-slate-50/80">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{{ __('Curso') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{{ __('Docente') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{{ __('Nota final') }}</th>
+                                    <th class="px-6 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($inscripciones as $inscripcion)
+                                    <tr class="transition hover:bg-slate-50/60">
+                                        <td class="px-6 py-4">
+                                            <p class="font-medium text-slate-900">{{ $inscripcion->curso->nombre }}</p>
+                                            <p class="text-xs text-slate-500">{{ $inscripcion->curso->carrera->nombre }}</p>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">{{ $inscripcion->curso->docente?->name ?? __('Sin asignar') }}</td>
+                                        <td class="px-6 py-4">
+                                            @if ($inscripcion->nota_final === null)
+                                                <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{{ __('Pendiente') }}</span>
+                                            @else
+                                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $inscripcion->nota_final >= 51 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200' }}">
+                                                    {{ number_format((float) $inscripcion->nota_final, 2) }}
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            <a href="{{ route('estudiante.cursos.show', $inscripcion->curso) }}" class="link-brand text-sm">
+                                                {{ __('Ver detalle') }}
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-10 text-center text-sm text-slate-500">
+                                            {{ __('Aún no estás inscrito en ningún curso.') }}
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Curso') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Docente') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-gray-500">{{ __('Carrera') }}</th>
-                            <th class="px-6 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @forelse ($inscripciones as $inscripcion)
-                            <tr>
-                                <td class="px-6 py-4 text-gray-900">{{ $inscripcion->curso->nombre }}</td>
-                                <td class="px-6 py-4 text-gray-600">{{ $inscripcion->curso->docente?->name ?? __('Sin asignar') }}</td>
-                                <td class="px-6 py-4 text-gray-600">{{ $inscripcion->curso->carrera->nombre }}</td>
-                                <td class="px-6 py-4 text-right">
-                                    <a href="{{ route('estudiante.cursos.show', $inscripcion->curso) }}" class="text-indigo-600 hover:text-indigo-900">
-                                        {{ __('Ver detalle') }}
-                                    </a>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-                                    {{ __('Aún no estás inscrito en ningún curso.') }}
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                <div class="card h-fit p-6">
+                    <h3 class="card-title">{{ __('Atajos') }}</h3>
+                    <p class="mt-0.5 text-xs text-slate-500">{{ __('Accesos directos a tu información.') }}</p>
+
+                    <div class="mt-5 space-y-2">
+                        <a href="{{ route('estudiante.notas.index') }}"
+                           class="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-50/50">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><x-icon name="document" class="h-4 w-4" /></span>
+                            <span class="text-sm font-medium text-slate-800">{{ __('Mis calificaciones') }}</span>
+                            <x-icon name="arrow-right" class="ms-auto h-4 w-4 text-slate-400" />
+                        </a>
+
+                        <a href="{{ route('estudiante.reportes.index') }}"
+                           class="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-50/50">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><x-icon name="chart" class="h-4 w-4" /></span>
+                            <span class="text-sm font-medium text-slate-800">{{ __('Descargar reportes') }}</span>
+                            <x-icon name="arrow-right" class="ms-auto h-4 w-4 text-slate-400" />
+                        </a>
+                    </div>
+                </div>
             </div>
 
             @include('partials.actividad-reciente', ['actividad' => $actividad])

@@ -1,70 +1,70 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">
                 {{ $curso->nombre }}
-                <span class="ms-2 font-mono text-sm text-gray-500">{{ $curso->codigo }}</span>
+                <span class="ms-2 font-mono text-sm text-slate-500">{{ $curso->codigo }}</span>
             </h2>
 
             <div class="flex items-center gap-3">
                 <a href="{{ route('admin.cursos.edit', $curso) }}"
-                   class="text-sm text-indigo-600 hover:text-indigo-900">{{ __('Editar curso') }}</a>
+                   class="text-sm text-brand-600 hover:text-brand-900">{{ __('Editar curso') }}</a>
                 <a href="{{ route('admin.cursos.index') }}"
-                   class="text-sm text-gray-600 hover:text-gray-900">{{ __('Volver') }}</a>
+                   class="text-sm text-slate-600 hover:text-slate-900">{{ __('Volver') }}</a>
             </div>
         </div>
     </x-slot>
 
     <div class="py-8">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="bg-white shadow-sm sm:rounded-lg p-6 grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
+            <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6 grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
                 <div>
-                    <p class="text-gray-500">{{ __('Carrera') }}</p>
-                    <p class="mt-1 font-medium text-gray-900">{{ $curso->carrera->nombre }}</p>
+                    <p class="text-slate-500">{{ __('Carrera') }}</p>
+                    <p class="mt-1 font-medium text-slate-900">{{ $curso->carrera->nombre }}</p>
                 </div>
                 <div>
-                    <p class="text-gray-500">{{ __('Periodo') }}</p>
-                    <p class="mt-1 font-medium text-gray-900">{{ $curso->periodo->nombre }}</p>
+                    <p class="text-slate-500">{{ __('Periodo') }}</p>
+                    <p class="mt-1 font-medium text-slate-900">{{ $curso->periodo->nombre }}</p>
                 </div>
                 <div>
-                    <p class="text-gray-500">{{ __('Docente') }}</p>
-                    <p class="mt-1 font-medium text-gray-900">{{ $curso->docente?->name ?? __('Sin asignar') }}</p>
+                    <p class="text-slate-500">{{ __('Docente') }}</p>
+                    <p class="mt-1 font-medium text-slate-900">{{ $curso->docente?->name ?? __('Sin asignar') }}</p>
                 </div>
                 <div>
-                    <p class="text-gray-500">{{ __('Semestre') }}</p>
-                    <p class="mt-1 font-medium text-gray-900">{{ $curso->semestre }}</p>
+                    <p class="text-slate-500">{{ __('Semestre') }}</p>
+                    <p class="mt-1 font-medium text-slate-900">{{ $curso->semestre }}</p>
                 </div>
                 <div>
-                    <p class="text-gray-500">{{ __('Créditos') }}</p>
-                    <p class="mt-1 font-medium text-gray-900">{{ $curso->creditos }}</p>
+                    <p class="text-slate-500">{{ __('Créditos') }}</p>
+                    <p class="mt-1 font-medium text-slate-900">{{ $curso->creditos }}</p>
                 </div>
                 <div>
-                    <p class="text-gray-500">{{ __('Cupo') }}</p>
-                    <p class="mt-1 font-medium text-gray-900">{{ $curso->cupo === 0 ? __('Sin límite') : $curso->cupo }}</p>
+                    <p class="text-slate-500">{{ __('Cupo') }}</p>
+                    <p class="mt-1 font-medium text-slate-900">{{ $curso->cupo === 0 ? __('Sin límite') : $curso->cupo }}</p>
                 </div>
             </div>
 
-            <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <h3 class="font-semibold text-gray-900">{{ __('Horario del curso') }}</h3>
+            <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6">
+                <h3 class="font-semibold text-slate-900">{{ __('Horario del curso') }}</h3>
 
                 @if ($curso->horarios->isEmpty())
-                    <p class="mt-2 text-sm text-gray-600">{{ __('Este curso todavía no tiene horarios asignados.') }}</p>
+                    <p class="mt-2 text-sm text-slate-600">{{ __('Este curso todavía no tiene horarios asignados.') }}</p>
                 @else
-                    <table class="mt-4 min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
+                    <table class="mt-4 min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50">
                             <tr>
-                                <th class="px-4 py-2 text-left font-medium text-gray-500">{{ __('Día') }}</th>
-                                <th class="px-4 py-2 text-left font-medium text-gray-500">{{ __('Horario') }}</th>
-                                <th class="px-4 py-2 text-left font-medium text-gray-500">{{ __('Aula') }}</th>
+                                <th class="px-4 py-2 text-left font-medium text-slate-500">{{ __('Día') }}</th>
+                                <th class="px-4 py-2 text-left font-medium text-slate-500">{{ __('Horario') }}</th>
+                                <th class="px-4 py-2 text-left font-medium text-slate-500">{{ __('Aula') }}</th>
                                 <th class="px-4 py-2"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-slate-100">
                             @foreach ($curso->horarios as $horario)
                                 <tr>
-                                    <td class="px-4 py-2 text-gray-900">{{ $horario->dia_semana->etiqueta() }}</td>
-                                    <td class="px-4 py-2 text-gray-600">{{ $horario->rango_texto }}</td>
-                                    <td class="px-4 py-2 text-gray-600">{{ $horario->aula ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-slate-900">{{ $horario->dia_semana->etiqueta() }}</td>
+                                    <td class="px-4 py-2 text-slate-600">{{ $horario->rango_texto }}</td>
+                                    <td class="px-4 py-2 text-slate-600">{{ $horario->aula ?? '—' }}</td>
                                     <td class="px-4 py-2 text-right">
                                         <form method="POST" action="{{ route('admin.horarios.destroy', [$curso, $horario]) }}" class="inline"
                                               onsubmit="return confirm('{{ __('¿Eliminar este horario?') }}')">
@@ -86,7 +86,7 @@
                     <div>
                         <x-input-label for="dia_semana" :value="__('Día')" />
                         <select id="dia_semana" name="dia_semana" required
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                class="mt-1 block w-full border-slate-300 rounded-md shadow-sm text-sm">
                             @foreach (\App\Enums\DiaSemana::opciones() as $valor => $etiqueta)
                                 <option value="{{ $valor }}" @selected(old('dia_semana') == $valor)>{{ $etiqueta }}</option>
                             @endforeach
@@ -116,7 +116,7 @@
                     </div>
                 </form>
 
-                <p class="mt-2 text-xs text-gray-500">
+                <p class="mt-2 text-xs text-slate-500">
                     {{ __('El sistema rechaza un horario si el docente ya tiene otra clase en ese día y franja horaria.') }}
                 </p>
             </div>

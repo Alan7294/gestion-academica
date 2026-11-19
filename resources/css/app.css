@@ -1,3 +1,59 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html {
+        @apply scroll-smooth;
+    }
+
+    body {
+        @apply bg-slate-50 text-slate-800;
+    }
+
+    ::selection {
+        @apply bg-brand-200 text-brand-950;
+    }
+
+    /* Barra de desplazamiento discreta en el menú lateral oscuro. */
+    .sidebar-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(51 65 85) transparent;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+        @apply rounded-full bg-slate-700;
+    }
+}
+
+@layer components {
+    /* Tarjeta base usada en dashboards, formularios y reportes. */
+    .card {
+        @apply rounded-2xl border border-slate-200/70 bg-white shadow-card;
+    }
+
+    .card-header {
+        @apply flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-4;
+    }
+
+    .card-title {
+        @apply text-sm font-semibold text-slate-900;
+    }
+
+    .link-brand {
+        @apply font-medium text-brand-700 transition hover:text-brand-900;
+    }
+
+    /* Las tablas responden al puntero para facilitar el seguimiento de filas. */
+    table tbody tr {
+        @apply transition-colors;
+    }
+
+    table tbody tr:hover {
+        @apply bg-slate-50/70;
+    }
+}
