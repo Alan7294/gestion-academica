@@ -31,6 +31,13 @@ class DashboardController extends Controller
             'totalUsuarios' => User::count(),
             'totalEstudiantes' => User::role(Rol::Estudiante->value)->count(),
             'totalDocentes' => User::role(Rol::Docente->value)->count(),
+            'totalCursos' => Curso::count(),
+            // RF08: actividad reciente del sistema para el administrador.
+            'ultimasInscripciones' => Inscripcion::query()
+                ->with(['estudiante', 'curso.carrera', 'curso.docente'])
+                ->latest('inscrito_en')
+                ->limit(8)
+                ->get(),
         ]);
     }
 
@@ -46,6 +53,7 @@ class DashboardController extends Controller
         return view('docente.dashboard', [
             'cursos' => $cursos,
             'totalAlumnos' => $cursos->sum('alumnos_inscritos_count'),
+            'actividad' => $this->actividadReciente($request->user()),
         ]);
     }
 
@@ -59,6 +67,15 @@ class DashboardController extends Controller
 
         return view('estudiante.dashboard', [
             'inscripciones' => $inscripciones,
+            'actividad' => $this->actividadReciente($request->user()),
         ]);
+    }
+
+    /**
+     * RF08/RF10: últimos avisos recibidos por el usuario autenticado.
+     */
+    private function actividadReciente(User $user, int $limite = 6)
+    {
+        return $user->notifications()->latest()->limit($limite)->get();
     }
 }

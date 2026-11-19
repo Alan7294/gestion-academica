@@ -7,6 +7,8 @@ use App\Models\Curso;
 use App\Models\Horario;
 use App\Models\Inscripcion;
 use App\Models\User;
+use App\Notifications\InscripcionRegistrada;
+use App\Notifications\NuevoAlumnoInscrito;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -65,16 +67,34 @@ class InscripcionService
                     'inscrito_en' => now(),
                 ]);
 
+                $existente->setRelation('curso', $curso);
+                $this->notificar($existente, $curso, $estudiante);
+
                 return $existente;
             }
 
-            return Inscripcion::create([
+            $inscripcion = Inscripcion::create([
                 'curso_id' => $curso->id,
                 'user_id' => $estudiante->id,
                 'estado' => EstadoInscripcion::Inscrito,
                 'inscrito_en' => now(),
             ]);
+
+            $inscripcion->setRelation('curso', $curso);
+            $this->notificar($inscripcion, $curso, $estudiante);
+
+            return $inscripcion;
         });
+    }
+
+    /**
+     * RF10: avisa al estudiante y al docente de la nueva inscripción.
+     */
+    private function notificar(Inscripcion $inscripcion, Curso $curso, User $estudiante): void
+    {
+        $estudiante->notify(new InscripcionRegistrada($inscripcion));
+
+        $curso->docente?->notify(new NuevoAlumnoInscrito($curso, $estudiante));
     }
 
     /**

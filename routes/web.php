@@ -5,9 +5,12 @@ use App\Http\Controllers\Admin\CursoController;
 use App\Http\Controllers\Admin\HorarioController;
 use App\Http\Controllers\Admin\PeriodoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Docente\CalificacionController;
 use App\Http\Controllers\Docente\CursoController as CursoDocenteController;
 use App\Http\Controllers\Estudiante\CursoController as CursoEstudianteController;
 use App\Http\Controllers\Estudiante\InscripcionController;
+use App\Http\Controllers\Estudiante\NotaController;
+use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +46,11 @@ Route::middleware(['auth', 'verified', 'role:docente'])
 
         Route::get('cursos', [CursoDocenteController::class, 'index'])->name('cursos.index');
         Route::get('cursos/{curso}', [CursoDocenteController::class, 'show'])->name('cursos.show');
+
+        Route::get('cursos/{curso}/calificaciones', [CalificacionController::class, 'index'])->name('cursos.calificaciones');
+        Route::post('inscripciones/{inscripcion}/calificaciones', [CalificacionController::class, 'store'])->name('calificaciones.store');
+        Route::put('calificaciones/{calificacion}', [CalificacionController::class, 'update'])->name('calificaciones.update');
+        Route::delete('calificaciones/{calificacion}', [CalificacionController::class, 'destroy'])->name('calificaciones.destroy');
     });
 
 Route::middleware(['auth', 'verified', 'role:estudiante'])
@@ -57,12 +65,18 @@ Route::middleware(['auth', 'verified', 'role:estudiante'])
         Route::get('inscripciones', [InscripcionController::class, 'index'])->name('inscripciones.index');
         Route::post('cursos/{curso}/inscribirse', [InscripcionController::class, 'store'])->name('inscripciones.store');
         Route::delete('inscripciones/{inscripcion}', [InscripcionController::class, 'destroy'])->name('inscripciones.destroy');
+
+        Route::get('notas', [NotaController::class, 'index'])->name('notas.index');
     });
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
+    Route::post('/notificaciones/leer-todas', [NotificacionController::class, 'leerTodas'])->name('notificaciones.leer-todas');
+    Route::post('/notificaciones/{notificacion}/leer', [NotificacionController::class, 'leer'])->name('notificaciones.leer');
 });
 
 require __DIR__.'/auth.php';

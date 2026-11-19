@@ -55,6 +55,8 @@
                     </tbody>
                 </table>
             </div>
+
+            @include('partials.actividad-reciente', ['actividad' => $actividad])
         </div>
     </div>
 </x-app-layout>
