@@ -41,9 +41,12 @@
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
-            "@php artisan migrate --force",
+            "@php artisan migrate --force --seed",
             "npm install --ignore-scripts",
             "npm run build"
+        ],
+        "demo": [
+            "@php artisan db:seed --class=DemoSeeder --force"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
