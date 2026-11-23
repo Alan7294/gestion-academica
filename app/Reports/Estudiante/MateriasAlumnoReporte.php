@@ -2,16 +2,22 @@
 
 namespace App\Reports\Estudiante;
 
+use App\Enums\EstadoInscripcion;
 use App\Models\Inscripcion;
 use App\Models\User;
+use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * RF12: listado de materias del alumno.
  */
 class MateriasAlumnoReporte implements Reporte
 {
-    public function __construct(private readonly User $estudiante) {}
+    public function __construct(
+        private readonly User $estudiante,
+        private readonly FiltrosReporte $filtros = new FiltrosReporte,
+    ) {}
 
     public function titulo(): string
     {
@@ -39,9 +45,7 @@ class MateriasAlumnoReporte implements Reporte
 
     public function filas(): array
     {
-        return Inscripcion::query()
-            ->where('user_id', $this->estudiante->id)
-            ->activas()
+        return $this->inscripcionesFiltradas()
             ->with(['curso.carrera', 'curso.docente', 'curso.periodo', 'curso.horarios'])
             ->get()
             ->sortBy(fn (Inscripcion $inscripcion) => $inscripcion->curso->nombre)
@@ -63,17 +67,23 @@ class MateriasAlumnoReporte implements Reporte
 
     public function contexto(): array
     {
-        $inscripciones = Inscripcion::query()
-            ->where('user_id', $this->estudiante->id)
-            ->activas()
-            ->with('curso')
-            ->get();
+        $inscripciones = $this->inscripcionesFiltradas()->with('curso')->get();
 
-        return [
+        return array_merge($this->filtros->contexto(), [
             'Estudiante' => $this->estudiante->name,
             'CI' => $this->estudiante->ci ?? '—',
             'Materias inscritas' => (string) $inscripciones->count(),
             'Créditos' => (string) $inscripciones->sum(fn (Inscripcion $i) => $i->curso->creditos),
-        ];
+        ]);
+    }
+
+    private function inscripcionesFiltradas(): Builder
+    {
+        $inscripciones = Inscripcion::query()->where('user_id', $this->estudiante->id);
+
+        return $this->filtros->aplicarAInscripciones(
+            $inscripciones,
+            EstadoInscripcion::Inscrito->value,
+        );
     }
 }

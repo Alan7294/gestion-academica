@@ -4,6 +4,7 @@ namespace App\Reports\Admin;
 
 use App\Models\Curso;
 use App\Models\Periodo;
+use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
 
 /**
@@ -11,6 +12,8 @@ use App\Reports\Reporte;
  */
 class MateriasPorCarreraReporte implements Reporte
 {
+    public function __construct(private readonly FiltrosReporte $filtros = new FiltrosReporte) {}
+
     public function titulo(): string
     {
         return 'Materias por carrera';
@@ -37,10 +40,13 @@ class MateriasPorCarreraReporte implements Reporte
 
     public function filas(): array
     {
-        return Curso::query()
+        $cursos = Curso::query()
             ->with(['carrera', 'docente', 'periodo'])
-            ->withCount('alumnosInscritos')
-            ->get()
+            ->withCount('alumnosInscritos');
+
+        $this->filtros->aplicarACursos($cursos);
+
+        return $cursos->get()
             ->sortBy([
                 fn (Curso $a, Curso $b) => strcmp($a->carrera->nombre, $b->carrera->nombre),
                 fn (Curso $a, Curso $b) => $a->semestre <=> $b->semestre,
@@ -62,8 +68,8 @@ class MateriasPorCarreraReporte implements Reporte
 
     public function contexto(): array
     {
-        return [
+        return array_merge($this->filtros->contexto(), [
             'Periodo vigente' => Periodo::actual()?->nombre ?? 'Sin periodo activo',
-        ];
+        ]);
     }
 }

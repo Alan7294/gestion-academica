@@ -4,6 +4,7 @@ namespace App\Reports\Estudiante;
 
 use App\Models\Inscripcion;
 use App\Models\User;
+use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
 
 /**
@@ -11,7 +12,10 @@ use App\Reports\Reporte;
  */
 class HistorialAcademicoReporte implements Reporte
 {
-    public function __construct(private readonly User $estudiante) {}
+    public function __construct(
+        private readonly User $estudiante,
+        private readonly FiltrosReporte $filtros = new FiltrosReporte,
+    ) {}
 
     public function titulo(): string
     {
@@ -39,10 +43,13 @@ class HistorialAcademicoReporte implements Reporte
 
     public function filas(): array
     {
-        return Inscripcion::query()
+        $inscripciones = Inscripcion::query()
             ->where('user_id', $this->estudiante->id)
-            ->with(['curso.periodo', 'curso.docente'])
-            ->get()
+            ->with(['curso.periodo', 'curso.docente']);
+
+        $this->filtros->aplicarAInscripciones($inscripciones);
+
+        return $inscripciones->get()
             ->sortByDesc(fn (Inscripcion $inscripcion) => $inscripcion->curso->periodo->fecha_inicio)
             ->map(fn (Inscripcion $inscripcion) => [
                 $inscripcion->curso->periodo->nombre,
@@ -60,11 +67,11 @@ class HistorialAcademicoReporte implements Reporte
 
     public function contexto(): array
     {
-        return [
+        return array_merge($this->filtros->contexto(), [
             'Estudiante' => $this->estudiante->name,
             'CI' => $this->estudiante->ci ?? '—',
             'Correo' => $this->estudiante->email,
-        ];
+        ]);
     }
 
     private function resultado(string|float|null $nota): string

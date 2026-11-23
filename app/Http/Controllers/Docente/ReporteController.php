@@ -9,7 +9,9 @@ use App\Reports\Docente\AlumnosInscritosReporte;
 use App\Reports\Docente\MateriasDocenteReporte;
 use App\Reports\Docente\NotasPorAlumnoReporte;
 use App\Reports\Docente\NotasPorCursoReporte;
+use App\Reports\FiltrosReporte;
 use App\Reports\FormatoFactory;
+use App\Reports\VistaPreviaReporte;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -32,28 +34,117 @@ class ReporteController extends Controller
         return view('docente.reportes.index', ['cursos' => $cursos]);
     }
 
-    public function materias(Request $request, string $formato, FormatoFactory $formatos): Response
+    public function previewMaterias(Request $request): View
     {
-        return $formatos->crear($formato)->generar(
-            new MateriasDocenteReporte($request->user()),
+        $filtros = FiltrosReporte::desdeRequest($request);
+        $reporte = new MateriasDocenteReporte($request->user(), $filtros);
+
+        return VistaPreviaReporte::render(
+            $reporte,
+            $filtros,
+            $request->user(),
+            [
+                'pdf' => route('docente.reportes.materias', ['formato' => 'pdf'] + $filtros->query()),
+                'excel' => route('docente.reportes.materias', ['formato' => 'excel'] + $filtros->query()),
+            ],
+            route('docente.reportes.index'),
         );
     }
 
-    public function notasCurso(Curso $curso, string $formato, FormatoFactory $formatos): Response
+    public function previewNotasCurso(Request $request, Curso $curso): View
     {
         Gate::authorize('view', $curso);
 
-        return $formatos->crear($formato)->generar(new NotasPorCursoReporte($curso));
+        $filtros = FiltrosReporte::desdeRequest($request);
+        $reporte = new NotasPorCursoReporte($curso, $filtros);
+
+        return VistaPreviaReporte::render(
+            $reporte,
+            $filtros,
+            $request->user(),
+            [
+                'pdf' => route('docente.reportes.notas-curso', ['curso' => $curso, 'formato' => 'pdf'] + $filtros->query()),
+                'excel' => route('docente.reportes.notas-curso', ['curso' => $curso, 'formato' => 'excel'] + $filtros->query()),
+            ],
+            route('docente.reportes.index'),
+        );
     }
 
-    public function alumnosInscritos(Curso $curso, string $formato, FormatoFactory $formatos): Response
+    public function previewAlumnosInscritos(Request $request, Curso $curso): View
     {
         Gate::authorize('view', $curso);
 
-        return $formatos->crear($formato)->generar(new AlumnosInscritosReporte($curso));
+        $filtros = FiltrosReporte::desdeRequest($request);
+        $reporte = new AlumnosInscritosReporte($curso, $filtros);
+
+        return VistaPreviaReporte::render(
+            $reporte,
+            $filtros,
+            $request->user(),
+            [
+                'pdf' => route('docente.reportes.alumnos', ['curso' => $curso, 'formato' => 'pdf'] + $filtros->query()),
+                'excel' => route('docente.reportes.alumnos', ['curso' => $curso, 'formato' => 'excel'] + $filtros->query()),
+            ],
+            route('docente.reportes.index'),
+        );
+    }
+
+    public function previewNotasAlumno(Request $request, Curso $curso, Inscripcion $inscripcion): View
+    {
+        Gate::authorize('view', $curso);
+
+        abort_unless($inscripcion->curso_id === $curso->id, 404);
+
+        $filtros = FiltrosReporte::desdeRequest($request);
+        $reporte = new NotasPorAlumnoReporte($inscripcion, $filtros);
+
+        return VistaPreviaReporte::render(
+            $reporte,
+            $filtros,
+            $request->user(),
+            [
+                'pdf' => route('docente.reportes.notas-alumno', [
+                    'curso' => $curso,
+                    'inscripcion' => $inscripcion,
+                    'formato' => 'pdf',
+                ] + $filtros->query()),
+                'excel' => route('docente.reportes.notas-alumno', [
+                    'curso' => $curso,
+                    'inscripcion' => $inscripcion,
+                    'formato' => 'excel',
+                ] + $filtros->query()),
+            ],
+            route('docente.reportes.index'),
+        );
+    }
+
+    public function materias(Request $request, string $formato, FormatoFactory $formatos): Response
+    {
+        return $formatos->crear($formato)->generar(
+            new MateriasDocenteReporte($request->user(), FiltrosReporte::desdeRequest($request)),
+        );
+    }
+
+    public function notasCurso(Request $request, Curso $curso, string $formato, FormatoFactory $formatos): Response
+    {
+        Gate::authorize('view', $curso);
+
+        return $formatos->crear($formato)->generar(
+            new NotasPorCursoReporte($curso, FiltrosReporte::desdeRequest($request)),
+        );
+    }
+
+    public function alumnosInscritos(Request $request, Curso $curso, string $formato, FormatoFactory $formatos): Response
+    {
+        Gate::authorize('view', $curso);
+
+        return $formatos->crear($formato)->generar(
+            new AlumnosInscritosReporte($curso, FiltrosReporte::desdeRequest($request)),
+        );
     }
 
     public function notasAlumno(
+        Request $request,
         Curso $curso,
         Inscripcion $inscripcion,
         string $formato,
@@ -64,7 +155,7 @@ class ReporteController extends Controller
         abort_unless($inscripcion->curso_id === $curso->id, 404);
 
         return $formatos->crear($formato)->generar(
-            new NotasPorAlumnoReporte($inscripcion),
+            new NotasPorAlumnoReporte($inscripcion, FiltrosReporte::desdeRequest($request)),
         );
     }
 }

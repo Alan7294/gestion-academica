@@ -6,7 +6,9 @@ use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\Periodo;
 use App\Models\User;
+use App\Reports\Admin\MateriasPorCarreraReporte;
 use App\Reports\Docente\NotasPorAlumnoReporte;
+use App\Reports\FiltrosReporte;
 use Database\Seeders\RolSeeder;
 
 beforeEach(function () {
@@ -197,4 +199,101 @@ it('rechaza un formato de reporte no soportado', function () {
     $this->actingAs(usuarioConRol(Rol::Estudiante))
         ->get('/estudiante/reportes/historial/csv')
         ->assertNotFound();
+});
+
+it('muestra la vista previa parametrizada del administrador', function () {
+    ['curso' => $curso] = contextoDeReportes();
+
+    $otroPeriodo = Periodo::factory()->create(['nombre' => 'Periodo Lee']);
+    Curso::factory()->create([
+        'periodo_id' => $otroPeriodo->id,
+        'nombre' => 'Historia del Arte',
+        'codigo' => 'HA-101',
+    ]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get("/admin/reportes/materias-por-carrera/preview?periodo_id={$curso->periodo_id}")
+        ->assertOk()
+        ->assertSee('Vista previa')
+        ->assertSee('Parámetros del reporte')
+        ->assertSee('Base de Datos II')
+        ->assertSee('1 registro')
+        ->assertDontSee('2 registros')
+        ->assertSee('Filtro: Periodo')
+        ->assertSee('periodo_id='.$curso->periodo_id, false);
+});
+
+it('aplica los filtros también a las descargas', function () {
+    $otroPeriodo = Periodo::factory()->create(['nombre' => 'Periodo Lee']);
+    Curso::factory()->create([
+        'periodo_id' => $otroPeriodo->id,
+        'nombre' => 'Historia del Arte',
+        'codigo' => 'HA-101',
+    ]);
+
+    $filas = (new MateriasPorCarreraReporte(
+        new FiltrosReporte(periodoId: $otroPeriodo->id),
+    ))->filas();
+
+    expect($filas)->toHaveCount(1)
+        ->and($filas[0][2])->toBe('Historia del Arte');
+});
+
+it('aplica los filtros de nota en la vista previa del docente', function () {
+    ['curso' => $curso, 'docente' => $docente] = contextoDeReportes();
+
+    $otroEstudiante = usuarioConRol(Rol::Estudiante);
+    $otroEstudiante->update(['name' => 'Luis Notas Bajas']);
+
+    Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $otroEstudiante->id,
+        'nota_final' => 30,
+    ]);
+
+    $this->actingAs($docente)
+        ->get("/docente/reportes/cursos/{$curso->id}/notas/preview?nota_desde=51")
+        ->assertOk()
+        ->assertSee('Ana Reportes')
+        ->assertDontSee('Luis Notas Bajas')
+        ->assertSee('Filtro: Nota final');
+});
+
+it('impide la vista previa de cursos que el docente no dicta', function () {
+    ['curso' => $curso] = contextoDeReportes();
+
+    $this->actingAs(usuarioConRol(Rol::Docente))
+        ->get("/docente/reportes/cursos/{$curso->id}/notas/preview")
+        ->assertForbidden();
+});
+
+it('muestra la vista previa del estudiante y conserva los filtros al descargar', function () {
+    ['curso' => $curso, 'estudiante' => $estudiante] = contextoDeReportes();
+
+    $otroPeriodo = Periodo::factory()->create(['nombre' => 'Periodo Pasado']);
+
+    $this->actingAs($estudiante)
+        ->get("/estudiante/reportes/historial/preview?periodo_id={$curso->periodo_id}")
+        ->assertOk()
+        ->assertSee('Base de Datos II')
+        ->assertSee('Filtro: Periodo')
+        ->assertSee('periodo_id='.$curso->periodo_id, false);
+
+    $this->actingAs($estudiante)
+        ->get("/estudiante/reportes/historial/preview?periodo_id={$otroPeriodo->id}")
+        ->assertOk()
+        ->assertSee('0 registros')
+        ->assertSee('No hay datos para los filtros seleccionados.');
+});
+
+it('rechaza parámetros de filtro inválidos en la vista previa', function () {
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/reportes/materias-por-carrera/preview?periodo_id=999999')
+        ->assertSessionHasErrors('periodo_id');
+});
+
+it('rechaza un rango de notas invertido en la vista previa', function () {
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/reportes/materias-por-carrera/preview?nota_desde=90&nota_hasta=50')
+        ->assertSessionHasErrors('nota_desde');
 });

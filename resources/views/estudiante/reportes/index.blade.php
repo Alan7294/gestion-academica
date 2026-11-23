@@ -24,6 +24,10 @@
                     </p>
 
                     <div class="mt-5 flex items-center gap-2">
+                        <a href="{{ route('estudiante.reportes.historial.preview') }}"
+                           class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                            <x-icon name="eye" class="h-3.5 w-3.5" /> {{ __('Ver') }}
+                        </a>
                         <a href="{{ route('estudiante.reportes.historial', ['formato' => 'pdf']) }}"
                            class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-700">
                             <x-icon name="download" class="h-3.5 w-3.5" /> PDF
@@ -46,6 +50,10 @@
                     </p>
 
                     <div class="mt-5 flex items-center gap-2">
+                        <a href="{{ route('estudiante.reportes.notas.preview') }}"
+                           class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                            <x-icon name="eye" class="h-3.5 w-3.5" /> {{ __('Ver') }}
+                        </a>
                         <a href="{{ route('estudiante.reportes.notas', ['formato' => 'pdf']) }}"
                            class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-700">
                             <x-icon name="download" class="h-3.5 w-3.5" /> PDF
@@ -68,6 +76,10 @@
                     </p>
 
                     <div class="mt-5 flex items-center gap-2">
+                        <a href="{{ route('estudiante.reportes.materias.preview') }}"
+                           class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                            <x-icon name="eye" class="h-3.5 w-3.5" /> {{ __('Ver') }}
+                        </a>
                         <a href="{{ route('estudiante.reportes.materias', ['formato' => 'pdf']) }}"
                            class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-700">
                             <x-icon name="download" class="h-3.5 w-3.5" /> PDF

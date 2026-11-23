@@ -4,6 +4,7 @@ namespace App\Reports\Estudiante;
 
 use App\Models\Inscripcion;
 use App\Models\User;
+use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
 
 /**
@@ -11,7 +12,10 @@ use App\Reports\Reporte;
  */
 class NotasTodasMateriasReporte implements Reporte
 {
-    public function __construct(private readonly User $estudiante) {}
+    public function __construct(
+        private readonly User $estudiante,
+        private readonly FiltrosReporte $filtros = new FiltrosReporte,
+    ) {}
 
     public function titulo(): string
     {
@@ -37,10 +41,13 @@ class NotasTodasMateriasReporte implements Reporte
 
     public function filas(): array
     {
-        return Inscripcion::query()
+        $inscripciones = Inscripcion::query()
             ->where('user_id', $this->estudiante->id)
-            ->with(['curso.periodo', 'calificaciones'])
-            ->get()
+            ->with(['curso.periodo', 'calificaciones']);
+
+        $this->filtros->aplicarAInscripciones($inscripciones);
+
+        return $inscripciones->get()
             ->flatMap(fn (Inscripcion $inscripcion) => $inscripcion->calificaciones->map(fn ($calificacion) => [
                 $inscripcion->curso->nombre,
                 $inscripcion->curso->periodo->nombre,
@@ -55,10 +62,10 @@ class NotasTodasMateriasReporte implements Reporte
 
     public function contexto(): array
     {
-        return [
+        return array_merge($this->filtros->contexto(), [
             'Estudiante' => $this->estudiante->name,
             'CI' => $this->estudiante->ci ?? '—',
             'Correo' => $this->estudiante->email,
-        ];
+        ]);
     }
 }

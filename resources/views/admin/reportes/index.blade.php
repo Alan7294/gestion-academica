@@ -29,6 +29,11 @@
                         </p>
 
                         <div class="mt-5 flex flex-wrap items-center gap-2">
+                            <a href="{{ route('admin.reportes.materias.preview') }}"
+                               class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                                <x-icon name="eye" class="h-4 w-4" />
+                                {{ __('Vista previa') }}
+                            </a>
                             <a href="{{ route('admin.reportes.materias', ['formato' => 'pdf']) }}"
                                class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700">
                                 <x-icon name="download" class="h-4 w-4" />

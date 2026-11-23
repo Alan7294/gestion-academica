@@ -22,25 +22,26 @@ Proyecto de la materia **Programación IV**.
 - Gestión de usuarios con roles, activación/desactivación y eliminación protegida (no puede borrarse a sí mismo, al último administrador ni a usuarios con calificaciones registradas).
 - CRUD de carreras, planes de estudio por carrera (modalidad modular o semestral, duración y materias por semestre), periodos académicos (con activación de un único periodo vigente) y cursos (cupo, créditos, semestre, docente y periodo).
 - Asignación de horarios con validación de choque para el mismo docente, día y rango de horas.
-- Reporte de materias por carrera en PDF y Excel.
+- Reporte de materias por carrera en PDF y Excel, con vista previa parametrizada.
 
 ### Docente
 
 - Cursos asignados y listado de alumnos inscritos.
 - Registro, edición y eliminación de calificaciones con ponderación; la nota final del estudiante se calcula automáticamente.
-- Reportes de sus materias, notas por curso, alumnos inscritos y notas por alumno, en PDF y Excel.
+- Reportes de sus materias, notas por curso, alumnos inscritos y notas por alumno, en PDF y Excel, con vista previa parametrizada.
 
 ### Estudiante
 
 - Catálogo de cursos e inscripción con validación de cupo, horario y periodo activo.
 - Retiro de inscripciones, consulta de notas e historial académico.
-- Reportes de historial, notas y materias, en PDF y Excel.
+- Reportes de historial, notas y materias, en PDF y Excel, con vista previa parametrizada.
 
 ### Comunes
 
 - Las cuentas de estudiantes, docentes y administradores las crea exclusivamente el administrador desde `/admin/usuarios`.
 - Autenticación con verificación de correo obligatoria; el administrador crea las cuentas ya verificadas. Recuperación de contraseña y perfil.
 - Notificaciones internas con estado leído/no leído.
+- Los ocho reportes ofrecen una vista previa HTML con filtros por periodo, carrera, materia, docente, estado de inscripción y rango de nota; los mismos parámetros se conservan al descargar PDF o Excel.
 
 ## Requisitos
 
@@ -139,7 +140,7 @@ CREATE DATABASE gestion_academica_test;
 php artisan test
 ```
 
-`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **127 pruebas y 361 aserciones**.
+`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **134 pruebas y 387 aserciones**.
 
 ## Estructura relevante
 

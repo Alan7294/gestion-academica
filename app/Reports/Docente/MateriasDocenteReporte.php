@@ -4,6 +4,7 @@ namespace App\Reports\Docente;
 
 use App\Models\Curso;
 use App\Models\User;
+use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
 
 /**
@@ -11,7 +12,10 @@ use App\Reports\Reporte;
  */
 class MateriasDocenteReporte implements Reporte
 {
-    public function __construct(private readonly User $docente) {}
+    public function __construct(
+        private readonly User $docente,
+        private readonly FiltrosReporte $filtros = new FiltrosReporte,
+    ) {}
 
     public function titulo(): string
     {
@@ -39,12 +43,15 @@ class MateriasDocenteReporte implements Reporte
 
     public function filas(): array
     {
-        return Curso::query()
+        $cursos = Curso::query()
             ->where('docente_id', $this->docente->id)
             ->with(['carrera', 'periodo', 'horarios'])
             ->withCount('alumnosInscritos')
-            ->orderBy('nombre')
-            ->get()
+            ->orderBy('nombre');
+
+        $this->filtros->aplicarACursos($cursos);
+
+        return $cursos->get()
             ->map(fn (Curso $curso) => [
                 $curso->codigo,
                 $curso->nombre,
@@ -62,10 +69,10 @@ class MateriasDocenteReporte implements Reporte
 
     public function contexto(): array
     {
-        return [
+        return array_merge($this->filtros->contexto(), [
             'Docente' => $this->docente->name,
             'CI' => $this->docente->ci ?? '—',
             'Correo' => $this->docente->email,
-        ];
+        ]);
     }
 }

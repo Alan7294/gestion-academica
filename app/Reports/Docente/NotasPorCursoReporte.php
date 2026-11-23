@@ -2,8 +2,10 @@
 
 namespace App\Reports\Docente;
 
+use App\Enums\EstadoInscripcion;
 use App\Models\Curso;
 use App\Models\Inscripcion;
+use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
 
 /**
@@ -11,7 +13,10 @@ use App\Reports\Reporte;
  */
 class NotasPorCursoReporte implements Reporte
 {
-    public function __construct(private readonly Curso $curso) {}
+    public function __construct(
+        private readonly Curso $curso,
+        private readonly FiltrosReporte $filtros = new FiltrosReporte,
+    ) {}
 
     public function titulo(): string
     {
@@ -36,9 +41,13 @@ class NotasPorCursoReporte implements Reporte
 
     public function filas(): array
     {
-        return $this->curso->alumnosInscritos()
-            ->with(['estudiante', 'calificaciones'])
-            ->get()
+        $inscripciones = Inscripcion::query()
+            ->where('curso_id', $this->curso->id)
+            ->with(['estudiante', 'calificaciones']);
+
+        $this->filtros->aplicarAInscripciones($inscripciones, EstadoInscripcion::Inscrito->value);
+
+        return $inscripciones->get()
             ->sortBy(fn (Inscripcion $inscripcion) => $inscripcion->estudiante->name)
             ->map(fn (Inscripcion $inscripcion) => [
                 $inscripcion->estudiante->name,
@@ -53,12 +62,12 @@ class NotasPorCursoReporte implements Reporte
 
     public function contexto(): array
     {
-        return [
+        return array_merge($this->filtros->contexto(), [
             'Curso' => "{$this->curso->codigo} - {$this->curso->nombre}",
             'Carrera' => $this->curso->carrera->nombre,
             'Periodo' => $this->curso->periodo->nombre,
             'Docente' => $this->curso->docente?->name ?? 'Sin asignar',
-        ];
+        ]);
     }
 
     private function nota(string|float|null $nota): string

@@ -3,6 +3,7 @@
 namespace App\Reports\Docente;
 
 use App\Models\Inscripcion;
+use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
 
 /**
@@ -10,7 +11,10 @@ use App\Reports\Reporte;
  */
 class NotasPorAlumnoReporte implements Reporte
 {
-    public function __construct(private readonly Inscripcion $inscripcion) {}
+    public function __construct(
+        private readonly Inscripcion $inscripcion,
+        private readonly FiltrosReporte $filtros = new FiltrosReporte,
+    ) {}
 
     public function titulo(): string
     {
@@ -37,6 +41,13 @@ class NotasPorAlumnoReporte implements Reporte
 
     public function filas(): array
     {
+        $coincide = Inscripcion::query()->whereKey($this->inscripcion->id);
+        $this->filtros->aplicarAInscripciones($coincide);
+
+        if (! $coincide->exists()) {
+            return [];
+        }
+
         $inscripcion = $this->inscripcion->loadMissing([
             'curso.periodo',
             'curso.docente',
@@ -59,13 +70,13 @@ class NotasPorAlumnoReporte implements Reporte
         $estudiante = $this->inscripcion->estudiante;
         $curso = $this->inscripcion->curso->loadMissing('periodo');
 
-        return [
+        return array_merge($this->filtros->contexto(), [
             'Estudiante' => $estudiante->name,
             'CI' => $estudiante->ci ?? '—',
             'Correo' => $estudiante->email,
             'Curso' => "{$curso->codigo} - {$curso->nombre}",
             'Periodo' => $curso->periodo->nombre,
-        ];
+        ]);
     }
 
     private function resultado(string|float|null $nota): string

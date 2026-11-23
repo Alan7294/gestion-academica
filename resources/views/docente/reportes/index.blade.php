@@ -24,6 +24,10 @@
                 </div>
 
                 <div class="flex shrink-0 items-center gap-2">
+                    <a href="{{ route('docente.reportes.materias.preview') }}"
+                       class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                        <x-icon name="eye" class="h-4 w-4" /> {{ __('Ver') }}
+                    </a>
                     <a href="{{ route('docente.reportes.materias', ['formato' => 'pdf']) }}"
                        class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700">
                         <x-icon name="download" class="h-4 w-4" /> PDF
@@ -52,6 +56,8 @@
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-medium text-slate-500">{{ __('Notas por curso') }}</span>
+                                <a href="{{ route('docente.reportes.notas-curso.preview', ['curso' => $curso]) }}"
+                                   class="rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-100">{{ __('Ver') }}</a>
                                 <a href="{{ route('docente.reportes.notas-curso', ['curso' => $curso, 'formato' => 'pdf']) }}"
                                    class="rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">PDF</a>
                                 <a href="{{ route('docente.reportes.notas-curso', ['curso' => $curso, 'formato' => 'excel']) }}"
@@ -60,6 +66,8 @@
 
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-medium text-slate-500">{{ __('Alumnos') }}</span>
+                                <a href="{{ route('docente.reportes.alumnos.preview', ['curso' => $curso]) }}"
+                                   class="rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-100">{{ __('Ver') }}</a>
                                 <a href="{{ route('docente.reportes.alumnos', ['curso' => $curso, 'formato' => 'pdf']) }}"
                                    class="rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">PDF</a>
                                 <a href="{{ route('docente.reportes.alumnos', ['curso' => $curso, 'formato' => 'excel']) }}"
@@ -88,6 +96,8 @@
                                             <td class="px-6 py-3 text-slate-600">{{ $inscripcion->estudiante->ci ?? '—' }}</td>
                                             <td class="px-6 py-3 text-slate-600">{{ $inscripcion->nota_final ?? '—' }}</td>
                                             <td class="space-x-2 px-6 py-3 text-right">
+                                                <a href="{{ route('docente.reportes.notas-alumno.preview', ['curso' => $curso, 'inscripcion' => $inscripcion]) }}"
+                                                   class="rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-100">{{ __('Ver') }}</a>
                                                 <a href="{{ route('docente.reportes.notas-alumno', ['curso' => $curso, 'inscripcion' => $inscripcion, 'formato' => 'pdf']) }}"
                                                    class="rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">PDF</a>
                                                 <a href="{{ route('docente.reportes.notas-alumno', ['curso' => $curso, 'inscripcion' => $inscripcion, 'formato' => 'excel']) }}"

@@ -39,6 +39,8 @@ Route::middleware(['auth', 'verified', 'role:administrador'])
         Route::resource('usuarios', UsuarioController::class)->except('show');
 
         Route::get('reportes', [ReporteAdminController::class, 'index'])->name('reportes.index');
+        Route::get('reportes/materias-por-carrera/preview', [ReporteAdminController::class, 'preview'])
+            ->name('reportes.materias.preview');
         Route::get('reportes/materias-por-carrera/{formato}', [ReporteAdminController::class, 'materiasPorCarrera'])
             ->name('reportes.materias');
 
@@ -65,6 +67,10 @@ Route::middleware(['auth', 'verified', 'role:docente'])
         Route::get('cursos/{curso}', [CursoDocenteController::class, 'show'])->name('cursos.show');
 
         Route::get('reportes', [ReporteDocenteController::class, 'index'])->name('reportes.index');
+        Route::get('reportes/materias/preview', [ReporteDocenteController::class, 'previewMaterias'])->name('reportes.materias.preview');
+        Route::get('reportes/cursos/{curso}/notas/preview', [ReporteDocenteController::class, 'previewNotasCurso'])->name('reportes.notas-curso.preview');
+        Route::get('reportes/cursos/{curso}/alumnos/preview', [ReporteDocenteController::class, 'previewAlumnosInscritos'])->name('reportes.alumnos.preview');
+        Route::get('reportes/cursos/{curso}/inscripciones/{inscripcion}/notas/preview', [ReporteDocenteController::class, 'previewNotasAlumno'])->name('reportes.notas-alumno.preview');
         Route::get('reportes/materias/{formato}', [ReporteDocenteController::class, 'materias'])->name('reportes.materias');
         Route::get('reportes/cursos/{curso}/notas/{formato}', [ReporteDocenteController::class, 'notasCurso'])->name('reportes.notas-curso');
         Route::get('reportes/cursos/{curso}/alumnos/{formato}', [ReporteDocenteController::class, 'alumnosInscritos'])->name('reportes.alumnos');
@@ -92,6 +98,9 @@ Route::middleware(['auth', 'verified', 'role:estudiante'])
         Route::get('notas', [NotaController::class, 'index'])->name('notas.index');
 
         Route::get('reportes', [ReporteEstudianteController::class, 'index'])->name('reportes.index');
+        Route::get('reportes/historial/preview', [ReporteEstudianteController::class, 'previewHistorial'])->name('reportes.historial.preview');
+        Route::get('reportes/notas/preview', [ReporteEstudianteController::class, 'previewNotas'])->name('reportes.notas.preview');
+        Route::get('reportes/materias/preview', [ReporteEstudianteController::class, 'previewMaterias'])->name('reportes.materias.preview');
         Route::get('reportes/historial/{formato}', [ReporteEstudianteController::class, 'historial'])->name('reportes.historial');
         Route::get('reportes/notas/{formato}', [ReporteEstudianteController::class, 'notas'])->name('reportes.notas');
         Route::get('reportes/materias/{formato}', [ReporteEstudianteController::class, 'materias'])->name('reportes.materias');
