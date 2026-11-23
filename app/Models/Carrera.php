@@ -23,4 +23,9 @@ class Carrera extends Model
     {
         return $this->hasMany(Curso::class);
     }
+
+    public function planesEstudio(): HasMany
+    {
+        return $this->hasMany(PlanEstudio::class);
+    }
 }

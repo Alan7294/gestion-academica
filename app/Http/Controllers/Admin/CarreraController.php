@@ -13,7 +13,7 @@ class CarreraController extends Controller
     public function index(): View
     {
         return view('admin.carreras.index', [
-            'carreras' => Carrera::withCount('cursos')->orderBy('nombre')->paginate(10),
+            'carreras' => Carrera::withCount(['cursos', 'planesEstudio'])->orderBy('nombre')->paginate(10),
         ]);
     }
 
@@ -50,6 +50,12 @@ class CarreraController extends Controller
         if ($carrera->cursos()->exists()) {
             return back()->withErrors([
                 'carrera' => 'No se puede eliminar una carrera que tiene cursos registrados.',
+            ]);
+        }
+
+        if ($carrera->planesEstudio()->exists()) {
+            return back()->withErrors([
+                'carrera' => 'No se puede eliminar una carrera que tiene planes de estudio registrados.',
             ]);
         }
 

@@ -79,6 +79,9 @@
                             <x-sidebar-link :href="route('admin.carreras.index')" :active="request()->routeIs('admin.carreras.*')" icon="academic-cap">
                                 {{ __('Carreras') }}
                             </x-sidebar-link>
+                            <x-sidebar-link :href="route('admin.planes.index')" :active="request()->routeIs('admin.planes.*')" icon="document">
+                                {{ __('Planes de estudio') }}
+                            </x-sidebar-link>
                             <x-sidebar-link :href="route('admin.periodos.index')" :active="request()->routeIs('admin.periodos.*')" icon="calendar">
                                 {{ __('Periodos') }}
                             </x-sidebar-link>

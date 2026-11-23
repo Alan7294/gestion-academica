@@ -3,6 +3,7 @@
 use App\Enums\Rol;
 use App\Models\Carrera;
 use App\Models\Curso;
+use App\Models\PlanEstudio;
 use Database\Seeders\RolSeeder;
 
 beforeEach(function () {
@@ -51,6 +52,17 @@ it('impide que un docente gestione carreras', function () {
 it('no elimina una carrera que tiene cursos', function () {
     $carrera = Carrera::factory()->create();
     Curso::factory()->create(['carrera_id' => $carrera->id]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->delete("/admin/carreras/{$carrera->id}")
+        ->assertSessionHasErrors('carrera');
+
+    expect(Carrera::find($carrera->id))->not->toBeNull();
+});
+
+it('no elimina una carrera que tiene planes de estudio', function () {
+    $carrera = Carrera::factory()->create();
+    PlanEstudio::factory()->create(['carrera_id' => $carrera->id]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->delete("/admin/carreras/{$carrera->id}")

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             RolSeeder::class,
             AdministradorSeeder::class,
             CarreraSeeder::class,
+            PlanEstudioSeeder::class,
             PeriodoSeeder::class,
         ]);
     }

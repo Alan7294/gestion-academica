@@ -1,6 +1,6 @@
 # Gestión Académica
 
-Sistema web para administrar la actividad académica de una institución: carreras, periodos, cursos, horarios, inscripciones, calificaciones y reportes en PDF y Excel, con tres roles de acceso.
+Sistema web para administrar la actividad académica de una institución: carreras, planes de estudio, periodos, cursos, horarios, inscripciones, calificaciones y reportes en PDF y Excel, con tres roles de acceso.
 
 Proyecto de la materia **Programación IV**.
 
@@ -20,7 +20,7 @@ Proyecto de la materia **Programación IV**.
 ### Administrador
 
 - Gestión de usuarios con roles, activación/desactivación y eliminación protegida (no puede borrarse a sí mismo, al último administrador ni a usuarios con calificaciones registradas).
-- CRUD de carreras, periodos académicos (con activación de un único periodo vigente) y cursos (cupo, créditos, semestre, docente y periodo).
+- CRUD de carreras, planes de estudio por carrera (modalidad modular o semestral, duración y materias por semestre), periodos académicos (con activación de un único periodo vigente) y cursos (cupo, créditos, semestre, docente y periodo).
 - Asignación de horarios con validación de choque para el mismo docente, día y rango de horas.
 - Reporte de materias por carrera en PDF y Excel.
 
@@ -139,7 +139,7 @@ CREATE DATABASE gestion_academica_test;
 php artisan test
 ```
 
-`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **105 pruebas y 284 aserciones**.
+`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **121 pruebas y 350 aserciones**.
 
 ## Estructura relevante
 
@@ -157,7 +157,7 @@ app/
 
 database/
 ├── migrations/        Esquema con restricciones de integridad en PostgreSQL
-└── seeders/           Roles, administrador, carreras, periodos y DemoSeeder
+└── seeders/           Roles, administrador, carreras, planes de estudio, periodos y DemoSeeder
 
 resources/views/       Vistas Blade (layout con barra lateral y componentes)
 routes/web.php         Rutas agrupadas por rol
@@ -165,7 +165,7 @@ routes/web.php         Rutas agrupadas por rol
 
 ### Patrones aplicados
 
-- **Service Layer** para las reglas de negocio de inscripciones, calificaciones, horarios y usuarios.
+- **Service Layer** para las reglas de negocio de inscripciones, calificaciones, horarios, usuarios y planes de estudio.
 - **Repository** para el acceso a datos de cursos.
 - **Policy** para la autorización por recurso.
 - **Strategy + Factory** en los reportes: `Reporte` define el contrato, `FormatoPdf` y `FormatoExcel` son las estrategias y `FormatoFactory` elige según el parámetro `formato`.

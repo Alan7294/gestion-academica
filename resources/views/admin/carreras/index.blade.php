@@ -22,6 +22,7 @@
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Nombre') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Facultad') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Cursos') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Planes') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Estado') }}</th>
                             <th class="px-6 py-3"></th>
                         </tr>
@@ -33,6 +34,12 @@
                                 <td class="px-6 py-4 text-slate-900">{{ $carrera->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $carrera->facultad ?? '—' }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $carrera->cursos_count }}</td>
+                                <td class="px-6 py-4">
+                                    <a href="{{ route('admin.planes.index', ['carrera_id' => $carrera->id]) }}"
+                                       class="text-brand-600 hover:text-brand-900">
+                                        {{ $carrera->planes_estudio_count }}
+                                    </a>
+                                </td>
                                 <td class="px-6 py-4">
                                     @if ($carrera->activo)
                                         <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{{ __('Activa') }}</span>
@@ -53,7 +60,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-8 text-center text-slate-500">
+                                <td colspan="7" class="px-6 py-8 text-center text-slate-500">
                                     {{ __('Todavía no hay carreras registradas.') }}
                                 </td>
                             </tr>

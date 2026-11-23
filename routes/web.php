@@ -4,14 +4,15 @@ use App\Http\Controllers\Admin\CarreraController;
 use App\Http\Controllers\Admin\CursoController;
 use App\Http\Controllers\Admin\HorarioController;
 use App\Http\Controllers\Admin\PeriodoController;
+use App\Http\Controllers\Admin\PlanEstudioController;
 use App\Http\Controllers\Admin\ReporteController as ReporteAdminController;
 use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Docente\CalificacionController;
 use App\Http\Controllers\Docente\CursoController as CursoDocenteController;
+use App\Http\Controllers\Docente\ReporteController as ReporteDocenteController;
 use App\Http\Controllers\Estudiante\CursoController as CursoEstudianteController;
 use App\Http\Controllers\Estudiante\InscripcionController;
-use App\Http\Controllers\Docente\ReporteController as ReporteDocenteController;
 use App\Http\Controllers\Estudiante\NotaController;
 use App\Http\Controllers\Estudiante\ReporteController as ReporteEstudianteController;
 use App\Http\Controllers\NotificacionController;
@@ -42,6 +43,9 @@ Route::middleware(['auth', 'verified', 'role:administrador'])
             ->name('reportes.materias');
 
         Route::resource('carreras', CarreraController::class)->except('show');
+
+        Route::resource('planes', PlanEstudioController::class)
+            ->parameters(['planes' => 'planEstudio']);
 
         Route::resource('periodos', PeriodoController::class)->except('show');
         Route::post('periodos/{periodo}/activar', [PeriodoController::class, 'activar'])->name('periodos.activar');
