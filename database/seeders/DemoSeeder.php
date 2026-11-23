@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\EstadoInscripcion;
+use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\Carrera;
 use App\Models\Curso;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\CalificacionService;
 use App\Services\InscripcionService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -36,7 +38,7 @@ class DemoSeeder extends Seeder
         $carreras = Carrera::orderBy('id')->get()->keyBy('codigo');
 
         $docentes = $this->crearDocentes();
-        $estudiantes = $this->crearEstudiantes();
+        $estudiantes = $this->crearEstudiantes($carreras);
 
         $definiciones = [
             ['codigo' => 'SIS-101', 'carrera' => 'SIS', 'nombre' => 'Programación I', 'creditos' => 5, 'semestre' => 1, 'docente' => 0, 'dia' => 1, 'inicio' => '08:00', 'fin' => '10:00', 'aula' => 'Lab. 1'],
@@ -169,23 +171,32 @@ class DemoSeeder extends Seeder
     }
 
     /**
+     * @param  Collection<string, Carrera>  $carreras
      * @return array<string, User>
      */
-    private function crearEstudiantes(): array
+    private function crearEstudiantes($carreras): array
     {
         $definiciones = [
-            ['name' => 'Ana Quispe', 'email' => 'estudiante1@academica.test', 'ci' => '7020001', 'telefono' => '70020001'],
-            ['name' => 'Luis Condori', 'email' => 'estudiante2@academica.test', 'ci' => '7020002', 'telefono' => '70020002'],
-            ['name' => 'María Choque', 'email' => 'estudiante3@academica.test', 'ci' => '7020003', 'telefono' => '70020003'],
-            ['name' => 'Diego Vargas', 'email' => 'estudiante4@academica.test', 'ci' => '7020004', 'telefono' => '70020004'],
-            ['name' => 'Sofía Limachi', 'email' => 'estudiante5@academica.test', 'ci' => '7020005', 'telefono' => '70020005'],
-            ['name' => 'Pedro Céspedes', 'email' => 'estudiante6@academica.test', 'ci' => '7020006', 'telefono' => '70020006'],
+            ['name' => 'Ana Quispe', 'email' => 'estudiante1@academica.test', 'ci' => '7020001', 'telefono' => '70020001', 'carrera' => 'SIS', 'modalidad' => Modalidad::Semestral],
+            ['name' => 'Luis Condori', 'email' => 'estudiante2@academica.test', 'ci' => '7020002', 'telefono' => '70020002', 'carrera' => 'SIS', 'modalidad' => Modalidad::Modular],
+            ['name' => 'María Choque', 'email' => 'estudiante3@academica.test', 'ci' => '7020003', 'telefono' => '70020003', 'carrera' => 'ADM', 'modalidad' => Modalidad::Semestral],
+            ['name' => 'Diego Vargas', 'email' => 'estudiante4@academica.test', 'ci' => '7020004', 'telefono' => '70020004', 'carrera' => 'ADM', 'modalidad' => Modalidad::Modular],
+            ['name' => 'Sofía Limachi', 'email' => 'estudiante5@academica.test', 'ci' => '7020005', 'telefono' => '70020005', 'carrera' => 'DER', 'modalidad' => Modalidad::Semestral],
+            ['name' => 'Pedro Céspedes', 'email' => 'estudiante6@academica.test', 'ci' => '7020006', 'telefono' => '70020006', 'carrera' => 'DER', 'modalidad' => Modalidad::Modular],
         ];
 
         $estudiantes = [];
 
         foreach ($definiciones as $definicion) {
-            $estudiantes[$definicion['email']] = $this->crearUsuario($definicion, Rol::Estudiante);
+            $estudiante = $this->crearUsuario($definicion, Rol::Estudiante);
+
+            // La carrera y la modalidad identifican la inscripción académica del estudiante.
+            $estudiante->forceFill([
+                'carrera_id' => $carreras[$definicion['carrera']]->id,
+                'modalidad' => $definicion['modalidad']->value,
+            ])->save();
+
+            $estudiantes[$definicion['email']] = $estudiante;
         }
 
         return $estudiantes;

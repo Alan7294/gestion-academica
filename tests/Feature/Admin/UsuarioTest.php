@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\Calificacion;
+use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\Periodo;
@@ -35,6 +37,89 @@ it('permite al administrador crear un usuario con rol', function () {
         ->and($usuario->activo)->toBeTrue()
         ->and($usuario->email_verified_at)->not->toBeNull()
         ->and(Hash::check('Password123', $usuario->password))->toBeTrue();
+});
+
+it('crea un estudiante con su carrera y modalidad', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $carrera = Carrera::create([
+        'codigo' => 'SIS',
+        'nombre' => 'Ingeniería de Sistemas',
+        'facultad' => 'Facultad de Ingeniería',
+        'activo' => true,
+    ]);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Estudiante Nuevo',
+            'ci' => '9000001',
+            'telefono' => null,
+            'email' => 'estudiante.nuevo@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Estudiante->value,
+            'carrera_id' => $carrera->id,
+            'modalidad' => Modalidad::Modular->value,
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    $usuario = User::where('email', 'estudiante.nuevo@academica.test')->firstOrFail();
+
+    expect($usuario->carrera_id)->toBe($carrera->id)
+        ->and($usuario->modalidad)->toBe(Modalidad::Modular);
+});
+
+it('exige carrera y modalidad al crear un estudiante', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Estudiante Incompleto',
+            'ci' => '9000002',
+            'telefono' => null,
+            'email' => 'estudiante.incompleto@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Estudiante->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['carrera_id', 'modalidad']);
+
+    expect(User::where('email', 'estudiante.incompleto@academica.test')->exists())->toBeFalse();
+});
+
+it('limpia carrera y modalidad cuando el usuario deja de ser estudiante', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $carrera = Carrera::create([
+        'codigo' => 'ADM',
+        'nombre' => 'Administración de Empresas',
+        'facultad' => 'Facultad de Ciencias Económicas',
+        'activo' => true,
+    ]);
+
+    $usuario = usuarioConRol(Rol::Estudiante);
+    $usuario->forceFill([
+        'carrera_id' => $carrera->id,
+        'modalidad' => Modalidad::Semestral->value,
+    ])->save();
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            'name' => $usuario->name,
+            'ci' => $usuario->ci ?? '9000003',
+            'telefono' => $usuario->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    expect($usuario->fresh()->carrera_id)->toBeNull()
+        ->and($usuario->fresh()->modalidad)->toBeNull();
 });
 
 it('valida el correo y el carnet duplicados al crear un usuario', function () {

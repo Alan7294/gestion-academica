@@ -38,6 +38,7 @@ Proyecto de la materia **Programación IV**.
 
 ### Comunes
 
+- Registro público como estudiante (indicando carrera y modalidad) o docente.
 - Autenticación, verificación de correo, recuperación de contraseña y perfil.
 - Notificaciones internas con estado leído/no leído.
 

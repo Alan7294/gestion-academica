@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -47,6 +48,17 @@ class UpdateUsuarioRequest extends FormRequest
             // En la edición la contraseña es opcional.
             'password' => ['nullable', 'confirmed', Password::min(8)],
             'rol' => ['required', Rule::enum(Rol::class)],
+            'carrera_id' => [
+                'nullable',
+                'required_if:rol,'.Rol::Estudiante->value,
+                'integer',
+                Rule::exists('carreras', 'id'),
+            ],
+            'modalidad' => [
+                'nullable',
+                'required_if:rol,'.Rol::Estudiante->value,
+                Rule::enum(Modalidad::class),
+            ],
             'activo' => ['boolean'],
         ];
     }
@@ -61,6 +73,8 @@ class UpdateUsuarioRequest extends FormRequest
             'email.unique' => 'Ya existe un usuario registrado con ese correo.',
             'password.confirmed' => 'La confirmación de contraseña no coincide.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'carrera_id.required_if' => 'Selecciona la carrera del estudiante.',
+            'modalidad.required_if' => 'Selecciona la modalidad del estudiante.',
         ];
     }
 }

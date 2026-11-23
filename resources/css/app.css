@@ -7,6 +7,11 @@
         @apply scroll-smooth;
     }
 
+    /* Evita el parpadeo de bloques condicionales de Alpine antes de hidratar. */
+    [x-cloak] {
+        display: none !important;
+    }
+
     body {
         @apply bg-slate-50 text-slate-800;
     }

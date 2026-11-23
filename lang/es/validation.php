@@ -128,6 +128,7 @@ return [
         'creditos' => 'créditos',
         'semestre' => 'semestre',
         'carrera_id' => 'carrera',
+        'modalidad' => 'modalidad',
         'periodo_id' => 'periodo',
         'docente_id' => 'docente',
         'curso_id' => 'curso',

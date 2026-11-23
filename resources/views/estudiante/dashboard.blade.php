@@ -10,6 +10,14 @@
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-600">{{ __('Panel del estudiante') }}</p>
                 <h2 class="text-xl font-semibold text-slate-900">{{ __('Hola, ') . auth()->user()->name }}</h2>
+                @if (auth()->user()->carrera)
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        {{ auth()->user()->carrera->nombre }}
+                        @if (auth()->user()->modalidad)
+                            · {{ __('Modalidad') }} {{ auth()->user()->modalidad->etiqueta() }}
+                        @endif
+                    </p>
+                @endif
             </div>
 
             <a href="{{ route('estudiante.cursos.index') }}"

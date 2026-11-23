@@ -70,6 +70,14 @@
                                 <td class="px-6 py-4">
                                     <p class="font-medium text-slate-900">{{ $usuario->name }}</p>
                                     <p class="text-xs text-slate-500">{{ $usuario->email }}</p>
+                                    @if ($usuario->carrera)
+                                        <p class="mt-0.5 text-xs text-slate-500">
+                                            {{ $usuario->carrera->nombre }}
+                                            @if ($usuario->modalidad)
+                                                · {{ $usuario->modalidad->etiqueta() }}
+                                            @endif
+                                        </p>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $usuario->ci ?? '—' }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $usuario->telefono ?? '—' }}</td>

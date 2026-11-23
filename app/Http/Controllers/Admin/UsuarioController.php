@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUsuarioRequest;
 use App\Http\Requests\Admin\UpdateUsuarioRequest;
+use App\Models\Carrera;
 use App\Models\User;
 use App\Services\UsuarioService;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +33,7 @@ class UsuarioController extends Controller
         }
 
         $usuarios = User::query()
-            ->with('roles')
+            ->with(['roles', 'carrera'])
             ->when($filtros['busqueda'] !== '', function ($query) use ($filtros) {
                 $termino = "%{$filtros['busqueda']}%";
 
@@ -55,7 +57,11 @@ class UsuarioController extends Controller
 
     public function create(): View
     {
-        return view('admin.usuarios.create', ['roles' => Rol::cases()]);
+        return view('admin.usuarios.create', [
+            'roles' => Rol::cases(),
+            'carreras' => Carrera::query()->where('activo', true)->orderBy('nombre')->get(),
+            'modalidades' => Modalidad::cases(),
+        ]);
     }
 
     public function store(StoreUsuarioRequest $request): RedirectResponse
@@ -72,6 +78,8 @@ class UsuarioController extends Controller
         return view('admin.usuarios.edit', [
             'usuario' => $usuario->load('roles'),
             'roles' => Rol::cases(),
+            'carreras' => Carrera::query()->where('activo', true)->orderBy('nombre')->get(),
+            'modalidades' => Modalidad::cases(),
         ]);
     }
 

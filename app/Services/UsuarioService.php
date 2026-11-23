@@ -14,7 +14,7 @@ class UsuarioService
     /**
      * RF09: crea un usuario desde el panel y le asigna un rol.
      *
-     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password: string, rol: string, activo?: bool}  $datos
+     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password: string, rol: string, activo?: bool, carrera_id?: int|null, modalidad?: string|null}  $datos
      */
     public function crear(array $datos): User
     {
@@ -26,7 +26,7 @@ class UsuarioService
                 'email' => $datos['email'],
                 'password' => $datos['password'],
                 'activo' => $datos['activo'] ?? true,
-            ]);
+            ] + $this->datosAcademicos($datos));
 
             // Las cuentas creadas por el administrador nacen verificadas.
             $usuario->forceFill(['email_verified_at' => now()])->save();
@@ -40,7 +40,7 @@ class UsuarioService
     /**
      * RF09: actualiza los datos y el rol sin dejar el sistema sin administradores.
      *
-     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password?: string|null, rol: string, activo?: bool}  $datos
+     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password?: string|null, rol: string, activo?: bool, carrera_id?: int|null, modalidad?: string|null}  $datos
      *
      * @throws ValidationException
      */
@@ -59,7 +59,7 @@ class UsuarioService
                 'telefono' => $datos['telefono'] ?? null,
                 'email' => $datos['email'],
                 'activo' => $datos['activo'] ?? true,
-            ];
+            ] + $this->datosAcademicos($datos);
 
             if (! empty($datos['password'])) {
                 $atributos['password'] = $datos['password'];
@@ -123,5 +123,23 @@ class UsuarioService
     private function esUltimoAdministrador(): bool
     {
         return User::role(Rol::Administrador->value)->count() <= 1;
+    }
+
+    /**
+     * La carrera y la modalidad solo se guardan para las cuentas de estudiante.
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array{carrera_id: int|null, modalidad: string|null}
+     */
+    private function datosAcademicos(array $datos): array
+    {
+        if (($datos['rol'] ?? null) !== Rol::Estudiante->value) {
+            return ['carrera_id' => null, 'modalidad' => null];
+        }
+
+        return [
+            'carrera_id' => $datos['carrera_id'] ?? null,
+            'modalidad' => $datos['modalidad'] ?? null,
+        ];
     }
 }
