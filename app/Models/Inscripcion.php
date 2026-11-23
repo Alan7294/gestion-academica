@@ -15,6 +15,8 @@ class Inscripcion extends Model
 {
     use HasFactory;
 
+    public const NOTA_MINIMA_APROBATORIA = 51;
+
     protected $table = 'inscripciones';
 
     protected function casts(): array
@@ -44,6 +46,15 @@ class Inscripcion extends Model
     public function scopeActivas(Builder $query): void
     {
         $query->where('estado', EstadoInscripcion::Inscrito->value);
+    }
+
+    /**
+     * Una materia se considera aprobada cuando tiene nota final y supera el umbral.
+     */
+    public function estaAprobada(): bool
+    {
+        return $this->nota_final !== null
+            && (float) $this->nota_final >= self::NOTA_MINIMA_APROBATORIA;
     }
 
     /**

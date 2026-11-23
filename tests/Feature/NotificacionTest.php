@@ -3,7 +3,9 @@
 use App\Enums\Rol;
 use App\Models\Curso;
 use App\Models\Inscripcion;
+use App\Models\Materia;
 use App\Models\Periodo;
+use App\Models\PlanEstudio;
 use App\Models\User;
 use App\Notifications\InscripcionRegistrada;
 use App\Notifications\NotaRegistrada;
@@ -23,7 +25,11 @@ function contextoDeAvisos(): array
 {
     $docente = usuarioConRol(Rol::Docente);
 
-    $curso = Curso::factory()->create([
+    $materia = Materia::factory()->create([
+        'plan_estudio_id' => PlanEstudio::factory()->create()->id,
+    ]);
+
+    $curso = Curso::factory()->conMateria($materia)->create([
         'docente_id' => $docente->id,
         'periodo_id' => Periodo::factory()->vigente()->create()->id,
         'activo' => true,

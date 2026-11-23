@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Carrera;
 use App\Models\Curso;
+use App\Models\Materia;
 use App\Models\Periodo;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,6 +19,7 @@ class CursoFactory extends Factory
     {
         return [
             'carrera_id' => Carrera::factory(),
+            'materia_id' => null,
             'periodo_id' => Periodo::factory(),
             'docente_id' => null,
             'codigo' => strtoupper($this->faker->unique()->bothify('##??')),
@@ -27,5 +29,12 @@ class CursoFactory extends Factory
             'cupo' => $this->faker->numberBetween(20, 60),
             'activo' => true,
         ];
+    }
+
+    public function conMateria(Materia $materia): static
+    {
+        return $this->state(fn (array $atributos) => [
+            'materia_id' => $materia->id,
+        ]);
     }
 }

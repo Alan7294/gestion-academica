@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Rol;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'carrera_id',
+    'materia_id',
     'periodo_id',
     'docente_id',
     'codigo',
@@ -38,6 +40,11 @@ class Curso extends Model
     public function carrera(): BelongsTo
     {
         return $this->belongsTo(Carrera::class);
+    }
+
+    public function materia(): BelongsTo
+    {
+        return $this->belongsTo(Materia::class);
     }
 
     public function periodo(): BelongsTo
@@ -95,7 +102,7 @@ class Curso extends Model
     /**
      * Docentes disponibles para asignar a un curso.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     * @return Collection<int, User>
      */
     public static function docentesDisponibles()
     {

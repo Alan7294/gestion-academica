@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCursoRequest;
 use App\Models\Carrera;
 use App\Models\Curso;
+use App\Models\Materia;
 use App\Models\Periodo;
 use App\Repositories\Contracts\CursoRepository;
 use Illuminate\Http\RedirectResponse;
@@ -45,7 +46,7 @@ class CursoController extends Controller
 
     public function show(Curso $curso): View
     {
-        $curso->load(['carrera', 'periodo', 'docente', 'horarios']);
+        $curso->load(['carrera', 'materia.planEstudio', 'periodo', 'docente', 'horarios']);
 
         return view('admin.cursos.show', ['curso' => $curso]);
     }
@@ -90,6 +91,16 @@ class CursoController extends Controller
     {
         return [
             'carreras' => Carrera::where('activo', true)->orderBy('nombre')->get(),
+            'materias' => Materia::with('planEstudio.carrera')
+                ->get()
+                ->map(fn (Materia $materia) => [
+                    'id' => $materia->id,
+                    'carrera_id' => $materia->planEstudio->carrera_id,
+                    'etiqueta' => "{$materia->planEstudio->carrera->nombre} · {$materia->planEstudio->nombre} · {$materia->codigo} - {$materia->nombre}",
+                ])
+                ->sortBy('etiqueta')
+                ->values()
+                ->all(),
             'periodos' => Periodo::orderByDesc('fecha_inicio')->get(),
             'docentes' => Curso::docentesDisponibles(),
         ];
@@ -102,6 +113,7 @@ class CursoController extends Controller
     {
         return [
             'carrera_id' => $request->validated('carrera_id'),
+            'materia_id' => (int) $request->validated('materia_id'),
             'periodo_id' => $request->validated('periodo_id'),
             'docente_id' => $request->validated('docente_id'),
             'codigo' => $request->validated('codigo'),

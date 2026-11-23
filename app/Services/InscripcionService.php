@@ -6,6 +6,7 @@ use App\Enums\EstadoInscripcion;
 use App\Models\Curso;
 use App\Models\Horario;
 use App\Models\Inscripcion;
+use App\Models\Materia;
 use App\Models\User;
 use App\Notifications\InscripcionRegistrada;
 use App\Notifications\NuevoAlumnoInscrito;
@@ -53,6 +54,8 @@ class InscripcionService
                 ]);
             }
 
+            $this->verificarRequisitos($estudiante, $curso);
+
             if (! $curso->tieneCupoDisponible()) {
                 throw ValidationException::withMessages([
                     'curso' => 'El curso no tiene cupo disponible.',
@@ -85,6 +88,47 @@ class InscripcionService
 
             return $inscripcion;
         });
+    }
+
+    /**
+     * RF04: exige aprobar todas las materias requisito antes de inscribirse.
+     *
+     * @throws ValidationException
+     */
+    private function verificarRequisitos(User $estudiante, Curso $curso): void
+    {
+        if ($curso->materia_id === null) {
+            throw ValidationException::withMessages([
+                'curso' => 'Este curso aún no tiene una materia del plan asignada. Corrígelo antes de inscribirte.',
+            ]);
+        }
+
+        $requisitos = $curso->materia->requisitos;
+
+        if ($requisitos->isEmpty()) {
+            return;
+        }
+
+        $cursosRequisito = Curso::whereIn('materia_id', $requisitos->pluck('id'))->pluck('id');
+
+        $aprobadas = Inscripcion::with('curso')
+            ->where('user_id', $estudiante->id)
+            ->whereIn('curso_id', $cursosRequisito)
+            ->get()
+            ->filter(fn (Inscripcion $inscripcion) => $inscripcion->estaAprobada())
+            ->map(fn (Inscripcion $inscripcion) => $inscripcion->curso->materia_id);
+
+        $faltantes = $requisitos->reject(fn (Materia $requisito) => $aprobadas->contains($requisito->id));
+
+        if ($faltantes->isNotEmpty()) {
+            $detalle = $faltantes
+                ->map(fn (Materia $materia) => "{$materia->codigo} - {$materia->nombre}")
+                ->join(', ');
+
+            throw ValidationException::withMessages([
+                'curso' => "No puedes inscribirte: aún no has aprobado los requisitos: {$detalle}.",
+            ]);
+        }
     }
 
     /**

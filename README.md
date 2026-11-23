@@ -20,7 +20,7 @@ Proyecto de la materia **Programación IV**.
 ### Administrador
 
 - Gestión de usuarios con roles, activación/desactivación y eliminación protegida (no puede borrarse a sí mismo, al último administrador ni a usuarios con calificaciones registradas).
-- CRUD de carreras, planes de estudio por carrera (modalidad modular o semestral, duración y materias por semestre), periodos académicos (con activación de un único periodo vigente) y cursos (cupo, créditos, semestre, docente y periodo).
+- CRUD de carreras, planes de estudio por carrera (modalidad modular o semestral, duración, materias por semestre y requisitos de aprobación entre materias), periodos académicos (con activación de un único periodo vigente) y cursos (materia del plan, cupo, créditos, semestre, docente y periodo).
 - Asignación de horarios con validación de choque para el mismo docente, día y rango de horas.
 - Reporte de materias por carrera en PDF y Excel, con vista previa parametrizada.
 
@@ -32,7 +32,7 @@ Proyecto de la materia **Programación IV**.
 
 ### Estudiante
 
-- Catálogo de cursos e inscripción con validación de cupo, horario y periodo activo.
+- Catálogo de cursos e inscripción con validación de cupo, horario, periodo activo y aprobación de las materias requisito (nota final mayor o igual a 51).
 - Retiro de inscripciones, consulta de notas e historial académico.
 - Reportes de historial, notas y materias, en PDF y Excel, con vista previa parametrizada.
 
@@ -140,7 +140,7 @@ CREATE DATABASE gestion_academica_test;
 php artisan test
 ```
 
-`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **134 pruebas y 387 aserciones**.
+`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **150 pruebas y 442 aserciones**.
 
 ## Estructura relevante
 

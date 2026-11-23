@@ -3,8 +3,9 @@
 use App\Enums\Rol;
 use App\Models\Carrera;
 use App\Models\Curso;
+use App\Models\Materia;
 use App\Models\Periodo;
-use App\Models\User;
+use App\Models\PlanEstudio;
 use Database\Seeders\RolSeeder;
 
 beforeEach(function () {
@@ -13,12 +14,23 @@ beforeEach(function () {
 
 function datosCurso(array $sobrescribir = []): array
 {
-    $carrera = Carrera::factory()->create();
-    $periodo = Periodo::factory()->create();
+    $carreraId = $sobrescribir['carrera_id'] ?? Carrera::factory()->create()->id;
+    $periodoId = $sobrescribir['periodo_id'] ?? Periodo::factory()->create()->id;
+
+    $plan = PlanEstudio::factory()->create([
+        'carrera_id' => $carreraId,
+        'nombre' => 'Plan '.fake()->unique()->word(),
+    ]);
+    $materia = Materia::factory()->create([
+        'plan_estudio_id' => $plan->id,
+        'codigo' => 'SIS-101',
+        'semestre' => 4,
+    ]);
 
     return array_merge([
-        'carrera_id' => $carrera->id,
-        'periodo_id' => $periodo->id,
+        'carrera_id' => $carreraId,
+        'materia_id' => $materia->id,
+        'periodo_id' => $periodoId,
         'codigo' => 'SIS-101',
         'nombre' => 'Programación IV',
         'creditos' => 4,
@@ -38,7 +50,8 @@ it('permite al administrador registrar un curso', function () {
 
     $curso = Curso::first();
     expect($curso->codigo)->toBe('SIS-101')
-        ->and($curso->docente_id)->toBe($docente->id);
+        ->and($curso->docente_id)->toBe($docente->id)
+        ->and($curso->materia_id)->not->toBeNull();
 });
 
 it('exige que el docente asignado tenga el rol docente', function () {
@@ -83,6 +96,19 @@ it('permite el mismo código en periodos distintos', function () {
         ->assertRedirect();
 
     expect(Curso::where('codigo', 'SIS-101')->count())->toBe(2);
+});
+
+it('rechaza una materia que no pertenece a la carrera del curso', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $otraCarrera = Carrera::factory()->create();
+    $otroPlan = PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id]);
+    $otraMateria = Materia::factory()->create(['plan_estudio_id' => $otroPlan->id]);
+
+    $this->actingAs($admin)
+        ->post('/admin/cursos', datosCurso(['materia_id' => $otraMateria->id]))
+        ->assertSessionHasErrors('materia_id');
+
+    expect(Curso::count())->toBe(0);
 });
 
 it('impide que un docente registre cursos', function () {

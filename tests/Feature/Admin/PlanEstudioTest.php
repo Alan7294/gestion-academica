@@ -195,3 +195,112 @@ it('impide que un docente gestione planes de estudio', function () {
         ->get('/admin/planes')
         ->assertForbidden();
 });
+
+it('crea un plan con varias materias requisito y las muestra en el detalle', function () {
+    $carrera = Carrera::factory()->create();
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/planes', datosPlanEstudio($carrera, [
+            'materias' => [
+                ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4],
+                ['codigo' => 'PRO-101', 'nombre' => 'Programación I', 'semestre' => 1, 'creditos' => 5],
+                ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2, 'creditos' => 4,
+                    'requisitos' => ['MAT-101', 'PRO-101']],
+            ],
+        ]))
+        ->assertRedirect();
+
+    $plan = PlanEstudio::firstOrFail();
+    $materia = $plan->materias()->where('codigo', 'BD-201')->firstOrFail();
+
+    expect($materia->requisitos()->pluck('codigo')->sort()->values()->all())
+        ->toBe(['MAT-101', 'PRO-101']);
+
+    $this->actingAs($admin)
+        ->get("/admin/planes/{$plan->id}")
+        ->assertOk()
+        ->assertSee('MAT-101 - Cálculo I')
+        ->assertSee('PRO-101 - Programación I');
+});
+
+it('rechaza requisitos inválidos en las materias del plan', function (array $requisitos, string $mensaje) {
+    $carrera = Carrera::factory()->create();
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->post('/admin/planes', datosPlanEstudio($carrera, [
+            'materias' => [
+                ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4],
+                ['codigo' => 'PAR-201', 'nombre' => 'Paralelo', 'semestre' => 2, 'creditos' => 4],
+                ['codigo' => 'NIV-301', 'nombre' => 'Nivel III', 'semestre' => 3, 'creditos' => 4],
+                ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2, 'creditos' => 4,
+                    'requisitos' => $requisitos],
+            ],
+        ]))
+        ->assertSessionHasErrors(['materias.3.requisitos' => $mensaje]);
+
+    expect(PlanEstudio::count())->toBe(0);
+})->with([
+    'código inexistente' => [['NO-101'], "La materia 'NO-101' no existe en este plan."],
+    'autorreferencia' => [['BD-201'], 'Una materia no puede ser requisito de sí misma.'],
+    'semestre posterior' => [['NIV-301'], "El requisito 'NIV-301' debe pertenecer a un semestre anterior."],
+    'semestre igual' => [['PAR-201'], "El requisito 'PAR-201' debe pertenecer a un semestre anterior."],
+    'requisito repetido' => [['MAT-101', 'MAT-101'], 'No repitas una materia en la lista de requisitos.'],
+]);
+
+it('actualiza los requisitos al editar el plan sin perder las materias', function () {
+    $carrera = Carrera::factory()->create();
+    $plan = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Plan anterior',
+        'semestres' => 3,
+    ]);
+
+    $previa = $plan->materias()->create(['codigo' => 'PRE-101', 'nombre' => 'Previo', 'semestre' => 1, 'creditos' => 4]);
+    $posterior = $plan->materias()->create(['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4]);
+    $otra = $plan->materias()->create(['codigo' => 'OTR-101', 'nombre' => 'Otra', 'semestre' => 1, 'creditos' => 4]);
+    $posterior->requisitos()->attach($previa);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->put("/admin/planes/{$plan->id}", datosPlanEstudio($carrera, [
+            'nombre' => 'Plan actualizado',
+            'materias' => [
+                ['id' => $previa->id, 'codigo' => 'PRE-101', 'nombre' => 'Previo', 'semestre' => 1, 'creditos' => 4],
+                ['id' => $otra->id, 'codigo' => 'OTR-101', 'nombre' => 'Otra', 'semestre' => 1, 'creditos' => 4],
+                ['id' => $posterior->id, 'codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2,
+                    'creditos' => 4, 'requisitos' => ['OTR-101']],
+            ],
+        ]))
+        ->assertRedirect("/admin/planes/{$plan->id}");
+
+    expect($plan->materias()->pluck('id')->sort()->values()->all())
+        ->toBe(collect([$previa->id, $posterior->id, $otra->id])->sort()->values()->all())
+        ->and($posterior->fresh()->requisitos()->pluck('codigo')->all())->toBe(['OTR-101']);
+
+    $this->assertDatabaseMissing('materia_requisitos', [
+        'materia_id' => $posterior->id,
+        'requisito_id' => $previa->id,
+    ]);
+});
+
+it('elimina los vínculos de requisitos al quitar una materia del plan', function () {
+    $carrera = Carrera::factory()->create();
+    $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id, 'semestres' => 2]);
+
+    $previa = $plan->materias()->create(['codigo' => 'PRE-101', 'nombre' => 'Previo', 'semestre' => 1, 'creditos' => 4]);
+    $posterior = $plan->materias()->create(['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4]);
+    $posterior->requisitos()->attach($previa);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->put("/admin/planes/{$plan->id}", datosPlanEstudio($carrera, [
+            'materias' => [
+                ['id' => $posterior->id, 'codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4],
+            ],
+        ]))
+        ->assertRedirect();
+
+    expect($plan->materias()->count())->toBe(1)
+        ->and($posterior->fresh()->requisitos()->count())->toBe(0);
+
+    $this->assertDatabaseMissing('materia_requisitos', ['materia_id' => $posterior->id]);
+});

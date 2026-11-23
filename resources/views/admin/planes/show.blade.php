@@ -77,6 +77,7 @@
                                     <tr>
                                         <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Código') }}</th>
                                         <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Materia') }}</th>
+                                        <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Requisitos') }}</th>
                                         <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Créditos') }}</th>
                                     </tr>
                                 </thead>
@@ -85,6 +86,13 @@
                                         <tr>
                                             <td class="px-6 py-3 font-mono text-slate-700">{{ $materia->codigo }}</td>
                                             <td class="px-6 py-3 text-slate-900">{{ $materia->nombre }}</td>
+                                            <td class="px-6 py-3 text-slate-600">
+                                                @if ($materia->requisitos->isEmpty())
+                                                    <span class="text-slate-400">—</span>
+                                                @else
+                                                    {{ $materia->requisitos->map(fn ($requisito) => "{$requisito->codigo} - {$requisito->nombre}")->join(', ') }}
+                                                @endif
+                                            </td>
                                             <td class="px-6 py-3 text-slate-600">{{ $materia->creditos }}</td>
                                         </tr>
                                     @endforeach

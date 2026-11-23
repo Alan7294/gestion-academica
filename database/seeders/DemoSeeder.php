@@ -8,6 +8,7 @@ use App\Enums\Rol;
 use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Inscripcion;
+use App\Models\Materia;
 use App\Models\Periodo;
 use App\Models\User;
 use App\Services\CalificacionService;
@@ -42,11 +43,11 @@ class DemoSeeder extends Seeder
 
         $definiciones = [
             ['codigo' => 'SIS-101', 'carrera' => 'SIS', 'nombre' => 'Programación I', 'creditos' => 5, 'semestre' => 1, 'docente' => 0, 'dia' => 1, 'inicio' => '08:00', 'fin' => '10:00', 'aula' => 'Lab. 1'],
-            ['codigo' => 'SIS-201', 'carrera' => 'SIS', 'nombre' => 'Base de Datos II', 'creditos' => 4, 'semestre' => 3, 'docente' => 0, 'dia' => 3, 'inicio' => '08:00', 'fin' => '10:00', 'aula' => 'Lab. 2'],
+            ['codigo' => 'SIS-201', 'carrera' => 'SIS', 'nombre' => 'Estructura de Datos', 'creditos' => 5, 'semestre' => 2, 'docente' => 0, 'dia' => 3, 'inicio' => '08:00', 'fin' => '10:00', 'aula' => 'Lab. 2'],
             ['codigo' => 'ADM-101', 'carrera' => 'ADM', 'nombre' => 'Contabilidad General', 'creditos' => 4, 'semestre' => 1, 'docente' => 1, 'dia' => 2, 'inicio' => '10:00', 'fin' => '12:00', 'aula' => 'Aula 204'],
-            ['codigo' => 'ADM-201', 'carrera' => 'ADM', 'nombre' => 'Gestión del Talento Humano', 'creditos' => 3, 'semestre' => 3, 'docente' => 1, 'dia' => 4, 'inicio' => '10:00', 'fin' => '12:00', 'aula' => 'Aula 205'],
+            ['codigo' => 'ADM-201', 'carrera' => 'ADM', 'nombre' => 'Administración I', 'creditos' => 4, 'semestre' => 2, 'docente' => 1, 'dia' => 4, 'inicio' => '10:00', 'fin' => '12:00', 'aula' => 'Aula 205'],
             ['codigo' => 'DER-101', 'carrera' => 'DER', 'nombre' => 'Derecho Civil I', 'creditos' => 5, 'semestre' => 1, 'docente' => 2, 'dia' => 1, 'inicio' => '14:00', 'fin' => '16:00', 'aula' => 'Aula 301'],
-            ['codigo' => 'DER-201', 'carrera' => 'DER', 'nombre' => 'Derecho Penal I', 'creditos' => 4, 'semestre' => 3, 'docente' => 2, 'dia' => 3, 'inicio' => '14:00', 'fin' => '16:00', 'aula' => 'Aula 302'],
+            ['codigo' => 'DER-201', 'carrera' => 'DER', 'nombre' => 'Derecho Penal I', 'creditos' => 4, 'semestre' => 2, 'docente' => 2, 'dia' => 3, 'inicio' => '14:00', 'fin' => '16:00', 'aula' => 'Aula 302'],
         ];
 
         $cursos = [];
@@ -68,7 +69,18 @@ class DemoSeeder extends Seeder
                 ],
             );
 
-            $curso->update(['docente_id' => $docente->id]);
+            $materia = Materia::query()
+                ->where('codigo', $definicion['codigo'])
+                ->whereHas('planEstudio', fn ($query) => $query->where('carrera_id', $carrera->id))
+                ->first();
+
+            $curso->update([
+                'docente_id' => $docente->id,
+                'materia_id' => $materia?->id,
+                'nombre' => $materia?->nombre ?? $definicion['nombre'],
+                'semestre' => $materia?->semestre ?? $definicion['semestre'],
+                'creditos' => $materia?->creditos ?? $definicion['creditos'],
+            ]);
 
             $curso->horarios()->firstOrCreate(
                 [
@@ -85,34 +97,17 @@ class DemoSeeder extends Seeder
             $cursos[$definicion['codigo']] = $curso;
         }
 
+        // El orden de cada lista respeta los requisitos: primero la materia previa y su nota.
         $matriculas = [
             'estudiante1@academica.test' => ['SIS-101', 'ADM-101'],
-            'estudiante2@academica.test' => ['SIS-201', 'DER-101'],
-            'estudiante3@academica.test' => ['ADM-201', 'SIS-101'],
-            'estudiante4@academica.test' => ['DER-201', 'ADM-101'],
+            'estudiante2@academica.test' => ['SIS-101', 'SIS-201', 'DER-101'],
+            'estudiante3@academica.test' => ['ADM-101', 'ADM-201', 'SIS-101'],
+            'estudiante4@academica.test' => ['DER-101', 'DER-201', 'ADM-101'],
             'estudiante5@academica.test' => ['SIS-101', 'SIS-201'],
             'estudiante6@academica.test' => ['ADM-101', 'ADM-201'],
         ];
 
         $inscripciones = app(InscripcionService::class);
-
-        foreach ($matriculas as $correo => $codigos) {
-            $estudiante = $estudiantes[$correo];
-
-            foreach ($codigos as $codigo) {
-                $curso = $cursos[$codigo];
-
-                $yaInscrito = Inscripcion::where('curso_id', $curso->id)
-                    ->where('user_id', $estudiante->id)
-                    ->where('estado', EstadoInscripcion::Inscrito->value)
-                    ->exists();
-
-                if (! $yaInscrito) {
-                    $inscripciones->inscribir($estudiante, $curso);
-                }
-            }
-        }
-
         $calificaciones = app(CalificacionService::class);
         $evaluaciones = [
             ['nombre' => 'Primer parcial', 'ponderacion' => 30, 'dias' => 45],
@@ -122,14 +117,22 @@ class DemoSeeder extends Seeder
 
         $indice = 0;
 
-        foreach ($estudiantes as $estudiante) {
-            $inscripcionesAlumno = Inscripcion::where('user_id', $estudiante->id)
-                ->where('estado', EstadoInscripcion::Inscrito->value)
-                ->with(['curso.docente', 'calificaciones'])
-                ->get();
+        foreach ($matriculas as $correo => $codigos) {
+            $estudiante = $estudiantes[$correo];
 
-            foreach ($inscripcionesAlumno as $inscripcion) {
-                if ($inscripcion->calificaciones->isNotEmpty()) {
+            foreach ($codigos as $codigo) {
+                $curso = $cursos[$codigo];
+
+                $inscripcion = Inscripcion::where('curso_id', $curso->id)
+                    ->where('user_id', $estudiante->id)
+                    ->where('estado', EstadoInscripcion::Inscrito->value)
+                    ->first();
+
+                if (! $inscripcion) {
+                    $inscripcion = $inscripciones->inscribir($estudiante, $curso);
+                }
+
+                if ($inscripcion->calificaciones()->exists()) {
                     continue;
                 }
 
@@ -141,7 +144,7 @@ class DemoSeeder extends Seeder
                         'ponderacion' => $evaluacion['ponderacion'],
                         'nota' => $nota,
                         'fecha' => now()->subDays($evaluacion['dias'])->toDateString(),
-                    ], $inscripcion->curso->docente);
+                    ], $curso->docente);
                 }
 
                 $indice++;

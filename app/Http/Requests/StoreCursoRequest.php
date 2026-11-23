@@ -24,6 +24,17 @@ class StoreCursoRequest extends FormRequest
 
         return [
             'carrera_id' => ['required', 'integer', Rule::exists('carreras', 'id')],
+            'materia_id' => [
+                'required',
+                'integer',
+                Rule::exists('materias', 'id')->where(function ($query) {
+                    $query->whereIn('plan_estudio_id', function ($sub) {
+                        $sub->select('id')
+                            ->from('planes_estudio')
+                            ->where('carrera_id', $this->input('carrera_id'));
+                    });
+                }),
+            ],
             'periodo_id' => ['required', 'integer', Rule::exists('periodos', 'id')],
             'docente_id' => [
                 'nullable',
@@ -60,6 +71,8 @@ class StoreCursoRequest extends FormRequest
     {
         return [
             'docente_id.exists' => 'El usuario seleccionado no tiene el rol de docente.',
+            'materia_id.required' => 'Selecciona la materia del plan que corresponde a este curso.',
+            'materia_id.exists' => 'La materia seleccionada no pertenece a la carrera del curso.',
             'codigo.unique' => 'Ya existe un curso con ese código en el periodo seleccionado.',
         ];
     }

@@ -68,14 +68,14 @@ class PlanEstudioController extends Controller
 
     public function show(PlanEstudio $planEstudio): View
     {
-        $planEstudio->load(['carrera', 'materias']);
+        $planEstudio->load(['carrera', 'materias.requisitos']);
 
         return view('admin.planes.show', ['plan' => $planEstudio]);
     }
 
     public function edit(PlanEstudio $planEstudio): View
     {
-        $planEstudio->load('materias');
+        $planEstudio->load('materias.requisitos');
 
         return view('admin.planes.edit', ['plan' => $planEstudio] + $this->opciones());
     }

@@ -23,6 +23,15 @@
                     <p class="mt-1 font-medium text-slate-900">{{ $curso->carrera->nombre }}</p>
                 </div>
                 <div>
+                    <p class="text-slate-500">{{ __('Materia del plan') }}</p>
+                    @if ($curso->materia)
+                        <p class="mt-1 font-medium text-slate-900">{{ $curso->materia->codigo }} - {{ $curso->materia->nombre }}</p>
+                        <p class="mt-0.5 text-xs text-slate-500">{{ $curso->materia->planEstudio->nombre }}</p>
+                    @else
+                        <p class="mt-1 font-medium text-red-600">{{ __('Sin asignar: no admite inscripciones') }}</p>
+                    @endif
+                </div>
+                <div>
                     <p class="text-slate-500">{{ __('Periodo') }}</p>
                     <p class="mt-1 font-medium text-slate-900">{{ $curso->periodo->nombre }}</p>
                 </div>

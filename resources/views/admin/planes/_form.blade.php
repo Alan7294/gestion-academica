@@ -7,16 +7,30 @@
     if ($materiasIniciales === null) {
         $materiasIniciales = $plan
             ? $plan->materias->map(fn ($materia) => [
+                'id' => $materia->id,
                 'codigo' => $materia->codigo,
                 'nombre' => $materia->nombre,
                 'semestre' => $materia->semestre,
                 'creditos' => $materia->creditos,
+                'requisitos' => $materia->requisitos->pluck('codigo')->values()->all(),
             ])->values()->all()
             : [];
     }
 
+    $materiasIniciales = collect($materiasIniciales)
+        ->map(fn (array $materia) => array_merge(['id' => null, 'requisitos' => []], $materia))
+        ->values()
+        ->all();
+
     if (empty($materiasIniciales)) {
-        $materiasIniciales = [['codigo' => '', 'nombre' => '', 'semestre' => 1, 'creditos' => 0]];
+        $materiasIniciales = [[
+            'id' => null,
+            'codigo' => '',
+            'nombre' => '',
+            'semestre' => 1,
+            'creditos' => 0,
+            'requisitos' => [],
+        ]];
     }
 
     $duracionInicial = (int) old('semestres', $plan?->semestres ?? 2);
@@ -91,12 +105,12 @@
             <div>
                 <h3 class="font-semibold text-slate-900">{{ __('Materias del plan') }}</h3>
                 <p class="mt-0.5 text-sm text-slate-500">
-                    {{ __('Indica el código, el nombre, el semestre y los créditos de cada materia.') }}
+                    {{ __('Indica el código, el nombre, el semestre, los créditos y los requisitos de cada materia.') }}
                 </p>
             </div>
 
             <button type="button"
-                    @click="materias.push({ codigo: '', nombre: '', semestre: 1, creditos: 0 })"
+                    @click="materias.push({ id: null, codigo: '', nombre: '', semestre: 1, creditos: 0, requisitos: [] })"
                     class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-100">
                 <x-icon name="plus" class="h-4 w-4" />
                 {{ __('Agregar materia') }}
@@ -116,6 +130,8 @@
         <div class="mt-4 space-y-3">
             <template x-for="(materia, indice) in materias" :key="indice">
                 <div class="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-12">
+                    <input type="hidden" :name="`materias[${indice}][id]`" :value="materia.id ?? ''">
+
                     <div class="sm:col-span-2">
                         <label :for="`materia-codigo-${indice}`" class="block text-xs font-medium text-slate-600">
                             {{ __('Código') }}
@@ -150,6 +166,23 @@
                         <input :id="`materia-creditos-${indice}`" :name="`materias[${indice}][creditos]`"
                                type="number" min="0" max="20" x-model.number="materia.creditos" required
                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
+                    </div>
+
+                    <div class="sm:col-span-12">
+                        <label :for="`materia-requisitos-${indice}`" class="block text-xs font-medium text-slate-600">
+                            {{ __('Requisitos (materias que deben aprobarse antes)') }}
+                        </label>
+                        <select :id="`materia-requisitos-${indice}`" :name="`materias[${indice}][requisitos][]`"
+                                multiple size="3" x-model="materia.requisitos"
+                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
+                            <template x-for="otra in materias.filter((m, i) => i !== indice && m.codigo)" :key="otra.codigo">
+                                <option :value="otra.codigo"
+                                        x-text="`${otra.codigo} - ${otra.nombre} (semestre ${otra.semestre})`"></option>
+                            </template>
+                        </select>
+                        <p class="mt-1 text-xs text-slate-500">
+                            {{ __('Puedes seleccionar varias materias, todas de semestres anteriores.') }}
+                        </p>
                     </div>
 
                     <div class="flex items-end sm:col-span-2">
