@@ -39,6 +39,29 @@ it('permite al administrador crear un usuario con rol', function () {
         ->and(Hash::check('Password123', $usuario->password))->toBeTrue();
 });
 
+it('permite al administrador crear otro administrador', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Nuevo Administrador',
+            'ci' => '8765433',
+            'telefono' => '70012346',
+            'email' => 'nuevo.admin@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Administrador->value,
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    $usuario = User::where('email', 'nuevo.admin@academica.test')->firstOrFail();
+
+    expect($usuario->hasRole(Rol::Administrador->value))->toBeTrue()
+        ->and($usuario->activo)->toBeTrue()
+        ->and($usuario->email_verified_at)->not->toBeNull();
+});
+
 it('crea un estudiante con su carrera y modalidad', function () {
     $admin = usuarioConRol(Rol::Administrador);
 

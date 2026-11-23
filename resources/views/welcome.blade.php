@@ -43,12 +43,6 @@
                             {{ __('Iniciar sesión') }}
                         </a>
 
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}"
-                               class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-brand-400">
-                                {{ __('Crear cuenta') }}
-                            </a>
-                        @endif
                     @endauth
                 </nav>
             </header>
@@ -76,10 +70,9 @@
                     </a>
 
                     @guest
-                        <a href="{{ route('register') }}"
-                           class="inline-flex items-center gap-2 rounded-lg border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/5">
-                            {{ __('Registrarme') }}
-                        </a>
+                        <p class="text-sm text-slate-400">
+                            {{ __('Las cuentas las crea el administrador del sistema.') }}
+                        </p>
                     @endguest
                 </div>
 

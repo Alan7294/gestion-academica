@@ -38,7 +38,7 @@ Proyecto de la materia **Programación IV**.
 
 ### Comunes
 
-- Registro público como estudiante (indicando carrera y modalidad) o docente.
+- Las cuentas de estudiantes, docentes y administradores las crea exclusivamente el administrador desde `/admin/usuarios`.
 - Autenticación, verificación de correo, recuperación de contraseña y perfil.
 - Notificaciones internas con estado leído/no leído.
 
@@ -139,7 +139,7 @@ CREATE DATABASE gestion_academica_test;
 php artisan test
 ```
 
-`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **121 pruebas y 350 aserciones**.
+`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **122 pruebas y 348 aserciones**.
 
 ## Estructura relevante
 

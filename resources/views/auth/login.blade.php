@@ -48,12 +48,7 @@
         </x-primary-button>
     </form>
 
-    @if (Route::has('register'))
-        <p class="mt-8 text-center text-sm text-slate-500">
-            {{ __('¿No tienes una cuenta?') }}
-            <a href="{{ route('register') }}" class="font-semibold text-brand-700 transition hover:text-brand-900">
-                {{ __('Regístrate') }}
-            </a>
-        </p>
-    @endif
+    <p class="mt-8 text-center text-sm text-slate-500">
+        {{ __('¿No tienes una cuenta? Solicítala al administrador del sistema.') }}
+    </p>
 </x-guest-layout>
