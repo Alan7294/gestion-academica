@@ -39,7 +39,7 @@ Proyecto de la materia **Programación IV**.
 ### Comunes
 
 - Las cuentas de estudiantes, docentes y administradores las crea exclusivamente el administrador desde `/admin/usuarios`.
-- Autenticación, verificación de correo, recuperación de contraseña y perfil.
+- Autenticación con verificación de correo obligatoria; el administrador crea las cuentas ya verificadas. Recuperación de contraseña y perfil.
 - Notificaciones internas con estado leído/no leído.
 
 ## Requisitos
@@ -139,7 +139,7 @@ CREATE DATABASE gestion_academica_test;
 php artisan test
 ```
 
-`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **122 pruebas y 348 aserciones**.
+`phpunit.xml` fija el nombre `gestion_academica_test`, mientras que el usuario y la contraseña se toman del `.env` de cada máquina. La suite actual tiene **127 pruebas y 361 aserciones**.
 
 ## Estructura relevante
 

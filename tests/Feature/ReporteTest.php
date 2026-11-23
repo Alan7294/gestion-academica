@@ -6,6 +6,7 @@ use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\Periodo;
 use App\Models\User;
+use App\Reports\Docente\NotasPorAlumnoReporte;
 use Database\Seeders\RolSeeder;
 
 beforeEach(function () {
@@ -130,6 +131,28 @@ it('rechaza una inscripción que no pertenece al curso del reporte', function ()
     $this->actingAs($docente)
         ->get("/docente/reportes/cursos/{$curso->id}/inscripciones/{$otraInscripcion->id}/notas/pdf")
         ->assertNotFound();
+});
+
+it('limita el reporte de notas por alumno a la inscripción del curso', function () {
+    ['curso' => $curso, 'estudiante' => $estudiante, 'inscripcion' => $inscripcion] = contextoDeReportes();
+
+    $otroCurso = Curso::factory()->create([
+        'docente_id' => $curso->docente_id,
+        'periodo_id' => $curso->periodo_id,
+        'nombre' => 'Redes II',
+        'codigo' => 'RD-202',
+    ]);
+
+    Inscripcion::factory()->create([
+        'curso_id' => $otroCurso->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $filas = (new NotasPorAlumnoReporte($inscripcion))->filas();
+
+    expect($filas)->toHaveCount(1)
+        ->and($filas[0][0])->toBe('Base de Datos II')
+        ->and($filas[0][1])->toBe('BD-201');
 });
 
 it('muestra y genera los reportes del estudiante', function () {

@@ -39,3 +39,34 @@ test('users can logout', function () {
     $this->assertGuest();
     $response->assertRedirect('/');
 });
+
+it('cierra la sesión de una cuenta desactivada en la siguiente petición', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+    $user->update(['activo' => false]);
+
+    $this->get('/dashboard')
+        ->assertRedirect(route('login', absolute: false));
+
+    $this->assertGuest();
+});
+
+it('explica el motivo al cerrar la sesión por desactivación', function () {
+    $user = User::factory()->create(['activo' => false]);
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertRedirect(route('login', absolute: false))
+        ->assertSessionHasErrors([
+            'email' => 'Tu cuenta está desactivada. Contacta al administrador.',
+        ]);
+});
+
+it('rechaza las peticiones JSON de cuentas desactivadas', function () {
+    $user = User::factory()->create(['activo' => false]);
+
+    $this->actingAs($user)
+        ->getJson('/dashboard')
+        ->assertForbidden();
+});

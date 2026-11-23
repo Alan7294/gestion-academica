@@ -64,7 +64,7 @@ class ReporteController extends Controller
         abort_unless($inscripcion->curso_id === $curso->id, 404);
 
         return $formatos->crear($formato)->generar(
-            new NotasPorAlumnoReporte($inscripcion->estudiante),
+            new NotasPorAlumnoReporte($inscripcion),
         );
     }
 }

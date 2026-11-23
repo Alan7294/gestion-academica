@@ -13,6 +13,14 @@ test('email verification screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
+test('un usuario con el correo sin verificar no puede acceder al panel', function () {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)
+        ->get('/dashboard')
+        ->assertRedirect(route('verification.notice', absolute: false));
+});
+
 test('email can be verified', function () {
     $user = User::factory()->unverified()->create();
 
