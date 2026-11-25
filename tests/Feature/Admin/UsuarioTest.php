@@ -336,6 +336,210 @@ it('valida el correo y el carnet duplicados al crear un usuario', function () {
         ->assertSessionHasErrors(['email']);
 });
 
+it('rechaza un nombre con números al crear un usuario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Usuario 123',
+            'ci' => '8765509',
+            'telefono' => null,
+            'email' => 'nombre.no.valido@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['name' => 'El nombre solo puede contener letras.']);
+
+    expect(User::where('email', 'nombre.no.valido@academica.test')->exists())->toBeFalse();
+});
+
+it('rechaza actualizar el nombre con números', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $usuario = usuarioConRol(Rol::Docente);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            'name' => 'Docente 456',
+            'ci' => $usuario->ci ?? '8765512',
+            'telefono' => $usuario->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['name' => 'El nombre solo puede contener letras.']);
+
+    expect($usuario->fresh()->name)->not->toBe('Docente 456');
+});
+
+it('rechaza un carnet de identidad con letras al crear un usuario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'CI No Numérico',
+            'ci' => 'ABC123',
+            'telefono' => null,
+            'email' => 'ci.no.numerico@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['ci' => 'El carnet de identidad solo puede contener números.']);
+
+    expect(User::where('email', 'ci.no.numerico@academica.test')->exists())->toBeFalse();
+});
+
+it('rechaza actualizar el carnet de identidad con letras', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $usuario = usuarioConRol(Rol::Docente);
+    $usuario->update(['ci' => '1234567']);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            'name' => $usuario->name,
+            'ci' => '12A4567',
+            'telefono' => $usuario->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['ci' => 'El carnet de identidad solo puede contener números.']);
+
+    expect($usuario->fresh()->ci)->toBe('1234567');
+});
+
+it('rechaza un teléfono con caracteres no numéricos al crear un usuario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Teléfono No Numérico',
+            'ci' => '8765510',
+            'telefono' => '700-12345',
+            'email' => 'telefono.no.numerico@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['telefono' => 'El teléfono solo puede contener números.']);
+
+    expect(User::where('email', 'telefono.no.numerico@academica.test')->exists())->toBeFalse();
+});
+
+it('rechaza actualizar el teléfono con caracteres no numéricos', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $usuario = usuarioConRol(Rol::Docente);
+    $usuario->update(['telefono' => '70012345']);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            'name' => $usuario->name,
+            'ci' => $usuario->ci ?? '8765511',
+            'telefono' => '700 12345',
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['telefono' => 'El teléfono solo puede contener números.']);
+
+    expect($usuario->fresh()->telefono)->toBe('70012345');
+});
+
+it('exige al menos 6 dígitos y sin espacios en el carnet de identidad', function (string $ci, string $mensaje) {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Carnet Inválido',
+            'ci' => $ci,
+            'telefono' => null,
+            'email' => 'ci.invalido@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['ci' => $mensaje]);
+})->with([
+    'menos de 6 dígitos' => ['12345', 'El carnet de identidad debe tener al menos 6 dígitos.'],
+    'con espacios' => ['123 456', 'El carnet de identidad solo puede contener números.'],
+]);
+
+it('muestra un mensaje específico según el error del correo', function (string $email, string $mensaje) {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Correo Inválido',
+            'ci' => '8765520',
+            'telefono' => null,
+            'email' => $email,
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['email' => $mensaje]);
+})->with([
+    'dos arrobas' => ['usuario@@academica.com', 'Escribe el correo con un solo @, por ejemplo nombre@dominio.com.'],
+    'sin arroba' => ['usuario.academica.com', 'Escribe el correo con un solo @, por ejemplo nombre@dominio.com.'],
+    'con espacio' => ['usuario nombre@academica.com', 'El correo no debe contener espacios y debe tener texto antes y después de @.'],
+    'sin punto en el dominio' => ['usuario@academica', 'El dominio del correo debe incluir un punto, por ejemplo dominio.com.'],
+    'puntos consecutivos' => ['usuario@academica..com', 'El dominio del correo no debe empezar ni terminar con punto, ni tener puntos consecutivos.'],
+    'una sola letra después del punto' => ['usuario@academica.c', 'Después del punto del dominio deben ir al menos 2 letras, por ejemplo .com.'],
+]);
+
+it('muestra un único mensaje cuando el correo está vacío', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Correo Vacío',
+            'ci' => '8765522',
+            'telefono' => null,
+            'email' => '',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['email' => 'El campo correo electrónico es obligatorio.']);
+
+    expect(session('errors')->get('email'))->toBe([
+        'El campo correo electrónico es obligatorio.',
+    ]);
+});
+
+it('exige al menos 8 dígitos y sin espacios en el teléfono', function (string $telefono, string $mensaje) {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Teléfono Inválido',
+            'ci' => '8765521',
+            'telefono' => $telefono,
+            'email' => 'telefono.invalido@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['telefono' => $mensaje]);
+})->with([
+    'menos de 8 dígitos' => ['1234567', 'El teléfono debe tener al menos 8 dígitos.'],
+    'con espacios' => ['1234 5678', 'El teléfono solo puede contener números.'],
+]);
+
 it('permite al administrador cambiar el rol de un usuario', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $usuario = usuarioConRol(Rol::Estudiante);

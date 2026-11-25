@@ -31,28 +31,35 @@
         <div>
             <x-input-label for="name" :value="__('Nombre completo')" />
             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full"
-                          :value="old('name', $usuario?->name)" required autofocus />
+                          :value="old('name', $usuario?->name)" required autofocus
+                          pattern="[\p{L} ]+" title="Solo se permiten letras" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
         <div>
             <x-input-label for="ci" :value="__('Carnet de identidad')" />
             <x-text-input id="ci" name="ci" type="text" class="mt-1 block w-full"
-                          :value="old('ci', $usuario?->ci)" required />
+                          :value="old('ci', $usuario?->ci)" required
+                          inputmode="numeric" minlength="6" maxlength="20" pattern="[0-9]+"
+                          title="Mínimo 6 dígitos, solo números" />
             <x-input-error class="mt-2" :messages="$errors->get('ci')" />
         </div>
 
         <div>
             <x-input-label for="email" :value="__('Correo electrónico')" />
-            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full"
-                          :value="old('email', $usuario?->email)" required />
+            <x-text-input id="email" name="email" type="text" class="mt-1 block w-full"
+                          :value="old('email', $usuario?->email)" required
+                          inputmode="email" autocomplete="email"
+                          title="Ejemplo: nombre@dominio.com" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
         </div>
 
         <div>
             <x-input-label for="telefono" :value="__('Teléfono')" />
             <x-text-input id="telefono" name="telefono" type="text" class="mt-1 block w-full"
-                          :value="old('telefono', $usuario?->telefono)" />
+                          :value="old('telefono', $usuario?->telefono)"
+                          inputmode="numeric" minlength="8" maxlength="30" pattern="[0-9]*"
+                          title="Mínimo 8 dígitos, solo números" />
             <x-input-error class="mt-2" :messages="$errors->get('telefono')" />
         </div>
 

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\PlanEstudio;
+use Closure;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,10 +31,22 @@ class StoreUsuarioRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'ci' => ['required', 'string', 'max:20', Rule::unique('users', 'ci')],
-            'telefono' => ['nullable', 'string', 'max:30'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
+            'name' => ['required', 'string', 'max:255', 'regex:/^[\p{L} ]+$/u'],
+            'ci' => ['required', 'string', 'min:6', 'max:20', 'regex:/^\d+$/', Rule::unique('users', 'ci')],
+            'telefono' => ['nullable', 'string', 'min:8', 'max:30', 'regex:/^\d+$/'],
+            'email' => [
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $mensaje = $this->mensajeCorreoInvalido($value);
+
+                    if ($mensaje !== null) {
+                        $fail($mensaje);
+                    }
+                },
+                Rule::unique('users', 'email'),
+            ],
             'password' => ['required', 'confirmed', Password::min(8)],
             'rol' => ['required', Rule::enum(Rol::class)],
             'matriculas' => [
@@ -121,7 +134,12 @@ class StoreUsuarioRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.regex' => 'El nombre solo puede contener letras.',
             'ci.unique' => 'Ya existe un usuario registrado con ese carnet de identidad.',
+            'ci.min' => 'El carnet de identidad debe tener al menos 6 dígitos.',
+            'ci.regex' => 'El carnet de identidad solo puede contener números.',
+            'telefono.min' => 'El teléfono debe tener al menos 8 dígitos.',
+            'telefono.regex' => 'El teléfono solo puede contener números.',
             'email.unique' => 'Ya existe un usuario registrado con ese correo.',
             'password.confirmed' => 'La confirmación de contraseña no coincide.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
@@ -171,5 +189,43 @@ class StoreUsuarioRequest extends FormRequest
             ])
             ->values()
             ->all();
+    }
+
+    private function mensajeCorreoInvalido(mixed $correo): ?string
+    {
+        // Los campos vacíos ya son cubiertos por la regla required.
+        if (! is_string($correo) || trim($correo) === '') {
+            return null;
+        }
+
+        if (substr_count($correo, '@') !== 1) {
+            return 'Escribe el correo con un solo @, por ejemplo nombre@dominio.com.';
+        }
+
+        if (preg_match('/\s/', $correo)) {
+            return 'El correo no debe contener espacios y debe tener texto antes y después de @.';
+        }
+
+        [$usuario, $dominio] = explode('@', $correo);
+
+        if ($usuario === '' || $dominio === '') {
+            return 'El correo debe tener texto antes y después de @.';
+        }
+
+        if (! str_contains($dominio, '.')) {
+            return 'El dominio del correo debe incluir un punto, por ejemplo dominio.com.';
+        }
+
+        if (str_starts_with($dominio, '.') || str_ends_with($dominio, '.') || str_contains($dominio, '..')) {
+            return 'El dominio del correo no debe empezar ni terminar con punto, ni tener puntos consecutivos.';
+        }
+
+        $extension = substr($dominio, strrpos($dominio, '.') + 1);
+
+        if (! preg_match('/^[A-Za-z]{2,}$/', $extension)) {
+            return 'Después del punto del dominio deben ir al menos 2 letras, por ejemplo .com.';
+        }
+
+        return null;
     }
 }
