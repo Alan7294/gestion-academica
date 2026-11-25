@@ -61,80 +61,48 @@ function usuarioConRol(Rol $rol): User
 }
 
 /**
- * Crea un estudiante con matrícula activa y plan asignado en las carreras de los cursos dados.
+ * Crea un estudiante con matrícula activa en los planes autorizados de los cursos dados.
  */
 function estudianteMatriculado(Curso ...$cursos): User
 {
     $estudiante = usuarioConRol(Rol::Estudiante);
 
-    collect($cursos)
-        ->map(fn (Curso $curso) => $curso->carrera)
-        ->filter()
-        ->unique('id')
-        ->values()
-        ->each(function (Carrera $carrera, int $indice) use ($estudiante, $cursos): void {
-            $materias = collect($cursos)
-                ->filter(fn (Curso $curso) => $curso->carrera_id === $carrera->id && $curso->materia_id !== null)
-                ->map(fn (Curso $curso) => $curso->materia)
-                ->unique('id')
-                ->values()
-                ->all();
+    $planesPorCarrera = collect($cursos)
+        ->flatMap(fn (Curso $curso) => $curso->planesEstudio->map(fn (PlanEstudio $plan) => [
+            'plan' => $plan,
+            'es_anfitrion' => $plan->id === $curso->plan_estudio_id,
+        ]))
+        ->groupBy(fn (array $item) => $item['plan']->carrera_id);
 
-            $estudiante->matriculas()->create([
-                'carrera_id' => $carrera->id,
-                'plan_estudio_id' => planDePruebaPara($carrera, $materias)->id,
-                'estado' => EstadoMatricula::Activa,
-                'es_principal' => $indice === 0,
-                'modalidad' => Modalidad::Semestral,
-                'fecha_inicio' => now()->toDateString(),
-            ]);
-        });
+    $indice = 0;
+
+    foreach ($planesPorCarrera as $carreraId => $items) {
+        $item = $items->firstWhere('es_anfitrion') ?? $items->first();
+        $plan = $item['plan'];
+
+        $estudiante->matriculas()->create([
+            'carrera_id' => $carreraId,
+            'plan_estudio_id' => $plan->id,
+            'estado' => EstadoMatricula::Activa,
+            'es_principal' => $indice === 0,
+            'modalidad' => $plan->modalidad,
+            'fecha_inicio' => now()->toDateString(),
+        ]);
+
+        $indice++;
+    }
 
     return $estudiante;
 }
 
 /**
- * Reutiliza un plan que ya contenga las materias o crea uno de pruebas para la carrera.
- *
- * @param  array<int, Materia>  $materias
- */
-function planDePruebaPara(Carrera $carrera, array $materias): PlanEstudio
-{
-    $idsMaterias = collect($materias)->pluck('id')->filter()->unique()->values()->all();
-
-    if ($idsMaterias !== []) {
-        $plan = PlanEstudio::where('carrera_id', $carrera->id)
-            ->get()
-            ->first(fn (PlanEstudio $plan) => collect($idsMaterias)->every(
-                fn (int $id) => $plan->materias->contains($id)
-            ));
-
-        if ($plan) {
-            return $plan;
-        }
-    }
-
-    $plan = PlanEstudio::firstOrCreate(
-        ['carrera_id' => $carrera->id, 'nombre' => "Plan de pruebas {$carrera->id}"],
-        ['modalidad' => Modalidad::Semestral, 'semestres' => 12, 'activo' => false],
-    );
-
-    foreach ($idsMaterias as $id) {
-        $plan->vincularMateria(Materia::findOrFail($id), 1, 4);
-    }
-
-    return $plan;
-}
-
-/**
  * Crea una materia del catálogo y la vincula al plan con sus datos propios.
  *
- * @param  array{codigo: string, nombre: string, semestre?: int, creditos?: int, carrera_id?: int}  $atributos
+ * @param  array{codigo: string, nombre: string, semestre?: int, creditos?: int}  $atributos
  */
 function materiaEnPlan(PlanEstudio $plan, array $atributos): Materia
 {
     $materia = Materia::factory()->create([
-        'carrera_id' => $atributos['carrera_id'] ?? $plan->carrera_id,
         'codigo' => $atributos['codigo'],
         'nombre' => $atributos['nombre'],
     ]);
@@ -146,4 +114,22 @@ function materiaEnPlan(PlanEstudio $plan, array $atributos): Materia
     );
 
     return $materia;
+}
+
+/**
+ * Crea una materia en el plan de pruebas de la carrera indicada.
+ *
+ * @param  array{codigo?: string, nombre?: string, semestre?: int, creditos?: int}  $atributos
+ */
+function materiaEnCarrera(Carrera $carrera, array $atributos = []): Materia
+{
+    $plan = PlanEstudio::firstOrCreate(
+        ['carrera_id' => $carrera->id, 'nombre' => "Plan de pruebas {$carrera->id}"],
+        ['modalidad' => Modalidad::Semestral, 'semestres' => 12, 'activo' => false],
+    );
+
+    return materiaEnPlan($plan, $atributos + [
+        'codigo' => strtoupper(fake()->unique()->bothify('???-###')),
+        'nombre' => 'Materia de '.$carrera->nombre,
+    ]);
 }

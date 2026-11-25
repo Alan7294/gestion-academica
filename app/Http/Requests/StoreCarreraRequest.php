@@ -28,7 +28,7 @@ class StoreCarreraRequest extends FormRequest
                 Rule::unique(Carrera::class)->ignore($carrera?->id),
             ],
             'nombre' => ['required', 'string', 'max:255'],
-            'facultad' => ['nullable', 'string', 'max:255'],
+            'facultad_id' => ['required', 'integer', Rule::exists('facultades', 'id')],
             'activo' => ['boolean'],
         ];
     }

@@ -31,8 +31,7 @@ class StorePlanEstudioRequest extends FormRequest
         /** @var PlanEstudio|null $plan */
         $plan = $this->route('planEstudio');
 
-        $reglaMateria = fn () => Rule::exists('materias', 'id')
-            ->where(fn ($query) => $query->where('carrera_id', $this->input('carrera_id')));
+        $reglaMateria = fn () => Rule::exists('materias', 'id');
 
         return [
             'carrera_id' => ['required', 'integer', Rule::exists('carreras', 'id')],
@@ -230,10 +229,10 @@ class StorePlanEstudioRequest extends FormRequest
             'materias.min' => 'Agrega al menos una materia al plan de estudios.',
             'materias.*.id.required' => 'Selecciona una materia del catálogo.',
             'materias.*.id.distinct' => 'No repitas una materia dentro del mismo plan.',
-            'materias.*.id.exists' => 'La materia seleccionada no pertenece a la carrera del plan.',
+            'materias.*.id.exists' => 'La materia seleccionada no existe en el catálogo.',
             'materias.*.creditos.min' => 'Cada materia debe tener al menos 1 crédito.',
             'materias.*.requisitos.array' => 'La lista de requisitos no es válida.',
-            'materias.*.requisitos.*.exists' => 'Uno de los requisitos no pertenece a la carrera del plan.',
+            'materias.*.requisitos.*.exists' => 'Uno de los requisitos no existe en el catálogo.',
             'nombre.unique' => 'Ya existe un plan de estudios con ese nombre para la carrera seleccionada.',
         ];
     }

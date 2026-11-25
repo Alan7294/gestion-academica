@@ -62,7 +62,6 @@ class DemoSeeder extends Seeder
             $docente = $docentes[$definicion['docente']];
 
             $materia = Materia::query()
-                ->where('carrera_id', $carrera->id)
                 ->where('codigo', $definicion['codigo'])
                 ->first();
 
@@ -106,6 +105,10 @@ class DemoSeeder extends Seeder
                 'semestre' => (int) ($pivote?->semestre ?? $definicion['semestre']),
                 'creditos' => (int) ($pivote?->creditos ?? $definicion['creditos']),
             ]);
+
+            if ($plan) {
+                $curso->planesEstudio()->syncWithoutDetaching([$plan->id]);
+            }
 
             $curso->horarios()->firstOrCreate(
                 [

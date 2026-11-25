@@ -92,8 +92,24 @@ class FiltrosReporte
 
     public function aplicarAInscripciones(Builder $query, ?string $estadoPorDefecto = null): Builder
     {
-        if ($this->tieneFiltrosDeCurso()) {
-            $query->whereHas('curso', fn (Builder $curso) => $this->aplicarACursos($curso));
+        if ($this->carreraId !== null) {
+            $query->whereHas('planEstudio.carrera', fn (Builder $carrera) => $carrera->whereKey($this->carreraId));
+        }
+
+        if ($this->tieneFiltrosDeCursoDistintosDeCarrera()) {
+            $query->whereHas('curso', function (Builder $curso): void {
+                if ($this->periodoId !== null) {
+                    $curso->where('periodo_id', $this->periodoId);
+                }
+
+                if ($this->cursoId !== null) {
+                    $curso->where('id', $this->cursoId);
+                }
+
+                if ($this->docenteId !== null) {
+                    $curso->where('docente_id', $this->docenteId);
+                }
+            });
         }
 
         $estado = $this->estado ?? $estadoPorDefecto;
@@ -117,6 +133,13 @@ class FiltrosReporte
     {
         return $this->periodoId !== null
             || $this->carreraId !== null
+            || $this->cursoId !== null
+            || $this->docenteId !== null;
+    }
+
+    public function tieneFiltrosDeCursoDistintosDeCarrera(): bool
+    {
+        return $this->periodoId !== null
             || $this->cursoId !== null
             || $this->docenteId !== null;
     }

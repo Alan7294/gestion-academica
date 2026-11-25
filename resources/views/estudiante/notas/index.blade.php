@@ -17,7 +17,7 @@
                             <p class="mt-1 text-xs text-amber-800">
                                 {{ __('Convalidada') }} · {{ $convalidacion->origen() }}
                             </p>
-                            <p class="text-xs text-slate-500">{{ $convalidacion->materia->carrera->nombre }}</p>
+                            <p class="text-xs text-slate-500">{{ $convalidacion->carreraDestino?->nombre ?? '—' }}</p>
                         </div>
 
                         <div class="text-right">

@@ -24,6 +24,11 @@ class StoreEquivalenciaRequest extends FormRequest
         $carreraOrigenId = (int) $this->input('carrera_origen_id');
         $materiaId = (int) $this->input('materia_id');
 
+        $perteneceACarrera = fn (int $materiaId, int $carreraId): bool => Materia::whereKey($materiaId)
+            ->whereHas('planesEstudio', fn ($query) => $query
+                ->where('planes_estudio.carrera_id', $carreraId))
+            ->exists();
+
         return [
             'carrera_destino_id' => ['required', 'integer', Rule::exists('carreras', 'id')],
             'carrera_origen_id' => [
@@ -36,13 +41,13 @@ class StoreEquivalenciaRequest extends FormRequest
                 'required',
                 'integer',
                 Rule::exists('materias', 'id'),
-                function (string $attribute, mixed $value, Closure $fail) use ($carreraDestinoId): void {
+                function (string $attribute, mixed $value, Closure $fail) use ($carreraDestinoId, $perteneceACarrera): void {
                     if ($carreraDestinoId === 0) {
                         return;
                     }
 
-                    if (! Materia::whereKey($value)->where('carrera_id', $carreraDestinoId)->exists()) {
-                        $fail('La materia destino debe pertenecer a la carrera destino seleccionada.');
+                    if (! $perteneceACarrera((int) $value, $carreraDestinoId)) {
+                        $fail('La materia destino debe pertenecer a un plan de la carrera destino seleccionada.');
                     }
                 },
             ],
@@ -52,15 +57,15 @@ class StoreEquivalenciaRequest extends FormRequest
                 Rule::exists('materias', 'id'),
                 Rule::unique('materia_equivalencias', 'equivalente_id')
                     ->where(fn ($query) => $query->where('materia_id', $materiaId)),
-                function (string $attribute, mixed $value, Closure $fail) use ($carreraOrigenId, $materiaId): void {
+                function (string $attribute, mixed $value, Closure $fail) use ($carreraOrigenId, $materiaId, $perteneceACarrera): void {
                     $equivalente = Materia::find($value);
 
                     if ($equivalente === null) {
                         return;
                     }
 
-                    if ($carreraOrigenId !== 0 && $equivalente->carrera_id !== $carreraOrigenId) {
-                        $fail('La materia origen debe pertenecer a la carrera origen seleccionada.');
+                    if ($carreraOrigenId !== 0 && ! $perteneceACarrera((int) $value, $carreraOrigenId)) {
+                        $fail('La materia origen debe pertenecer a un plan de la carrera origen seleccionada.');
                     }
 
                     if ($equivalente->id === $materiaId) {

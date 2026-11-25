@@ -29,6 +29,13 @@ class CursoController extends Controller
             ->get()
             ->pluck('carrera');
         $carrerasIds = $carrerasActivas->pluck('id')->all();
+        $planesIds = $estudiante->matriculas()
+            ->activas()
+            ->whereNotNull('plan_estudio_id')
+            ->pluck('plan_estudio_id')
+            ->unique()
+            ->values()
+            ->all();
         $carreraId = $request->integer('carrera_id') ?: null;
 
         if ($carreraId !== null && ! in_array($carreraId, $carrerasIds, true)) {
@@ -36,10 +43,13 @@ class CursoController extends Controller
         }
 
         $cursos = Curso::query()
-            ->with(['carrera', 'docente', 'materia', 'horarios'])
+            ->with(['carrera', 'planesEstudio.carrera', 'docente', 'materia', 'horarios'])
             ->withCount('alumnosInscritos')
             ->where('activo', true)
-            ->whereIn('carrera_id', $carrerasIds ?: [0])
+            ->whereHas('planesEstudio', function ($query) use ($planesIds, $carreraId): void {
+                $query->whereIn('planes_estudio.id', $planesIds ?: [0])
+                    ->when($carreraId, fn ($sub) => $sub->where('planes_estudio.carrera_id', $carreraId));
+            })
             ->when($periodo, fn ($query) => $query->where('periodo_id', $periodo->id))
             ->when($busqueda !== '', function ($query) use ($busqueda) {
                 $query->where(function ($sub) use ($busqueda) {
@@ -47,7 +57,6 @@ class CursoController extends Controller
                         ->orWhereHas('materia', fn ($q) => $q->where('codigo', 'ilike', "%{$busqueda}%"));
                 });
             })
-            ->when($carreraId, fn ($query, $id) => $query->where('carrera_id', $id))
             ->orderBy('nombre')
             ->paginate(12)
             ->withQueryString();
@@ -72,7 +81,7 @@ class CursoController extends Controller
     {
         Gate::authorize('view', $curso);
 
-        $curso->load(['carrera', 'periodo', 'docente', 'materia', 'horarios'])
+        $curso->load(['carrera', 'planesEstudio.carrera', 'periodo', 'docente', 'materia', 'horarios'])
             ->loadCount('alumnosInscritos');
 
         return view('estudiante.cursos.show', [

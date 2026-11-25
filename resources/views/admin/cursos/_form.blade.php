@@ -8,12 +8,18 @@
           modalidad: @js((string) old('modalidad', $curso?->modalidad?->value ?? '')),
           horarios: @js(old('horarios', [['dia_semana' => '', 'hora_inicio' => '', 'hora_fin' => '']])),
           planes: @js($planes),
+           planesSeleccionados: @js(old('planes_estudio_ids', $curso?->planesEstudio->pluck('id')->map(fn ($id) => (string) $id)->all() ?? [])),
           errores: @js($errors->messages()),
           get planesDisponibles() {
               return this.planes.filter((plan) => String(plan.carrera_id) === String(this.carreraId)
                   && (this.modalidad === '' || plan.modalidad === this.modalidad));
           },
-          get planSeleccionado() {
+          get planesParticipantes() {
+               return this.planes.filter((plan) => String(plan.id) !== String(this.planId)
+                   && plan.modalidad === this.modalidad
+                   && (plan.materias ?? []).some((materia) => String(materia.id) === String(this.materiaId)));
+           },
+           get planSeleccionado() {
               return this.planes.find((plan) => String(plan.id) === String(this.planId)) ?? null;
           },
           get materiasDisponibles() {
@@ -29,18 +35,29 @@
               return this.modalidad === 'semestral';
           },
           cambiarCarrera() {
+               this.planesSeleccionados = [];
               this.planId = '';
               this.materiaId = '';
           },
           cambiarModalidad() {
+               this.planesSeleccionados = [];
               this.planId = '';
               this.materiaId = '';
           },
           cambiarPlan() {
+               this.planesSeleccionados = this.planId === '' ? [] : [String(this.planId)];
               this.materiaId = '';
               this.modalidad = this.planSeleccionado?.modalidad ?? this.modalidad;
           },
-          agregarHorario() {
+          cambiarMateria() {
+               const permitidos = new Set([
+                   String(this.planId),
+                   ...this.planesParticipantes.map((plan) => String(plan.id)),
+               ]);
+
+               this.planesSeleccionados = this.planesSeleccionados.filter((id) => permitidos.has(String(id)));
+           },
+           agregarHorario() {
               this.horarios.push({dia_semana: '', hora_inicio: '', hora_fin: ''});
           },
           quitarHorario(indice) {
@@ -97,15 +114,40 @@
 
         <div>
             <x-input-label for="materia_id" :value="__('Materia')" />
-            <select id="materia_id" name="materia_id" x-model="materiaId" required
+            <select id="materia_id" name="materia_id" x-model="materiaId" @change="cambiarMateria()" required
                     class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
                 <option value="" disabled>{{ __('Seleccione una materia') }}</option>
                 <template x-for="materia in materiasDisponibles" :key="materia.id">
                     <option :value="String(materia.id)" x-text="materia.etiqueta"></option>
                 </template>
             </select>
+            <input type="hidden" name="planes_estudio_ids[]" :value="String(planId)">
             <p class="mt-1 text-xs text-slate-500">{{ __('Solo se muestran las materias incluidas en el plan elegido.') }}</p>
             <x-input-error class="mt-2" :messages="$errors->get('materia_id')" />
+
+            <div class="mt-4 border-t border-slate-200 pt-4">
+                <p class="text-sm font-medium text-slate-700">{{ __('Planes participantes') }}</p>
+                <p class="mt-1 text-xs text-slate-500">
+                    {{ __('El plan anfitrión se incluye automáticamente. Todos los planes comparten el cupo del curso.') }}
+                </p>
+
+                <div class="mt-3 space-y-2">
+                    <p x-show="planesParticipantes.length === 0" class="text-xs text-slate-500" x-cloak>
+                        {{ __('No hay otros planes con esta materia y modalidad.') }}
+                    </p>
+
+                    <template x-for="plan in planesParticipantes" :key="plan.id">
+                        <label class="flex items-start gap-2 text-sm text-slate-700">
+                            <input type="checkbox" name="planes_estudio_ids[]" :value="String(plan.id)"
+                                   x-model="planesSeleccionados"
+                                   class="mt-0.5 rounded border-slate-300 text-brand-600 shadow-sm">
+                            <span x-text="`${plan.carrera_nombre} · ${plan.etiqueta}`"></span>
+                        </label>
+                    </template>
+                </div>
+
+                <x-input-error class="mt-2" :messages="$errors->get('planes_estudio_ids')" />
+            </div>
         </div>
 
         <div>

@@ -241,7 +241,7 @@ it('exige que el docente asignado tenga el rol docente', function () {
     expect(Curso::count())->toBe(0);
 });
 
-it('permite varios cursos de la misma materia en un mismo periodo', function () {
+it('rechaza un segundo curso de la misma materia en un mismo periodo y modalidad', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $datos = datosCurso(['docente_id' => usuarioConRol(Rol::Docente)->id]);
 
@@ -253,10 +253,9 @@ it('permite varios cursos de la misma materia en un mismo periodo', function () 
         ->post('/admin/cursos', array_merge($datos, [
             'docente_id' => usuarioConRol(Rol::Docente)->id,
         ]))
-        ->assertRedirect();
+        ->assertSessionHasErrors('materia_id');
 
-    expect(Curso::count())->toBe(2)
-        ->and(Curso::pluck('materia_id')->unique())->toHaveCount(1);
+    expect(Curso::count())->toBe(1);
 });
 
 it('mantiene la materia del curso en periodos distintos', function () {
@@ -332,7 +331,6 @@ it('rechaza una materia que no pertenece al plan elegido', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $datos = datosCurso();
     $materiaFueraDelPlan = Materia::factory()->create([
-        'carrera_id' => $datos['carrera_id'],
         'codigo' => 'SIS-999',
         'nombre' => 'Materia fuera del plan',
     ]);
@@ -480,6 +478,35 @@ it('actualiza los datos derivados al cambiar el plan y la materia', function () 
         ->and($curso->nombre)->toBe('Base de Datos')
         ->and($curso->semestre)->toBe(3)
         ->and($curso->creditos)->toBe(2);
+});
+
+it('impide quitar un plan participante que ya tiene inscripciones', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $datos = datosCurso();
+    $curso = cursoDePrueba($datos);
+
+    $planCompartido = PlanEstudio::factory()->create([
+        'carrera_id' => Carrera::factory()->create()->id,
+        'modalidad' => Modalidad::Semestral,
+        'activo' => false,
+    ]);
+    $planCompartido->vincularMateria(Materia::findOrFail($datos['materia_id']), 1, 4);
+    $curso->planesEstudio()->sync([$datos['plan_estudio_id'], $planCompartido->id]);
+
+    $curso->inscripciones()->create([
+        'user_id' => usuarioConRol(Rol::Estudiante)->id,
+        'plan_estudio_id' => $planCompartido->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->put("/admin/cursos/{$curso->id}", array_merge($datos, [
+            'planes_estudio_ids' => [$datos['plan_estudio_id']],
+        ]))
+        ->assertSessionHasErrors('planes_estudio_ids');
+
+    expect($curso->planesEstudio()->pluck('planes_estudio.id'))
+        ->toContain($datos['plan_estudio_id'])
+        ->toContain($planCompartido->id);
 });
 
 it('impide cambiar la identidad de un curso que ya tiene inscripciones', function () {

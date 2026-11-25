@@ -20,7 +20,13 @@ class ConvalidacionService
      */
     public function idsMateriasConvalidadas(User $estudiante): Collection
     {
-        return $this->aprobacionesAplicables($estudiante, $this->planesPorCarreraActiva($estudiante))
+        $matriculas = $this->matriculasConPlan($estudiante);
+
+        if ($matriculas->isEmpty()) {
+            return collect();
+        }
+
+        return $this->aprobacionesAplicables($estudiante, $matriculas)
             ->pluck('equivalencia.materia_id')
             ->unique()
             ->values();
@@ -34,9 +40,9 @@ class ConvalidacionService
      */
     public function paraEstudiante(User $estudiante): Collection
     {
-        $planesPorCarrera = $this->planesPorCarreraActiva($estudiante);
+        $matriculas = $this->matriculasConPlan($estudiante);
 
-        if ($planesPorCarrera->isEmpty()) {
+        if ($matriculas->isEmpty()) {
             return collect();
         }
 
@@ -48,79 +54,73 @@ class ConvalidacionService
             ->filter()
             ->all();
 
-        $aprobaciones = $this->aprobacionesAplicables($estudiante, $planesPorCarrera)
+        $aprobaciones = $this->aprobacionesAplicables($estudiante, $matriculas)
             ->filter(fn (array $aprobacion) => ! in_array($aprobacion['equivalencia']->materia_id, $materiasCursadas, true))
             ->groupBy(fn (array $aprobacion) => $aprobacion['equivalencia']->materia_id)
             ->map(fn (Collection $grupo) => $grupo->sortByDesc(fn (array $item) => $item['inscripcion']->updated_at)->first())
             ->values();
 
-        if ($aprobaciones->isEmpty()) {
-            return collect();
-        }
-
-        $creditosPorMateria = $this->creditosPorMateria($aprobaciones, $planesPorCarrera);
-
         return $aprobaciones
-            ->map(fn (array $aprobacion) => $this->aConvalidacion(
-                $aprobacion,
-                $creditosPorMateria->get($aprobacion['equivalencia']->materia_id),
-            ))
+            ->map(fn (array $aprobacion) => $this->aConvalidacion($aprobacion))
             ->sortBy(fn (Convalidacion $convalidacion) => $convalidacion->materia->codigo)
             ->values();
     }
 
     /**
-     * Planes asignados a las matrículas activas, indexados por carrera.
+     * Matrículas activas con plan asignado. La principal va primero para
+     * resolver las materias compartidas por varias carreras.
      *
-     * @return Collection<int, int>
+     * @return Collection<int, Matricula>
      */
-    private function planesPorCarreraActiva(User $estudiante): Collection
+    private function matriculasConPlan(User $estudiante): Collection
     {
         return $estudiante->matriculas()
             ->activas()
-            ->get(['carrera_id', 'plan_estudio_id'])
-            ->mapWithKeys(fn (Matricula $matricula) => [$matricula->carrera_id => $matricula->plan_estudio_id])
-            ->filter();
+            ->whereNotNull('plan_estudio_id')
+            ->with('carrera')
+            ->orderByDesc('es_principal')
+            ->orderBy('id')
+            ->get();
     }
 
     /**
-     * Una equivalencia solo se aplica en carreras donde el estudiante está matriculado
-     * y tiene un plan asignado; sin plan no hay requisitos que validar contra él.
+     * Una equivalencia solo se aplica si la materia destino está en el plan de
+     * alguna matrícula activa. Si está en varios, se toma la matrícula principal.
      *
-     * @param  Collection<int, int>  $planesPorCarrera
-     * @return Collection<int, array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion}>
+     * @param  Collection<int, Matricula>  $matriculas
+     * @return Collection<int, array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion, matricula: Matricula, creditos: int|null}>
      */
-    private function aprobacionesAplicables(User $estudiante, Collection $planesPorCarrera): Collection
+    private function aprobacionesAplicables(User $estudiante, Collection $matriculas): Collection
     {
-        return $this->aprobacionesPorEquivalencia($estudiante)
-            ->filter(fn (array $aprobacion) => $planesPorCarrera->has($aprobacion['equivalencia']->materia->carrera_id));
-    }
-
-    /**
-     * Créditos de cada materia destino según el plan de la matrícula activa.
-     *
-     * @param  Collection<int, array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion}>  $aprobaciones
-     * @param  Collection<int, int>  $planesPorCarrera
-     * @return Collection<int, int|null>
-     */
-    private function creditosPorMateria(Collection $aprobaciones, Collection $planesPorCarrera): Collection
-    {
-        $destinos = $aprobaciones
-            ->map(fn (array $aprobacion) => $aprobacion['equivalencia']->materia)
-            ->unique('id');
-
         $planes = PlanEstudio::query()
-            ->with(['materias' => fn ($query) => $query->whereIn('materias.id', $destinos->pluck('id'))])
-            ->whereIn('id', $planesPorCarrera->unique()->values())
+            ->with('materias')
+            ->whereIn('id', $matriculas->pluck('plan_estudio_id')->unique()->values())
             ->get()
             ->keyBy('id');
 
-        return $destinos->mapWithKeys(function (Materia $materia) use ($planes, $planesPorCarrera) {
-            $plan = $planes->get($planesPorCarrera->get($materia->carrera_id));
-            $creditos = $plan?->materias->firstWhere('id', $materia->id)?->pivot->creditos;
+        return $this->aprobacionesPorEquivalencia($estudiante)
+            ->map(function (array $aprobacion) use ($matriculas, $planes): ?array {
+                foreach ($matriculas as $matricula) {
+                    $materiaDelPlan = $planes->get($matricula->plan_estudio_id)
+                        ?->materias
+                        ->firstWhere('id', $aprobacion['equivalencia']->materia_id);
 
-            return [$materia->id => $creditos === null ? null : (int) $creditos];
-        });
+                    if ($materiaDelPlan === null) {
+                        continue;
+                    }
+
+                    $creditos = $materiaDelPlan->pivot->creditos;
+
+                    return $aprobacion + [
+                        'matricula' => $matricula,
+                        'creditos' => $creditos === null ? null : (int) $creditos,
+                    ];
+                }
+
+                return null;
+            })
+            ->filter(fn (?array $aprobacion) => $aprobacion !== null)
+            ->values();
     }
 
     /**
@@ -134,7 +134,7 @@ class ConvalidacionService
             ->where('user_id', $estudiante->id)
             ->whereNotNull('nota_final')
             ->where('nota_final', '>=', Inscripcion::NOTA_MINIMA_APROBATORIA)
-            ->with('curso')
+            ->with(['curso.carrera', 'planEstudio.carrera'])
             ->orderByDesc('updated_at')
             ->get()
             ->filter(fn (Inscripcion $inscripcion) => $inscripcion->estaAprobada() && $inscripcion->curso->materia_id !== null)
@@ -146,7 +146,7 @@ class ConvalidacionService
         }
 
         return MateriaEquivalencia::query()
-            ->with(['materia.carrera', 'equivalente.carrera'])
+            ->with(['materia', 'equivalente'])
             ->whereIn('equivalente_id', $aprobadasPorMateria->keys())
             ->get()
             ->map(fn (MateriaEquivalencia $equivalencia) => [
@@ -156,16 +156,18 @@ class ConvalidacionService
     }
 
     /**
-     * @param  array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion}  $aprobacion
+     * @param  array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion, matricula: Matricula, creditos: int|null}  $aprobacion
      */
-    private function aConvalidacion(array $aprobacion, ?int $creditos): Convalidacion
+    private function aConvalidacion(array $aprobacion): Convalidacion
     {
         return new Convalidacion(
             materia: $aprobacion['equivalencia']->materia,
             equivalente: $aprobacion['equivalencia']->equivalente,
+            carreraDestino: $aprobacion['matricula']->carrera,
+            carreraOrigen: $aprobacion['inscripcion']->planEstudio?->carrera ?? $aprobacion['inscripcion']->curso->carrera,
             nota: (float) $aprobacion['inscripcion']->nota_final,
             fecha: $aprobacion['inscripcion']->updated_at,
-            creditos: $creditos,
+            creditos: $aprobacion['creditos'],
         );
     }
 }

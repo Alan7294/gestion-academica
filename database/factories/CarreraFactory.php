@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Carrera;
+use App\Models\Facultad;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,7 +18,7 @@ class CarreraFactory extends Factory
         return [
             'codigo' => strtoupper($this->faker->unique()->bothify('???')),
             'nombre' => 'Carrera de '.$this->faker->words(2, true),
-            'facultad' => 'Facultad de '.$this->faker->word(),
+            'facultad_id' => Facultad::factory(),
             'activo' => true,
         ];
     }

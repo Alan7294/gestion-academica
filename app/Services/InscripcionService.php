@@ -7,6 +7,7 @@ use App\Models\Curso;
 use App\Models\Horario;
 use App\Models\Inscripcion;
 use App\Models\Materia;
+use App\Models\Matricula;
 use App\Models\PlanEstudio;
 use App\Models\User;
 use App\Notifications\InscripcionRegistrada;
@@ -35,11 +36,7 @@ class InscripcionService
                 ]);
             }
 
-            if (! $estudiante->estaMatriculadoEn($curso->carrera_id)) {
-                throw ValidationException::withMessages([
-                    'curso' => 'No tienes una matrícula activa en la carrera de este curso.',
-                ]);
-            }
+            $plan = $this->planAutorizado($estudiante, $curso);
 
             if (! $curso->activo) {
                 throw ValidationException::withMessages([
@@ -63,7 +60,7 @@ class InscripcionService
                 ]);
             }
 
-            $this->verificarRequisitos($estudiante, $curso);
+            $this->verificarRequisitos($estudiante, $curso, $plan);
 
             if (! $curso->tieneCupoDisponible()) {
                 throw ValidationException::withMessages([
@@ -76,6 +73,7 @@ class InscripcionService
             if ($existente) {
                 $existente->update([
                     'estado' => EstadoInscripcion::Inscrito,
+                    'plan_estudio_id' => $plan->id,
                     'inscrito_en' => now(),
                 ]);
 
@@ -88,6 +86,7 @@ class InscripcionService
             $inscripcion = Inscripcion::create([
                 'curso_id' => $curso->id,
                 'user_id' => $estudiante->id,
+                'plan_estudio_id' => $plan->id,
                 'estado' => EstadoInscripcion::Inscrito,
                 'inscrito_en' => now(),
             ]);
@@ -104,7 +103,7 @@ class InscripcionService
      *
      * @throws ValidationException
      */
-    private function verificarRequisitos(User $estudiante, Curso $curso): void
+    private function verificarRequisitos(User $estudiante, Curso $curso, PlanEstudio $plan): void
     {
         if ($curso->materia_id === null) {
             throw ValidationException::withMessages([
@@ -112,7 +111,6 @@ class InscripcionService
             ]);
         }
 
-        $plan = $this->planDelEstudiante($estudiante, $curso);
         $requisitos = $curso->materia->requisitosDelPlan($plan)->get();
 
         if ($requisitos->isEmpty()) {
@@ -143,37 +141,51 @@ class InscripcionService
     }
 
     /**
-     * RF04: resuelve el plan asignado a la matrícula y exige que incluya la materia.
+     * RF04: resuelve el plan de la matrícula activa habilitado en el curso.
      *
      * No se busca un plan alternativo: hacerlo permitiría validar los requisitos
      * con un plan distinto al del estudiante o dejar la validación sin efecto.
+     * La matrícula principal gana cuando varias están habilitadas.
      *
      * @throws ValidationException
      */
-    private function planDelEstudiante(User $estudiante, Curso $curso): PlanEstudio
+    private function planAutorizado(User $estudiante, Curso $curso): PlanEstudio
     {
-        $planAsignado = $estudiante->matriculas()
-            ->activas()
-            ->where('carrera_id', $curso->carrera_id)
-            ->value('plan_estudio_id');
+        $matriculas = $estudiante->matriculas()->activas()->get();
 
-        if ($planAsignado === null) {
+        if ($matriculas->isEmpty()) {
+            throw ValidationException::withMessages([
+                'curso' => 'No tienes una matrícula activa en la carrera de este curso.',
+            ]);
+        }
+
+        if ($matriculas->every(fn (Matricula $matricula) => $matricula->plan_estudio_id === null)) {
             throw ValidationException::withMessages([
                 'curso' => 'Tu matrícula no tiene un plan de estudios asignado. Solicita al administrador que lo asigne antes de inscribirte.',
             ]);
         }
 
-        $plan = PlanEstudio::whereKey($planAsignado)
-            ->where('carrera_id', $curso->carrera_id)
-            ->first();
+        $matricula = $curso->matriculaAutorizadaPara($estudiante);
 
-        if (! $plan) {
+        if ($matricula === null) {
+            $carrerasAutorizadas = $curso->planesEstudio->pluck('carrera_id');
+
+            if ($matriculas->every(
+                fn (Matricula $matricula) => ! $carrerasAutorizadas->contains($matricula->carrera_id)
+            )) {
+                throw ValidationException::withMessages([
+                    'curso' => 'No tienes una matrícula activa en la carrera de este curso.',
+                ]);
+            }
+
             throw ValidationException::withMessages([
-                'curso' => 'El plan asignado a tu matrícula no corresponde a la carrera de este curso. Solicita al administrador que lo corrija antes de inscribirte.',
+                'curso' => 'Tu plan de estudios no está habilitado para este curso.',
             ]);
         }
 
-        if (! $plan->materias()->whereKey($curso->materia_id)->exists()) {
+        $plan = $matricula->planEstudio()->with('materias')->firstOrFail();
+
+        if ($curso->materia_id !== null && ! $plan->materias->contains('id', $curso->materia_id)) {
             throw ValidationException::withMessages([
                 'curso' => 'El plan de estudios asignado a tu matrícula no incluye esta materia. Solicita al administrador que revise el plan antes de inscribirte.',
             ]);

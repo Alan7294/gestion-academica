@@ -25,7 +25,7 @@ class MateriaController extends Controller
         ];
 
         $materias = Materia::query()
-            ->with('carrera')
+            ->with('planesEstudio.carrera')
             ->withCount(['cursos', 'planesEstudio'])
             ->when($filtros['busqueda'] !== '', function ($query) use ($filtros) {
                 $query->where(function ($sub) use ($filtros) {
@@ -33,7 +33,7 @@ class MateriaController extends Controller
                         ->orWhere('nombre', 'ilike', "%{$filtros['busqueda']}%");
                 });
             })
-            ->when($filtros['carrera_id'] !== '', fn ($query) => $query->where('carrera_id', $filtros['carrera_id']))
+            ->when($filtros['carrera_id'] !== '', fn ($query) => $query->deCarrera((int) $filtros['carrera_id']))
             ->orderBy('codigo')
             ->paginate(10)
             ->withQueryString();
@@ -47,25 +47,19 @@ class MateriaController extends Controller
 
     public function create(): View
     {
-        return view('admin.materias.create', ['carreras' => Carrera::orderBy('nombre')->get()]);
+        return view('admin.materias.create');
     }
 
     /**
-     * Catálogo reducido que usa el formulario de planes al elegir una carrera.
+     * Catálogo compartido que usa el formulario de planes. Cada plan decide
+     * en qué semestre y con cuántos créditos incluye cada materia.
      */
-    public function catalogo(Request $request): JsonResponse
+    public function catalogo(): JsonResponse
     {
-        $carreraId = (int) $request->query('carrera_id');
-
-        if ($carreraId < 1) {
-            return response()->json([]);
-        }
-
         return response()->json(
             Materia::query()
-                ->where('carrera_id', $carreraId)
                 ->orderBy('codigo')
-                ->get(['id', 'carrera_id', 'codigo', 'nombre']),
+                ->get(['id', 'codigo', 'nombre']),
         );
     }
 
@@ -76,7 +70,6 @@ class MateriaController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'id' => $materia->id,
-                'carrera_id' => $materia->carrera_id,
                 'codigo' => $materia->codigo,
                 'nombre' => $materia->nombre,
             ], 201);
@@ -89,10 +82,7 @@ class MateriaController extends Controller
 
     public function edit(Materia $materia): View
     {
-        return view('admin.materias.edit', [
-            'materia' => $materia,
-            'carreras' => Carrera::orderBy('nombre')->get(),
-        ]);
+        return view('admin.materias.edit', ['materia' => $materia]);
     }
 
     public function update(StoreMateriaRequest $request, Materia $materia): RedirectResponse
@@ -118,12 +108,11 @@ class MateriaController extends Controller
     }
 
     /**
-     * @return array{carrera_id: int, codigo: string, nombre: string}
+     * @return array{codigo: string, nombre: string}
      */
     private function datos(StoreMateriaRequest $request): array
     {
         return [
-            'carrera_id' => (int) $request->validated('carrera_id'),
             'codigo' => $request->validated('codigo'),
             'nombre' => $request->validated('nombre'),
         ];

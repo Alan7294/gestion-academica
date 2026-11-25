@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['curso_id', 'user_id', 'estado', 'inscrito_en', 'nota_final'])]
+#[Fillable(['curso_id', 'user_id', 'plan_estudio_id', 'estado', 'inscrito_en', 'nota_final'])]
 class Inscripcion extends Model
 {
     use HasFactory;
@@ -31,6 +31,14 @@ class Inscripcion extends Model
     public function curso(): BelongsTo
     {
         return $this->belongsTo(Curso::class);
+    }
+
+    /**
+     * Plan vigente para esta inscripción, congelado al momento de inscribirse.
+     */
+    public function planEstudio(): BelongsTo
+    {
+        return $this->belongsTo(PlanEstudio::class);
     }
 
     public function estudiante(): BelongsTo
@@ -55,6 +63,30 @@ class Inscripcion extends Model
     {
         return $this->nota_final !== null
             && (float) $this->nota_final >= self::NOTA_MINIMA_APROBATORIA;
+    }
+
+    /**
+     * Créditos del plan con el que se cursó la materia. Si no quedó registrado,
+     * se usa el valor del curso, que conserva el plan anfitrión.
+     */
+    public function creditosSegunPlan(): int
+    {
+        $plan = $this->relationLoaded('planEstudio')
+            ? $this->planEstudio
+            : $this->planEstudio()->with('materias')->first();
+
+        if ($plan === null || $this->curso->materia_id === null) {
+            return (int) $this->curso->creditos;
+        }
+
+        $materias = $plan->relationLoaded('materias')
+            ? $plan->materias
+            : $plan->materias()->whereKey($this->curso->materia_id)->get();
+        $materia = $materias->firstWhere('id', $this->curso->materia_id);
+
+        return $materia?->pivot?->creditos === null
+            ? (int) $this->curso->creditos
+            : (int) $materia->pivot->creditos;
     }
 
     /**

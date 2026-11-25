@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6">
                 <p class="text-sm text-slate-600">
-                    {{ __('La materia destino reconoce la aprobación de la materia origen cursada en otra carrera.') }}
+                    {{ __('La materia destino reconoce la aprobación de la materia origen cursada en otra carrera. La equivalencia es global; los planes activos del estudiante determinan cuándo se aplica.') }}
                 </p>
                 <p class="text-sm text-slate-600">
                     {{ __('Elige primero la carrera de cada lado para filtrar las materias disponibles. Marca la opción bilateral si ambas materias se reconocen mutuamente.') }}
@@ -23,10 +23,10 @@
                           materiaDestinoId: @js((string) old('materia_id', '')),
                           materiaOrigenId: @js((string) old('equivalente_id', '')),
                           bilateral: @js((string) old('bilateral', '') === '1'),
-                          carrerasPorMateria: @js($materias->mapWithKeys(fn ($materia) => [$materia->id => $materia->carrera_id])),
+                          carrerasPorMateria: @js($carrerasPorMateria),
                           cambiarCarreraDestino() {
                               if (this.materiaDestinoId !== ''
-                                  && Number(this.carrerasPorMateria[this.materiaDestinoId]) !== Number(this.carreraDestinoId)) {
+                                  && ! (this.carrerasPorMateria[this.materiaDestinoId] ?? []).includes(Number(this.carreraDestinoId))) {
                                   this.materiaDestinoId = '';
                               }
 
@@ -38,7 +38,7 @@
                           },
                           cambiarCarreraOrigen() {
                               if (this.materiaOrigenId !== ''
-                                  && Number(this.carrerasPorMateria[this.materiaOrigenId]) !== Number(this.carreraOrigenId)) {
+                                  && ! (this.carrerasPorMateria[this.materiaOrigenId] ?? []).includes(Number(this.carreraOrigenId))) {
                                   this.materiaOrigenId = '';
                               }
                           },
@@ -85,8 +85,8 @@
                             <option value="">{{ __('Selecciona una materia') }}</option>
                             @foreach ($materias as $materia)
                                 <option value="{{ $materia->id }}"
-                                        :hidden="Number(carreraDestinoId) !== {{ $materia->carrera_id }}"
-                                        :disabled="Number(carreraDestinoId) !== {{ $materia->carrera_id }}">
+                                        :hidden="! carrerasPorMateria[{{ $materia->id }}].includes(Number(carreraDestinoId))"
+                                        :disabled="! carrerasPorMateria[{{ $materia->id }}].includes(Number(carreraDestinoId))">
                                     {{ $materia->codigo }} - {{ $materia->nombre }}
                                 </option>
                             @endforeach
@@ -104,8 +104,8 @@
                             <option value="">{{ __('Selecciona una materia') }}</option>
                             @foreach ($materias as $materia)
                                 <option value="{{ $materia->id }}"
-                                        :hidden="Number(carreraOrigenId) !== {{ $materia->carrera_id }}"
-                                        :disabled="Number(carreraOrigenId) !== {{ $materia->carrera_id }}">
+                                        :hidden="! carrerasPorMateria[{{ $materia->id }}].includes(Number(carreraOrigenId))"
+                                        :disabled="! carrerasPorMateria[{{ $materia->id }}].includes(Number(carreraOrigenId))">
                                     {{ $materia->codigo }} - {{ $materia->nombre }}
                                 </option>
                             @endforeach
@@ -147,11 +147,15 @@
                             <tr>
                                 <td class="px-6 py-4">
                                     <div class="font-medium text-slate-900">{{ $equivalencia->materia->codigo }} - {{ $equivalencia->materia->nombre }}</div>
-                                    <div class="text-xs text-slate-500">{{ $equivalencia->materia->carrera->nombre }}</div>
+                                    <div class="text-xs text-slate-500">
+                                        {{ $equivalencia->materia->planesEstudio->pluck('carrera.nombre')->filter()->unique()->join(', ') ?: '—' }}
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="font-medium text-slate-900">{{ $equivalencia->equivalente->codigo }} - {{ $equivalencia->equivalente->nombre }}</div>
-                                    <div class="text-xs text-slate-500">{{ $equivalencia->equivalente->carrera->nombre }}</div>
+                                    <div class="text-xs text-slate-500">
+                                        {{ $equivalencia->equivalente->planesEstudio->pluck('carrera.nombre')->filter()->unique()->join(', ') ?: '—' }}
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <form method="POST" action="{{ route('admin.equivalencias.destroy', $equivalencia) }}" class="inline"

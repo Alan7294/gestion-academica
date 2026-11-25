@@ -7,9 +7,11 @@ use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\Materia;
 use App\Models\MateriaEquivalencia;
+use App\Models\Matricula;
 use App\Models\Periodo;
 use App\Models\PlanEstudio;
 use App\Reports\Estudiante\HistorialAcademicoReporte;
+use App\Reports\FiltrosReporte;
 use App\Services\ConvalidacionService;
 use Database\Seeders\RolSeeder;
 
@@ -34,7 +36,7 @@ it('acepta un requisito aprobado en otra carrera declarado como equivalente', fu
     $carreraB = Carrera::factory()->create();
     $planB = PlanEstudio::factory()->create(['carrera_id' => $carreraB->id]);
 
-    $origen = Materia::factory()->create(['carrera_id' => $carreraA->id]);
+    $origen = materiaEnCarrera($carreraA);
     $destino = materiaEnPlan($planB, ['codigo' => 'DES-101', 'nombre' => 'Materia destino', 'semestre' => 1]);
     $posterior = materiaEnPlan($planB, ['codigo' => 'POS-201', 'nombre' => 'Materia posterior', 'semestre' => 2]);
     $posterior->requisitosDelPlan($planB)->attach($destino);
@@ -62,13 +64,11 @@ it('acepta un requisito aprobado en otra carrera declarado como equivalente', fu
 it('muestra el aviso sin bloquear la inscripción en una materia ya convalidada', function () {
     $carreraA = Carrera::factory()->create();
     $carreraB = Carrera::factory()->create();
-    $origen = Materia::factory()->create([
-        'carrera_id' => $carreraA->id,
+    $origen = materiaEnCarrera($carreraA, [
         'codigo' => 'ORI-101',
         'nombre' => 'Materia origen',
     ]);
-    $destino = Materia::factory()->create([
-        'carrera_id' => $carreraB->id,
+    $destino = materiaEnCarrera($carreraB, [
         'codigo' => 'DES-201',
         'nombre' => 'Materia destino',
     ]);
@@ -98,16 +98,14 @@ it('muestra el aviso sin bloquear la inscripción en una materia ya convalidada'
     expect(Inscripcion::where('curso_id', $cursoDestino->id)->exists())->toBeTrue();
 });
 
-it('muestra la convalidación con la nota de origen en mis calificaciones', function () {
-    $carreraA = Carrera::factory()->create();
+it('muestra la convalidación con la nota y la carrera de origen en mis calificaciones', function () {
+    $carreraA = Carrera::factory()->create(['nombre' => 'Derecho']);
     $carreraB = Carrera::factory()->create(['nombre' => 'Ingeniería Civil']);
-    $origen = Materia::factory()->create([
-        'carrera_id' => $carreraA->id,
+    $origen = materiaEnCarrera($carreraA, [
         'codigo' => 'ORI-101',
         'nombre' => 'Cálculo aplicado',
     ]);
-    $destino = Materia::factory()->create([
-        'carrera_id' => $carreraB->id,
+    $destino = materiaEnCarrera($carreraB, [
         'codigo' => 'DES-201',
         'nombre' => 'Matemáticas II',
     ]);
@@ -129,15 +127,15 @@ it('muestra la convalidación con la nota de origen en mis calificaciones', func
         ->get(route('estudiante.notas.index'))
         ->assertOk()
         ->assertSee('Convalidada')
-        ->assertSee('ORI-101 - Cálculo aplicado')
+        ->assertSee('ORI-101 - Cálculo aplicado (Derecho)')
         ->assertSee('88.00');
 });
 
 it('no muestra la convalidación si el estudiante cursó la materia destino', function () {
     $carreraA = Carrera::factory()->create();
     $carreraB = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraA->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraB->id]);
+    $origen = materiaEnCarrera($carreraA);
+    $destino = materiaEnCarrera($carreraB);
     MateriaEquivalencia::create([
         'materia_id' => $destino->id,
         'equivalente_id' => $origen->id,
@@ -164,13 +162,11 @@ it('no muestra la convalidación si el estudiante cursó la materia destino', fu
 it('registra la convalidación en la vista previa del historial académico', function () {
     $carreraA = Carrera::factory()->create();
     $carreraB = Carrera::factory()->create();
-    $origen = Materia::factory()->create([
-        'carrera_id' => $carreraA->id,
+    $origen = materiaEnCarrera($carreraA, [
         'codigo' => 'ORI-101',
         'nombre' => 'Materia origen',
     ]);
-    $destino = Materia::factory()->create([
-        'carrera_id' => $carreraB->id,
+    $destino = materiaEnCarrera($carreraB, [
         'codigo' => 'DES-201',
         'nombre' => 'Materia destino',
     ]);
@@ -198,8 +194,8 @@ it('registra la convalidación en la vista previa del historial académico', fun
 it('rechaza equivalencias entre materias de la misma carrera', function () {
     $administrador = usuarioConRol(Rol::Administrador);
     $carrera = Carrera::factory()->create();
-    $materia = Materia::factory()->create(['carrera_id' => $carrera->id]);
-    $otra = Materia::factory()->create(['carrera_id' => $carrera->id]);
+    $materia = materiaEnCarrera($carrera);
+    $otra = materiaEnCarrera($carrera);
 
     $this->actingAs($administrador)
         ->post(route('admin.equivalencias.store'), [
@@ -218,7 +214,7 @@ it('muestra los créditos del plan en la convalidación del historial', function
     $carreraDestino = Carrera::factory()->create();
     $planDestino = PlanEstudio::factory()->create(['carrera_id' => $carreraDestino->id]);
 
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
     $destino = materiaEnPlan($planDestino, [
         'codigo' => 'DES-201',
         'nombre' => 'Materia destino',
@@ -252,9 +248,9 @@ it('no convalida una materia por una equivalencia transitiva', function () {
     $carreraIntermedia = Carrera::factory()->create();
     $carreraFinal = Carrera::factory()->create();
 
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $intermedia = Materia::factory()->create(['carrera_id' => $carreraIntermedia->id]);
-    $final = Materia::factory()->create(['carrera_id' => $carreraFinal->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $intermedia = materiaEnCarrera($carreraIntermedia);
+    $final = materiaEnCarrera($carreraFinal);
 
     MateriaEquivalencia::create([
         'materia_id' => $intermedia->id,
@@ -286,8 +282,8 @@ it('no convalida una materia por una equivalencia transitiva', function () {
 it('no muestra convalidaciones de carreras en las que el estudiante no está matriculado', function () {
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
     MateriaEquivalencia::create([
         'materia_id' => $destino->id,
         'equivalente_id' => $origen->id,
@@ -316,8 +312,8 @@ it('registra una equivalencia dirigida y confirma el cambio al administrador', f
     $administrador = usuarioConRol(Rol::Administrador);
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
 
     $this->actingAs($administrador)
         ->post(route('admin.equivalencias.store'), [
@@ -350,8 +346,8 @@ it('rechaza una equivalencia duplicada', function () {
     $administrador = usuarioConRol(Rol::Administrador);
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
     MateriaEquivalencia::create([
         'materia_id' => $destino->id,
         'equivalente_id' => $origen->id,
@@ -373,7 +369,7 @@ it('rechaza una equivalencia de una materia consigo misma', function () {
     $administrador = usuarioConRol(Rol::Administrador);
     $carreraDestino = Carrera::factory()->create();
     $carreraOrigen = Carrera::factory()->create();
-    $materia = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $materia = materiaEnCarrera($carreraDestino);
 
     $this->actingAs($administrador)
         ->post(route('admin.equivalencias.store'), [
@@ -403,8 +399,8 @@ it('impide que un estudiante registre equivalencias', function () {
     $estudiante = usuarioConRol(Rol::Estudiante);
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
 
     $this->actingAs($estudiante)
         ->post(route('admin.equivalencias.store'), [
@@ -422,8 +418,8 @@ it('exige elegir la carrera antes de las materias', function () {
     $administrador = usuarioConRol(Rol::Administrador);
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
 
     $this->actingAs($administrador)
         ->post(route('admin.equivalencias.store'), [
@@ -440,8 +436,8 @@ it('rechaza una materia que no pertenece a la carrera seleccionada', function ()
     $carreraDestino = Carrera::factory()->create();
     $carreraOrigen = Carrera::factory()->create();
     $otraCarrera = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $otraCarrera->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($otraCarrera);
 
     $this->actingAs($administrador)
         ->post(route('admin.equivalencias.store'), [
@@ -450,17 +446,43 @@ it('rechaza una materia que no pertenece a la carrera seleccionada', function ()
             'materia_id' => $destino->id,
             'equivalente_id' => $origen->id,
         ])
-        ->assertSessionHasErrors(['materia_id' => 'La materia destino debe pertenecer a la carrera destino seleccionada.']);
+        ->assertSessionHasErrors(['materia_id' => 'La materia destino debe pertenecer a un plan de la carrera destino seleccionada.']);
 
     expect(MateriaEquivalencia::count())->toBe(0);
+});
+
+it('acepta una materia destino compartida por varias carreras', function () {
+    $administrador = usuarioConRol(Rol::Administrador);
+    $carreraOrigen = Carrera::factory()->create();
+    $carreraDestino = Carrera::factory()->create();
+    $otraCarrera = Carrera::factory()->create();
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
+    PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id])
+        ->vincularMateria($destino, 3, 2);
+
+    $this->actingAs($administrador)
+        ->post(route('admin.equivalencias.store'), [
+            'carrera_destino_id' => $carreraDestino->id,
+            'carrera_origen_id' => $carreraOrigen->id,
+            'materia_id' => $destino->id,
+            'equivalente_id' => $origen->id,
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.equivalencias.index'));
+
+    $this->assertDatabaseHas('materia_equivalencias', [
+        'materia_id' => $destino->id,
+        'equivalente_id' => $origen->id,
+    ]);
 });
 
 it('registra la equivalencia inversa cuando se solicita bilateral', function () {
     $administrador = usuarioConRol(Rol::Administrador);
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
 
     $this->actingAs($administrador)
         ->post(route('admin.equivalencias.store'), [
@@ -488,8 +510,8 @@ it('rechaza una equivalencia bilateral cuya inversa ya existe', function () {
     $administrador = usuarioConRol(Rol::Administrador);
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
-    $origen = Materia::factory()->create(['carrera_id' => $carreraOrigen->id]);
-    $destino = Materia::factory()->create(['carrera_id' => $carreraDestino->id]);
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
     MateriaEquivalencia::create([
         'materia_id' => $origen->id,
         'equivalente_id' => $destino->id,
@@ -506,4 +528,76 @@ it('rechaza una equivalencia bilateral cuya inversa ya existe', function () {
         ->assertSessionHasErrors(['equivalente_id' => 'La equivalencia inversa ya está registrada.']);
 
     expect(MateriaEquivalencia::count())->toBe(1);
+});
+
+it('aplica la convalidación con el plan principal cuando la materia destino es compartida', function () {
+    $carreraOrigen = Carrera::factory()->create();
+    $carreraDestino = Carrera::factory()->create();
+    $carreraSecundaria = Carrera::factory()->create();
+
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino, ['creditos' => 5]);
+    $planSecundario = PlanEstudio::factory()->create(['carrera_id' => $carreraSecundaria->id]);
+    $planSecundario->vincularMateria($destino, 2, 3);
+
+    MateriaEquivalencia::create([
+        'materia_id' => $destino->id,
+        'equivalente_id' => $origen->id,
+    ]);
+
+    $cursoOrigen = cursoDeMateria($origen);
+    $cursoDestino = cursoDeMateria($destino);
+    $estudiante = estudianteMatriculado($cursoDestino, $cursoOrigen);
+
+    Matricula::factory()->create([
+        'user_id' => $estudiante->id,
+        'carrera_id' => $carreraSecundaria->id,
+        'plan_estudio_id' => $planSecundario->id,
+    ]);
+
+    Inscripcion::factory()->create([
+        'curso_id' => $cursoOrigen->id,
+        'user_id' => $estudiante->id,
+        'nota_final' => 88,
+    ]);
+
+    $convalidacion = app(ConvalidacionService::class)->paraEstudiante($estudiante)->first();
+
+    expect($convalidacion)->not->toBeNull()
+        ->and($convalidacion->creditos)->toBe(5)
+        ->and($convalidacion->carreraDestino->id)->toBe($carreraDestino->id);
+});
+
+it('filtra el historial por la carrera destino de la convalidación', function () {
+    $carreraOrigen = Carrera::factory()->create();
+    $carreraDestino = Carrera::factory()->create();
+
+    $origen = materiaEnCarrera($carreraOrigen);
+    $destino = materiaEnCarrera($carreraDestino);
+    MateriaEquivalencia::create([
+        'materia_id' => $destino->id,
+        'equivalente_id' => $origen->id,
+    ]);
+
+    $cursoOrigen = cursoDeMateria($origen);
+    $cursoDestino = cursoDeMateria($destino);
+    $estudiante = estudianteMatriculado($cursoOrigen, $cursoDestino);
+    Inscripcion::factory()->create([
+        'curso_id' => $cursoOrigen->id,
+        'user_id' => $estudiante->id,
+        'nota_final' => 90,
+    ]);
+
+    $filasDestino = collect((new HistorialAcademicoReporte(
+        $estudiante,
+        new FiltrosReporte(carreraId: $carreraDestino->id),
+    ))->filas())->filter(fn (array $fila) => $fila[5] === 'Convalidada');
+
+    $filasOrigen = collect((new HistorialAcademicoReporte(
+        $estudiante,
+        new FiltrosReporte(carreraId: $carreraOrigen->id),
+    ))->filas())->filter(fn (array $fila) => $fila[5] === 'Convalidada');
+
+    expect($filasDestino)->toHaveCount(1)
+        ->and($filasOrigen)->toBeEmpty();
 });

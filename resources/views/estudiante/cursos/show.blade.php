@@ -19,8 +19,10 @@
                     <p class="mt-1 font-mono font-medium text-slate-900">{{ $curso->materia?->codigo ?? '—' }}</p>
                 </div>
                 <div>
-                    <p class="text-slate-500">{{ __('Carrera') }}</p>
-                    <p class="mt-1 font-medium text-slate-900">{{ $curso->carrera->nombre }}</p>
+                    <p class="text-slate-500">{{ __('Carreras participantes') }}</p>
+                    <p class="mt-1 font-medium text-slate-900">
+                        {{ $curso->planesEstudio->pluck('carrera.nombre')->filter()->unique()->implode(', ') ?: $curso->carrera->nombre }}
+                    </p>
                 </div>
                 <div>
                     <p class="text-slate-500">{{ __('Periodo') }}</p>

@@ -7,6 +7,7 @@ use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Materia;
 use App\Models\Periodo;
+use App\Models\PlanEstudio;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -32,11 +33,39 @@ class CursoFactory extends Factory
         ];
     }
 
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Curso $curso): void {
+            if ($curso->plan_estudio_id === null) {
+                $plan = PlanEstudio::factory()->create(['carrera_id' => $curso->carrera_id]);
+
+                if ($curso->materia_id !== null) {
+                    $plan->vincularMateria(
+                        Materia::findOrFail($curso->materia_id),
+                        $curso->semestre,
+                        $curso->creditos,
+                    );
+                }
+
+                $curso->update(['plan_estudio_id' => $plan->id]);
+            }
+
+            $curso->planesEstudio()->syncWithoutDetaching([$curso->plan_estudio_id]);
+        });
+    }
+
     public function conMateria(Materia $materia): static
     {
-        return $this->state(fn (array $atributos) => [
-            'carrera_id' => $materia->carrera_id,
+        $carreraId = $materia->planesEstudio()->first()
+            ?->carrera_id
+            ?? Carrera::factory()->create()->id;
+        $planId = $materia->planesEstudio()->first()?->id;
+
+        return $this->state(fn () => [
+            'carrera_id' => $carreraId,
+            'plan_estudio_id' => $planId,
             'materia_id' => $materia->id,
+            'nombre' => $materia->nombre,
         ]);
     }
 }

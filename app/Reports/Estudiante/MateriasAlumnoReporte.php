@@ -46,16 +46,24 @@ class MateriasAlumnoReporte implements Reporte
     public function filas(): array
     {
         return $this->inscripcionesFiltradas()
-            ->with(['curso.carrera', 'curso.docente', 'curso.materia', 'curso.periodo', 'curso.horarios'])
+            ->with([
+                'curso.carrera',
+                'curso.docente',
+                'curso.materia',
+                'curso.periodo',
+                'curso.horarios',
+                'planEstudio.carrera',
+                'planEstudio.materias',
+            ])
             ->get()
             ->sortBy(fn (Inscripcion $inscripcion) => $inscripcion->curso->nombre)
             ->map(fn (Inscripcion $inscripcion) => [
                 $inscripcion->curso->materia?->codigo ?? '—',
                 $inscripcion->curso->nombre,
-                $inscripcion->curso->carrera->nombre,
+                $inscripcion->planEstudio?->carrera?->nombre ?? $inscripcion->curso->carrera->nombre,
                 $inscripcion->curso->docente?->name ?? 'Sin asignar',
                 $inscripcion->curso->periodo->nombre,
-                $inscripcion->curso->creditos,
+                $inscripcion->creditosSegunPlan(),
                 $inscripcion->curso->horarios
                     ->map(fn ($horario) => $horario->descripcion)
                     ->implode('; ') ?: 'Sin horario',
@@ -67,13 +75,15 @@ class MateriasAlumnoReporte implements Reporte
 
     public function contexto(): array
     {
-        $inscripciones = $this->inscripcionesFiltradas()->with('curso')->get();
+        $inscripciones = $this->inscripcionesFiltradas()
+            ->with(['curso', 'planEstudio.materias'])
+            ->get();
 
         return array_merge($this->filtros->contexto(), [
             'Estudiante' => $this->estudiante->name,
             'CI' => $this->estudiante->ci ?? '—',
             'Materias inscritas' => (string) $inscripciones->count(),
-            'Créditos' => (string) $inscripciones->sum(fn (Inscripcion $i) => $i->curso->creditos),
+            'Créditos' => (string) $inscripciones->sum(fn (Inscripcion $inscripcion) => $inscripcion->creditosSegunPlan()),
         ]);
     }
 

@@ -3,6 +3,8 @@
 use App\Enums\Rol;
 use App\Models\Carrera;
 use App\Models\Curso;
+use App\Models\Facultad;
+use App\Models\Matricula;
 use App\Models\PlanEstudio;
 use Database\Seeders\RolSeeder;
 
@@ -19,28 +21,101 @@ it('permite al administrador listar las carreras', function () {
         ->assertSee('Carreras');
 });
 
-it('permite crear una carrera', function () {
+it('permite crear una carrera con una facultad del catálogo', function () {
+    $facultad = Facultad::factory()->create(['nombre' => 'Facultad de Ingeniería']);
+
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/carreras', [
             'codigo' => 'SIS',
             'nombre' => 'Ingeniería de Sistemas',
-            'facultad' => 'Facultad de Ingeniería',
+            'facultad_id' => $facultad->id,
             'activo' => '1',
         ])
         ->assertRedirect('/admin/carreras');
 
-    expect(Carrera::where('codigo', 'SIS')->where('activo', true)->exists())->toBeTrue();
+    $carrera = Carrera::where('codigo', 'SIS')->firstOrFail();
+
+    expect($carrera->activo)->toBeTrue()
+        ->and($carrera->facultad_id)->toBe($facultad->id)
+        ->and($carrera->facultad->nombre)->toBe('Facultad de Ingeniería');
+});
+
+it('muestra las facultades registradas en el formulario de carreras', function () {
+    Facultad::factory()->create(['nombre' => 'Facultad de Ciencias Humanas']);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/carreras/create')
+        ->assertOk()
+        ->assertSee('name="facultad_id"', false)
+        ->assertSee('Facultad de Ciencias Humanas');
+});
+
+it('rechaza una carrera con una facultad inexistente', function () {
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->post('/admin/carreras', [
+            'codigo' => 'SIS',
+            'nombre' => 'Ingeniería de Sistemas',
+            'facultad_id' => 999999,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors('facultad_id');
+
+    expect(Carrera::where('codigo', 'SIS')->exists())->toBeFalse();
+});
+
+it('mantiene el estado inactivo al corregir errores del formulario', function () {
+    $facultad = Facultad::factory()->create();
+    Carrera::factory()->create(['codigo' => 'SIS']);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->from('/admin/carreras/create')
+        ->post('/admin/carreras', [
+            'codigo' => 'SIS',
+            'nombre' => 'Carrera duplicada',
+            'facultad_id' => $facultad->id,
+            'activo' => '0',
+        ])
+        ->assertRedirect('/admin/carreras/create');
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/carreras/create')
+        ->assertOk()
+        ->assertSee('<input type="hidden" name="activo" value="0">', false)
+        ->assertDontSee('checked', false);
 });
 
 it('rechaza un código de carrera duplicado', function () {
+    $facultad = Facultad::factory()->create();
     Carrera::factory()->create(['codigo' => 'SIS']);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/carreras', [
             'codigo' => 'SIS',
             'nombre' => 'Otra carrera',
+            'facultad_id' => $facultad->id,
         ])
         ->assertSessionHasErrors('codigo');
+});
+
+it('permite actualizar una carrera y desactivarla', function () {
+    $facultad = Facultad::factory()->create(['nombre' => 'Facultad de Ingeniería actualizada']);
+    $carrera = Carrera::factory()->create(['activo' => true]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->put("/admin/carreras/{$carrera->id}", [
+            'codigo' => 'SIS',
+            'nombre' => 'Ingeniería de Sistemas actualizada',
+            'facultad_id' => $facultad->id,
+            'activo' => '0',
+        ])
+        ->assertRedirect('/admin/carreras');
+
+    $carrera->refresh();
+
+    expect($carrera->codigo)->toBe('SIS')
+        ->and($carrera->nombre)->toBe('Ingeniería de Sistemas actualizada')
+        ->and($carrera->facultad_id)->toBe($facultad->id)
+        ->and($carrera->activo)->toBeFalse();
 });
 
 it('impide que un docente gestione carreras', function () {
@@ -67,6 +142,17 @@ it('no elimina una carrera que tiene planes de estudio', function () {
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->delete("/admin/carreras/{$carrera->id}")
         ->assertSessionHasErrors('carrera');
+
+    expect(Carrera::find($carrera->id))->not->toBeNull();
+});
+
+it('no elimina una carrera que tiene matrículas', function () {
+    $carrera = Carrera::factory()->create();
+    Matricula::factory()->create(['carrera_id' => $carrera->id]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->delete("/admin/carreras/{$carrera->id}")
+        ->assertSessionHasErrors(['carrera' => 'No se puede eliminar una carrera que tiene matrículas registradas.']);
 
     expect(Carrera::find($carrera->id))->not->toBeNull();
 });

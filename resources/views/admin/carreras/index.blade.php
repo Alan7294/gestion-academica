@@ -32,7 +32,7 @@
                             <tr>
                                 <td class="px-6 py-4 font-mono text-slate-700">{{ $carrera->codigo }}</td>
                                 <td class="px-6 py-4 text-slate-900">{{ $carrera->nombre }}</td>
-                                <td class="px-6 py-4 text-slate-600">{{ $carrera->facultad ?? '—' }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $carrera->facultad?->nombre ?? '—' }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $carrera->cursos_count }}</td>
                                 <td class="px-6 py-4">
                                     <a href="{{ route('admin.planes.index', ['carrera_id' => $carrera->id]) }}"

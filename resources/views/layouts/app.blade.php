@@ -76,6 +76,9 @@
                             <x-sidebar-link :href="route('admin.usuarios.index')" :active="request()->routeIs('admin.usuarios.*')" icon="users">
                                 {{ __('Usuarios') }}
                             </x-sidebar-link>
+                            <x-sidebar-link :href="route('admin.facultades.index')" :active="request()->routeIs('admin.facultades.*')" icon="academic-cap">
+                                {{ __('Facultades') }}
+                            </x-sidebar-link>
                             <x-sidebar-link :href="route('admin.carreras.index')" :active="request()->routeIs('admin.carreras.*')" icon="academic-cap">
                                 {{ __('Carreras') }}
                             </x-sidebar-link>

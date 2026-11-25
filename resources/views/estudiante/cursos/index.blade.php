@@ -66,7 +66,10 @@
                         </div>
 
                         <dl class="mt-3 space-y-1 text-sm text-slate-600">
-                            <div>{{ $curso->carrera->nombre }}</div>
+                            <div>
+                                {{ __('Carreras') }}:
+                                {{ $curso->planesEstudio->pluck('carrera.nombre')->filter()->unique()->implode(', ') ?: $curso->carrera->nombre }}
+                            </div>
                             <div>{{ __('Docente') }}: {{ $curso->docente?->name ?? __('Por asignar') }}</div>
                             <div>{{ __('Créditos') }}: {{ $curso->creditos }}</div>
                             <div>

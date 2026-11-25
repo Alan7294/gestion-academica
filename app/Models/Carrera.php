@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
-#[Fillable(['codigo', 'nombre', 'facultad', 'activo'])]
+#[Fillable(['codigo', 'nombre', 'facultad_id', 'activo'])]
 class Carrera extends Model
 {
     use HasFactory;
@@ -18,6 +19,11 @@ class Carrera extends Model
         return [
             'activo' => 'boolean',
         ];
+    }
+
+    public function facultad(): BelongsTo
+    {
+        return $this->belongsTo(Facultad::class);
     }
 
     public function cursos(): HasMany

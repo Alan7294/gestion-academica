@@ -48,7 +48,7 @@ class HistorialAcademicoReporte implements Reporte
     {
         $inscripciones = Inscripcion::query()
             ->where('user_id', $this->estudiante->id)
-            ->with(['curso.periodo', 'curso.docente', 'curso.materia']);
+            ->with(['curso.periodo', 'curso.docente', 'curso.materia', 'planEstudio.carrera', 'planEstudio.materias']);
 
         $this->filtros->aplicarAInscripciones($inscripciones);
 
@@ -59,7 +59,7 @@ class HistorialAcademicoReporte implements Reporte
                 $inscripcion->curso->materia?->codigo ?? '—',
                 $inscripcion->curso->nombre,
                 $inscripcion->curso->docente?->name ?? 'Sin asignar',
-                $inscripcion->curso->creditos,
+                $inscripcion->creditosSegunPlan(),
                 $inscripcion->estado->etiqueta(),
                 $inscripcion->nota_final === null ? '—' : number_format((float) $inscripcion->nota_final, 2),
                 $this->resultado($inscripcion->nota_final),
@@ -70,7 +70,7 @@ class HistorialAcademicoReporte implements Reporte
         $convalidaciones = $this->convalidaciones->paraEstudiante($this->estudiante);
 
         foreach ($convalidaciones as $convalidacion) {
-            if ($this->filtros->carreraId !== null && $convalidacion->materia->carrera_id !== $this->filtros->carreraId) {
+            if ($this->filtros->carreraId !== null && $convalidacion->carreraDestino?->id !== $this->filtros->carreraId) {
                 continue;
             }
 

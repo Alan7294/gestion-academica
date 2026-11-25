@@ -6,7 +6,6 @@ use App\Enums\Rol;
 use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Inscripcion;
-use App\Models\Materia;
 use App\Models\Periodo;
 use App\Services\MatriculaService;
 use Database\Seeders\RolSeeder;
@@ -22,10 +21,7 @@ beforeEach(function () {
  */
 function cursoDeCarrera(Carrera $carrera, string $codigo, array $atributos = []): Curso
 {
-    $materia = Materia::factory()->create([
-        'carrera_id' => $carrera->id,
-        'codigo' => $codigo,
-    ]);
+    $materia = materiaEnCarrera($carrera, ['codigo' => $codigo]);
 
     $periodoId = $atributos['periodo_id'] ?? Periodo::factory()->vigente()->create()->id;
 
@@ -104,6 +100,7 @@ it('muestra solo los cursos de las carreras con matrícula activa en el catálog
 
     $estudiante->matriculas()->create([
         'carrera_id' => $carreraB->id,
+        'plan_estudio_id' => $cursoB->planesEstudio()->first()->id,
         'estado' => EstadoMatricula::Activa,
         'es_principal' => false,
         'modalidad' => Modalidad::Semestral,

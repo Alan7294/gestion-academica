@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Carrera;
+use App\Models\Facultad;
 use Illuminate\Database\Seeder;
 
 class CarreraSeeder extends Seeder
@@ -16,7 +17,13 @@ class CarreraSeeder extends Seeder
         ];
 
         foreach ($carreras as $carrera) {
-            Carrera::firstOrCreate(['codigo' => $carrera['codigo']], $carrera + ['activo' => true]);
+            $facultad = Facultad::where('nombre', $carrera['facultad'])->firstOrFail();
+
+            Carrera::firstOrCreate(['codigo' => $carrera['codigo']], [
+                'nombre' => $carrera['nombre'],
+                'facultad_id' => $facultad->id,
+                'activo' => true,
+            ]);
         }
     }
 }

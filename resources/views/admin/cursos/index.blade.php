@@ -23,7 +23,7 @@
                 </div>
 
                 <div>
-                    <x-input-label for="carrera_id" :value="__('Carrera')" />
+                    <x-input-label for="carrera_id" :value="__('Carrera anfitriona')" />
                     <select id="carrera_id" name="carrera_id" class="mt-1 block w-full border-slate-300 rounded-md shadow-sm text-sm">
                         <option value="">{{ __('Todas') }}</option>
                         @foreach ($carreras as $carrera)

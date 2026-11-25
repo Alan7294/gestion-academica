@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCarreraRequest;
 use App\Models\Carrera;
+use App\Models\Facultad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -13,13 +14,16 @@ class CarreraController extends Controller
     public function index(): View
     {
         return view('admin.carreras.index', [
-            'carreras' => Carrera::withCount(['cursos', 'planesEstudio'])->orderBy('nombre')->paginate(10),
+            'carreras' => Carrera::with('facultad')
+                ->withCount(['cursos', 'planesEstudio'])
+                ->orderBy('nombre')
+                ->paginate(10),
         ]);
     }
 
     public function create(): View
     {
-        return view('admin.carreras.create');
+        return view('admin.carreras.create', $this->opciones());
     }
 
     public function store(StoreCarreraRequest $request): RedirectResponse
@@ -33,7 +37,7 @@ class CarreraController extends Controller
 
     public function edit(Carrera $carrera): View
     {
-        return view('admin.carreras.edit', ['carrera' => $carrera]);
+        return view('admin.carreras.edit', ['carrera' => $carrera] + $this->opciones());
     }
 
     public function update(StoreCarreraRequest $request, Carrera $carrera): RedirectResponse
@@ -59,6 +63,12 @@ class CarreraController extends Controller
             ]);
         }
 
+        if ($carrera->matriculas()->exists()) {
+            return back()->withErrors([
+                'carrera' => 'No se puede eliminar una carrera que tiene matrículas registradas.',
+            ]);
+        }
+
         $carrera->delete();
 
         return redirect()
@@ -69,12 +79,22 @@ class CarreraController extends Controller
     /**
      * @return array<string, mixed>
      */
+    private function opciones(): array
+    {
+        return [
+            'facultades' => Facultad::orderBy('nombre')->get(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function datos(StoreCarreraRequest $request): array
     {
         return [
             'codigo' => $request->validated('codigo'),
             'nombre' => $request->validated('nombre'),
-            'facultad' => $request->validated('facultad'),
+            'facultad_id' => $request->validated('facultad_id'),
             'activo' => $request->boolean('activo'),
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Carrera;
 use App\Models\Materia;
 use Illuminate\Support\Carbon;
 
@@ -13,6 +14,8 @@ final readonly class Convalidacion
     public function __construct(
         public Materia $materia,
         public Materia $equivalente,
+        public ?Carrera $carreraDestino,
+        public ?Carrera $carreraOrigen,
         public float $nota,
         public Carbon $fecha,
         public ?int $creditos,
@@ -20,6 +23,8 @@ final readonly class Convalidacion
 
     public function origen(): string
     {
-        return "{$this->equivalente->codigo} - {$this->equivalente->nombre} ({$this->equivalente->carrera->nombre})";
+        $carrera = $this->carreraOrigen?->nombre ?? '—';
+
+        return "{$this->equivalente->codigo} - {$this->equivalente->nombre} ({$carrera})";
     }
 }

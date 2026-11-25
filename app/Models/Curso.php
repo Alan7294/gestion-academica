@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -52,6 +53,15 @@ class Curso extends Model
     public function planEstudio(): BelongsTo
     {
         return $this->belongsTo(PlanEstudio::class);
+    }
+
+    /**
+     * Planes habilitados para inscribirse en este curso. Todos comparten el mismo cupo.
+     */
+    public function planesEstudio(): BelongsToMany
+    {
+        return $this->belongsToMany(PlanEstudio::class, 'curso_plan_estudio')
+            ->withTimestamps();
     }
 
     public function materia(): BelongsTo
@@ -139,6 +149,22 @@ class Curso extends Model
     public function estaInscrito(User $estudiante): bool
     {
         return $this->alumnosInscritos()->where('user_id', $estudiante->id)->exists();
+    }
+
+    /**
+     * Devuelve la matrícula activa cuyo plan está autorizado en el curso.
+     * Si hay varias, gana la matrícula principal para no mezclar planes distintos.
+     */
+    public function matriculaAutorizadaPara(User $estudiante): ?Matricula
+    {
+        return $estudiante->matriculas()
+            ->activas()
+            ->whereNotNull('plan_estudio_id')
+            ->orderByDesc('es_principal')
+            ->orderBy('id')
+            ->get()
+            ->first(fn (Matricula $matricula) => $this->planesEstudio
+                ->contains('id', $matricula->plan_estudio_id));
     }
 
     public function scopeActivo(Builder $query): void

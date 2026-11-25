@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EstadoMatricula;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\Carrera;
@@ -53,6 +54,50 @@ it('permite al estudiante inscribirse en un curso disponible', function () {
         ->assertRedirect('/estudiante/inscripciones');
 
     expect(Inscripcion::where('user_id', $estudiante->id)->where('curso_id', $curso->id)->exists())->toBeTrue();
+});
+
+it('permite a un estudiante de otra carrera inscribirse en un curso compartido', function () {
+    $carreraAnfitriona = Carrera::factory()->create();
+    $carreraCompartida = Carrera::factory()->create();
+    $planAnfitrion = PlanEstudio::factory()->create([
+        'carrera_id' => $carreraAnfitriona->id,
+        'modalidad' => Modalidad::Semestral,
+        'activo' => false,
+    ]);
+    $planCompartido = PlanEstudio::factory()->create([
+        'carrera_id' => $carreraCompartida->id,
+        'modalidad' => Modalidad::Semestral,
+        'activo' => false,
+    ]);
+
+    $materia = Materia::factory()->create(['codigo' => 'COM-101', 'nombre' => 'Materia compartida']);
+    $planAnfitrion->vincularMateria($materia, 2, 5);
+    $planCompartido->vincularMateria($materia, 3, 3);
+
+    $curso = cursoDisponible(['creditos' => 5, 'semestre' => 2], $materia);
+    $curso->planesEstudio()->sync([$planAnfitrion->id, $planCompartido->id]);
+
+    $estudiante = usuarioConRol(Rol::Estudiante);
+    $estudiante->matriculas()->create([
+        'carrera_id' => $carreraCompartida->id,
+        'plan_estudio_id' => $planCompartido->id,
+        'estado' => EstadoMatricula::Activa,
+        'es_principal' => true,
+        'modalidad' => Modalidad::Semestral,
+        'fecha_inicio' => now()->toDateString(),
+    ]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertRedirect('/estudiante/inscripciones');
+
+    $inscripcion = Inscripcion::where('user_id', $estudiante->id)
+        ->where('curso_id', $curso->id)
+        ->firstOrFail();
+
+    expect($inscripcion->plan_estudio_id)->toBe($planCompartido->id)
+        ->and($inscripcion->creditosSegunPlan())->toBe(3)
+        ->and((int) $curso->creditos)->toBe(5);
 });
 
 it('impide inscribirse dos veces al mismo curso', function () {
@@ -397,11 +442,12 @@ it('valida los requisitos según el plan asignado al estudiante', function () {
     $planFlexible = PlanEstudio::factory()->create([
         'carrera_id' => $carrera->id,
         'nombre' => 'Plan flexible',
-        'modalidad' => Modalidad::Modular,
+        'modalidad' => Modalidad::Semestral,
+        'activo' => false,
     ]);
 
-    $previa = Materia::factory()->create(['carrera_id' => $carrera->id, 'codigo' => 'PRE-101', 'nombre' => 'Previa']);
-    $posterior = Materia::factory()->create(['carrera_id' => $carrera->id, 'codigo' => 'POS-201', 'nombre' => 'Posterior']);
+    $previa = Materia::factory()->create(['codigo' => 'PRE-101', 'nombre' => 'Previa']);
+    $posterior = Materia::factory()->create(['codigo' => 'POS-201', 'nombre' => 'Posterior']);
 
     foreach ([$planExigente, $planFlexible] as $plan) {
         $plan->vincularMateria($previa, 1, 4);
@@ -412,6 +458,7 @@ it('valida los requisitos según el plan asignado al estudiante', function () {
     $posterior->requisitosDelPlan($planExigente)->attach($previa);
 
     $curso = cursoDisponible(['carrera_id' => $carrera->id], $posterior);
+    $curso->planesEstudio()->sync([$planExigente->id, $planFlexible->id]);
 
     $estudianteExigente = estudianteMatriculado($curso);
     $estudianteExigente->matriculas()
@@ -450,7 +497,7 @@ it('bloquea la inscripción si la matrícula no tiene plan asignado', function (
     expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
 });
 
-it('bloquea la inscripción si el plan asignado pertenece a otra carrera', function () {
+it('bloquea la inscripción si el plan asignado no está habilitado en el curso', function () {
     $curso = cursoDisponible();
     $estudiante = estudianteMatriculado($curso);
     $planAjeno = PlanEstudio::factory()->create(['carrera_id' => Carrera::factory()->create()->id]);
@@ -460,31 +507,33 @@ it('bloquea la inscripción si el plan asignado pertenece a otra carrera', funct
 
     $this->actingAs($estudiante)
         ->post("/estudiante/cursos/{$curso->id}/inscribirse")
-        ->assertSessionHasErrors(['curso' => 'El plan asignado a tu matrícula no corresponde a la carrera de este curso. Solicita al administrador que lo corrija antes de inscribirte.']);
+        ->assertSessionHasErrors(['curso' => 'Tu plan de estudios no está habilitado para este curso.']);
 
     expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
 });
 
-it('no usa un plan alternativo cuando el asignado no incluye la materia', function () {
+it('no usa un plan alternativo cuando el asignado no está habilitado en el curso', function () {
     $carrera = Carrera::factory()->create();
     $planAsignado = PlanEstudio::factory()->create([
         'carrera_id' => $carrera->id,
         'modalidad' => Modalidad::Semestral,
     ]);
-    $planExigente = PlanEstudio::factory()->create([
+    $planHabilitado = PlanEstudio::factory()->create([
         'carrera_id' => $carrera->id,
-        'modalidad' => Modalidad::Modular,
+        'modalidad' => Modalidad::Semestral,
+        'activo' => false,
     ]);
 
-    $previa = materiaEnPlan($planExigente, [
+    $previa = materiaEnPlan($planHabilitado, [
         'codigo' => 'PRE-101', 'nombre' => 'Previa', 'semestre' => 1, 'creditos' => 4,
     ]);
-    $posterior = materiaEnPlan($planExigente, [
+    $posterior = materiaEnPlan($planHabilitado, [
         'codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4,
     ]);
-    $posterior->requisitosDelPlan($planExigente)->attach($previa);
+    $posterior->requisitosDelPlan($planHabilitado)->attach($previa);
 
     $curso = cursoDisponible(['carrera_id' => $carrera->id], $posterior);
+    $curso->planesEstudio()->syncWithoutDetaching([$planHabilitado->id]);
     $estudiante = estudianteMatriculado($curso);
     $estudiante->matriculas()
         ->where('carrera_id', $carrera->id)
@@ -492,7 +541,7 @@ it('no usa un plan alternativo cuando el asignado no incluye la materia', functi
 
     $this->actingAs($estudiante)
         ->post("/estudiante/cursos/{$curso->id}/inscribirse")
-        ->assertSessionHasErrors(['curso' => 'El plan de estudios asignado a tu matrícula no incluye esta materia. Solicita al administrador que revise el plan antes de inscribirte.']);
+        ->assertSessionHasErrors(['curso' => 'Tu plan de estudios no está habilitado para este curso.']);
 
     expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
 });

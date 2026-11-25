@@ -1,20 +1,9 @@
 @php($materia = $materia ?? null)
 
 <div class="space-y-6">
-    <div>
-        <x-input-label for="carrera_id" :value="__('Carrera')" />
-        <select id="carrera_id" name="carrera_id" required
-                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm">
-            <option value="" disabled @selected(! old('carrera_id', $materia?->carrera_id))>{{ __('Seleccione una carrera') }}</option>
-            @foreach ($carreras as $carrera)
-                <option value="{{ $carrera->id }}" @selected(old('carrera_id', $materia?->carrera_id) == $carrera->id)>
-                    {{ $carrera->nombre }}
-                </option>
-            @endforeach
-        </select>
-        <p class="mt-1 text-xs text-slate-500">{{ __('La materia podrá usarse en los planes y cursos de esta carrera.') }}</p>
-        <x-input-error class="mt-2" :messages="$errors->get('carrera_id')" />
-    </div>
+    <p class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        {{ __('La materia se registra en el catálogo general. Se usa en los planes de estudio que la incluyan, incluso en carreras distintas.') }}
+    </p>
 
     <div>
         <x-input-label for="codigo" :value="__('Código')" />

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CarreraController;
 use App\Http\Controllers\Admin\CursoController;
 use App\Http\Controllers\Admin\EquivalenciaController;
+use App\Http\Controllers\Admin\FacultadController;
 use App\Http\Controllers\Admin\HorarioController;
 use App\Http\Controllers\Admin\MateriaController;
 use App\Http\Controllers\Admin\PeriodoController;
@@ -47,6 +48,9 @@ Route::middleware(['auth', 'role:administrador'])
         Route::get('reportes/materias-por-carrera/{formato}', [ReporteAdminController::class, 'materiasPorCarrera'])
             ->name('reportes.materias');
 
+        Route::resource('facultades', FacultadController::class)
+            ->parameters(['facultades' => 'facultad'])
+            ->except('show');
         Route::resource('carreras', CarreraController::class)->except('show');
 
         Route::get('materias/catalogo', [MateriaController::class, 'catalogo'])->name('materias.catalogo');

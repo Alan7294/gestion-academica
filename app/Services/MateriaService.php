@@ -8,7 +8,7 @@ use Illuminate\Validation\ValidationException;
 class MateriaService
 {
     /**
-     * @param  array{carrera_id: int, codigo: string, nombre: string}  $datos
+     * @param  array{codigo: string, nombre: string}  $datos
      */
     public function crear(array $datos): Materia
     {
@@ -16,7 +16,7 @@ class MateriaService
     }
 
     /**
-     * @param  array{carrera_id: int, codigo: string, nombre: string}  $datos
+     * @param  array{codigo: string, nombre: string}  $datos
      */
     public function actualizar(Materia $materia, array $datos): Materia
     {

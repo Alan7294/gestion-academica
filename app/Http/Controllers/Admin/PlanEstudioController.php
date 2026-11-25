@@ -84,7 +84,7 @@ class PlanEstudioController extends Controller
     {
         $this->cargarPlanConRequisitos($planEstudio);
 
-        return view('admin.planes.edit', ['plan' => $planEstudio] + $this->opciones($planEstudio));
+        return view('admin.planes.edit', ['plan' => $planEstudio] + $this->opciones());
     }
 
     public function update(StorePlanEstudioRequest $request, PlanEstudio $planEstudio): RedirectResponse
@@ -120,32 +120,26 @@ class PlanEstudioController extends Controller
     }
 
     /**
-     * Opciones del formulario. Solo se carga el catálogo de la carrera elegida;
-     * el resto se consulta al cambiar de carrera para no traer todo el catálogo.
+     * Opciones del formulario. El catálogo es compartido: no depende de la
+     * carrera elegida, porque una materia puede estar en planes de varias.
      *
      * @return array<string, mixed>
      */
-    private function opciones(?PlanEstudio $plan = null): array
+    private function opciones(): array
     {
-        $carreraId = (int) old('carrera_id', $plan?->carrera_id ?? 0);
-
         return [
             'carreras' => Carrera::orderBy('nombre')->get(),
             'modalidades' => Modalidad::cases(),
-            'materias' => $carreraId > 0
-                ? Materia::query()
-                    ->where('carrera_id', $carreraId)
-                    ->select(['id', 'carrera_id', 'codigo', 'nombre'])
-                    ->orderBy('codigo')
-                    ->get()
-                    ->map(fn (Materia $materia) => [
-                        'id' => $materia->id,
-                        'carrera_id' => $materia->carrera_id,
-                        'codigo' => $materia->codigo,
-                        'nombre' => $materia->nombre,
-                    ])
-                    ->all()
-                : [],
+            'materias' => Materia::query()
+                ->select(['id', 'codigo', 'nombre'])
+                ->orderBy('codigo')
+                ->get()
+                ->map(fn (Materia $materia) => [
+                    'id' => $materia->id,
+                    'codigo' => $materia->codigo,
+                    'nombre' => $materia->nombre,
+                ])
+                ->all(),
         ];
     }
 

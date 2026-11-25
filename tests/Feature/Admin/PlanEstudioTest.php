@@ -25,11 +25,8 @@ function catalogoParaPlan(Carrera $carrera, array $definiciones): array
 
     foreach ($definiciones as $definicion) {
         $porCodigo[$definicion['codigo']] = Materia::firstOrCreate(
-            [
-                'carrera_id' => $carrera->id,
-                'codigo' => $definicion['codigo'],
-            ],
-            ['nombre' => $definicion['nombre']],
+            ['codigo' => $definicion['codigo']],
+            ['nombre' => $definicion['nombre'], 'carrera_id' => $carrera->id],
         );
     }
 
@@ -155,7 +152,7 @@ it('rechaza una materia ubicada fuera de la duración del plan', function () {
 
 it('rechaza una materia repetida dentro del plan', function () {
     $carrera = Carrera::factory()->create();
-    $materia = Materia::factory()->create(['carrera_id' => $carrera->id]);
+    $materia = Materia::factory()->create();
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/planes', datosPlanEstudio($carrera, [
@@ -167,18 +164,38 @@ it('rechaza una materia repetida dentro del plan', function () {
         ->assertSessionHasErrors('materias.1.id');
 });
 
-it('rechaza materias de otra carrera', function () {
+it('permite incluir en un plan una materia compartida con otra carrera', function () {
     $carrera = Carrera::factory()->create();
     $otraCarrera = Carrera::factory()->create();
-    $materia = Materia::factory()->create(['carrera_id' => $otraCarrera->id]);
+    $materia = materiaEnCarrera($otraCarrera);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/planes', datosPlanEstudio($carrera, [
             'materias' => [['id' => $materia->id, 'semestre' => 1, 'creditos' => 4]],
         ]))
-        ->assertSessionHasErrors('materias.0.id');
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
 
-    expect(PlanEstudio::count())->toBe(0);
+    $plan = PlanEstudio::where('carrera_id', $carrera->id)->firstOrFail();
+
+    expect($plan->materias->pluck('id')->all())->toBe([$materia->id]);
+});
+
+it('conserva semestres y créditos distintos para una misma materia en dos planes', function () {
+    $carrera = Carrera::factory()->create();
+    $otraCarrera = Carrera::factory()->create();
+    $materia = Materia::factory()->create(['codigo' => 'COM-101', 'nombre' => 'Materia compartida']);
+
+    $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id]);
+    $otroPlan = PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id]);
+
+    $plan->vincularMateria($materia, 2, 5);
+    $otroPlan->vincularMateria($materia, 4, 3);
+
+    expect($plan->materias->first()->pivot->semestre)->toBe(2)
+        ->and($plan->materias->first()->pivot->creditos)->toBe(5)
+        ->and($otroPlan->fresh()->materias->first()->pivot->semestre)->toBe(4)
+        ->and($otroPlan->fresh()->materias->first()->pivot->creditos)->toBe(3);
 });
 
 it('rechaza un plan con el mismo nombre dentro de la carrera', function () {
@@ -478,9 +495,9 @@ it('mantiene los requisitos separados por plan aunque compartan materias', funct
         'modalidad' => Modalidad::Modular,
     ]);
 
-    $previa = Materia::factory()->create(['carrera_id' => $carrera->id, 'codigo' => 'PRE-101', 'nombre' => 'Previa']);
-    $otra = Materia::factory()->create(['carrera_id' => $carrera->id, 'codigo' => 'OTR-101', 'nombre' => 'Otra']);
-    $posterior = Materia::factory()->create(['carrera_id' => $carrera->id, 'codigo' => 'POS-201', 'nombre' => 'Posterior']);
+    $previa = Materia::factory()->create(['codigo' => 'PRE-101', 'nombre' => 'Previa']);
+    $otra = Materia::factory()->create(['codigo' => 'OTR-101', 'nombre' => 'Otra']);
+    $posterior = Materia::factory()->create(['codigo' => 'POS-201', 'nombre' => 'Posterior']);
 
     foreach ([$planSemestral, $planModular] as $plan) {
         $plan->vincularMateria($previa, 1, 4);
@@ -595,7 +612,7 @@ it('permite activar un plan cuando el anterior de la misma modalidad está inact
 
 it('rechaza materias con cero créditos', function () {
     $carrera = Carrera::factory()->create();
-    $materia = Materia::factory()->create(['carrera_id' => $carrera->id]);
+    $materia = Materia::factory()->create();
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/planes', datosPlanEstudio($carrera, [

@@ -83,7 +83,7 @@ class PlanEstudioSeeder extends Seeder
 
             foreach ($definicion['materias'] as $materia) {
                 $registro = Materia::firstOrCreate(
-                    ['carrera_id' => $carrera->id, 'codigo' => $materia['codigo']],
+                    ['codigo' => $materia['codigo']],
                     ['nombre' => $materia['nombre']],
                 );
 

@@ -16,13 +16,28 @@ class EquivalenciaController extends Controller
     public function index(): View
     {
         $equivalencias = MateriaEquivalencia::query()
-            ->with(['materia.carrera', 'equivalente.carrera'])
+            ->with([
+                'materia.planesEstudio.carrera',
+                'equivalente.planesEstudio.carrera',
+            ])
             ->orderBy('materia_id')
             ->get();
 
+        $materias = Materia::with('planesEstudio.carrera')->orderBy('codigo')->get();
+
         return view('admin.equivalencias.index', [
             'equivalencias' => $equivalencias,
-            'materias' => Materia::with('carrera')->orderBy('codigo')->get(),
+            'materias' => $materias,
+            'carrerasPorMateria' => $materias
+                ->mapWithKeys(fn (Materia $materia) => [
+                    $materia->id => $materia->planesEstudio
+                        ->pluck('carrera.id')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->all(),
+                ])
+                ->all(),
             'carreras' => Carrera::orderBy('nombre')->get(),
         ]);
     }

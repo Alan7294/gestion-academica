@@ -46,6 +46,7 @@ class CursoController extends Controller
     public function store(StoreCursoRequest $request): RedirectResponse
     {
         $datos = $this->datos($request);
+        $planesIds = $this->planesIds($request);
         $horario = $request->safe()->only([
             'modalidad',
             'horarios',
@@ -56,8 +57,9 @@ class CursoController extends Controller
         ]);
 
         // Curso y horario inicial se guardan juntos: si una sesión choca, no queda el curso creado.
-        $curso = DB::transaction(function () use ($datos, $horario): Curso {
+        $curso = DB::transaction(function () use ($datos, $planesIds, $horario): Curso {
             $curso = $this->cursos->crear($datos);
+            $curso->planesEstudio()->sync($planesIds);
             $this->horarios->registrarInicial($curso, $horario);
 
             return $curso;
@@ -70,7 +72,7 @@ class CursoController extends Controller
 
     public function show(Curso $curso): View
     {
-        $curso->load(['carrera', 'planEstudio', 'materia.carrera', 'periodo', 'docente', 'horarios']);
+        $curso->load(['carrera', 'planEstudio', 'planesEstudio.carrera', 'materia', 'periodo', 'docente', 'horarios']);
 
         return view('admin.cursos.show', [
             'curso' => $curso,
@@ -80,16 +82,22 @@ class CursoController extends Controller
 
     public function edit(Curso $curso): View
     {
+        $curso->load('planesEstudio');
+
         return view('admin.cursos.edit', ['curso' => $curso] + $this->opciones());
     }
 
     public function update(StoreCursoRequest $request, Curso $curso): RedirectResponse
     {
         $datos = $this->datos($request);
+        $planesIds = $this->planesIds($request);
 
-        $this->validarCambios($curso, $datos);
+        $this->validarCambios($curso, $datos, $planesIds);
 
-        $this->cursos->actualizar($curso, $datos);
+        DB::transaction(function () use ($curso, $datos, $planesIds): void {
+            $this->cursos->actualizar($curso, $datos);
+            $curso->planesEstudio()->sync($planesIds);
+        });
 
         return redirect()
             ->route('admin.cursos.show', $curso)
@@ -120,13 +128,14 @@ class CursoController extends Controller
             'modalidades' => Modalidad::cases(),
             'carreras' => Carrera::where('activo', true)->orderBy('nombre')->get(),
             'planes' => PlanEstudio::query()
-                ->with('materias')
+                ->with(['carrera', 'materias'])
                 ->orderByDesc('activo')
                 ->orderBy('nombre')
                 ->get()
                 ->map(fn (PlanEstudio $plan) => [
                     'id' => $plan->id,
                     'carrera_id' => $plan->carrera_id,
+                    'carrera_nombre' => $plan->carrera?->nombre ?? '',
                     'modalidad' => $plan->modalidad->value,
                     'etiqueta' => "{$plan->nombre} ({$plan->modalidad->etiqueta()})".($plan->activo ? '' : ' · inactivo'),
                     'materias' => $plan->materias
@@ -143,6 +152,19 @@ class CursoController extends Controller
             'periodos' => Periodo::orderByDesc('fecha_inicio')->get(),
             'docentes' => Curso::docentesDisponibles(),
         ];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function planesIds(StoreCursoRequest $request): array
+    {
+        return collect($request->validated('planes_estudio_ids'))
+            ->map(fn (mixed $id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
@@ -184,10 +206,11 @@ class CursoController extends Controller
 
     /**
      * @param  array<string, mixed>  $datos
+     * @param  array<int, int>  $planesIds
      *
      * @throws ValidationException
      */
-    private function validarCambios(Curso $curso, array $datos): void
+    private function validarCambios(Curso $curso, array $datos, array $planesIds): void
     {
         $errores = [];
 
@@ -223,6 +246,17 @@ class CursoController extends Controller
             if ((int) $curso->docente_id !== (int) ($datos['docente_id'] ?? 0)) {
                 $errores['docente_id'] = 'No puedes cambiar el docente mientras el curso tenga horarios asignados. Elimínalos primero.';
             }
+        }
+
+        $planesActuales = $curso->planesEstudio()->pluck('planes_estudio.id')
+            ->map(fn (mixed $id) => (int) $id)
+            ->all();
+        $planesQuitados = array_diff($planesActuales, $planesIds);
+
+        if ($planesQuitados !== [] && $curso->inscripciones()
+            ->whereHas('planEstudio', fn ($query) => $query->whereIn('planes_estudio.id', $planesQuitados))
+            ->exists()) {
+            $errores['planes_estudio_ids'] = 'No puedes quitar un plan que ya tiene inscripciones en este curso.';
         }
 
         if ($errores !== []) {

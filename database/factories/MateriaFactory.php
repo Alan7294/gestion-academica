@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\Carrera;
 use App\Models\Materia;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -16,7 +15,6 @@ class MateriaFactory extends Factory
     public function definition(): array
     {
         return [
-            'carrera_id' => Carrera::factory(),
             'codigo' => strtoupper($this->faker->unique()->bothify('???-###')),
             'nombre' => 'Materia de '.$this->faker->words(2, true),
         ];

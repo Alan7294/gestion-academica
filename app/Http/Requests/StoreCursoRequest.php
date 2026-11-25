@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\DiaSemana;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
+use App\Models\Curso;
 use App\Models\PlanEstudio;
 use App\Models\User;
 use Illuminate\Database\Query\Builder;
@@ -17,6 +18,13 @@ class StoreCursoRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('planes_estudio_ids') && $this->filled('plan_estudio_id')) {
+            $this->merge(['planes_estudio_ids' => [$this->input('plan_estudio_id')]]);
+        }
     }
 
     /**
@@ -42,6 +50,8 @@ class StoreCursoRequest extends FormRequest
                 Rule::exists('materia_plan_estudio', 'materia_id')
                     ->where(fn ($query) => $query->where('plan_estudio_id', $this->input('plan_estudio_id'))),
             ],
+            'planes_estudio_ids' => ['required', 'array', 'min:1'],
+            'planes_estudio_ids.*' => ['integer', Rule::exists('planes_estudio', 'id')],
             'modalidad' => ['required', Rule::enum(Modalidad::class)],
             'periodo_id' => ['required', 'integer', Rule::exists('periodos', 'id')],
             'docente_id' => array_merge(
@@ -126,6 +136,68 @@ class StoreCursoRequest extends FormRequest
                     }
                 }
             },
+            function (Validator $validator): void {
+                $planAnfitrionId = (int) $this->input('plan_estudio_id');
+                $materiaId = (int) $this->input('materia_id');
+                $modalidad = $this->input('modalidad');
+                $planesIds = collect($this->input('planes_estudio_ids', []))
+                    ->map(fn (mixed $id) => (int) $id)
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if ($planAnfitrionId === 0 || $materiaId === 0 || ! $modalidad) {
+                    return;
+                }
+
+                if (! in_array($planAnfitrionId, $planesIds, true)) {
+                    $validator->errors()->add(
+                        'planes_estudio_ids',
+                        'El plan anfitrión del curso debe estar incluido entre los planes participantes.',
+                    );
+                }
+
+                $planesValidos = PlanEstudio::query()
+                    ->whereIn('id', $planesIds)
+                    ->where('modalidad', $modalidad)
+                    ->whereHas('materias', fn ($query) => $query->where('materias.id', $materiaId))
+                    ->pluck('id')
+                    ->all();
+
+                if (array_diff($planesIds, $planesValidos) !== []) {
+                    $validator->errors()->add(
+                        'planes_estudio_ids',
+                        'Cada plan participante debe tener la misma modalidad e incluir la materia elegida.',
+                    );
+                }
+            },
+            function (Validator $validator): void {
+                $materiaId = (int) $this->input('materia_id');
+                $periodoId = (int) $this->input('periodo_id');
+                $modalidad = $this->input('modalidad');
+
+                if ($materiaId === 0 || $periodoId === 0 || ! $modalidad) {
+                    return;
+                }
+
+                $curso = $this->route('curso');
+                $cursoId = $curso instanceof Curso ? $curso->id : (is_numeric($curso) ? (int) $curso : null);
+
+                $duplicado = Curso::query()
+                    ->when($cursoId !== null, fn ($query) => $query->where('id', '!=', $cursoId))
+                    ->where('materia_id', $materiaId)
+                    ->where('periodo_id', $periodoId)
+                    ->where('modalidad', $modalidad)
+                    ->exists();
+
+                if ($duplicado) {
+                    $validator->errors()->add(
+                        'materia_id',
+                        'Ya existe un curso de esta materia en el periodo y la modalidad elegidos.',
+                    );
+                }
+            },
         ];
     }
 
@@ -143,6 +215,10 @@ class StoreCursoRequest extends FormRequest
             'plan_estudio_id.exists' => 'El plan seleccionado no pertenece a la carrera elegida.',
             'materia_id.required' => 'Selecciona la materia que corresponde a este curso.',
             'materia_id.exists' => 'La materia seleccionada no pertenece al plan elegido.',
+            'planes_estudio_ids.required' => 'Selecciona al menos un plan participante.',
+            'planes_estudio_ids.min' => 'Selecciona al menos un plan participante.',
+            'planes_estudio_ids.*.integer' => 'Selecciona planes de estudio válidos.',
+            'planes_estudio_ids.*.exists' => 'Selecciona planes de estudio válidos.',
             'aula.required' => 'Indica el aula donde se dictará el curso.',
             'horarios.required' => 'Indica al menos un día con su horario.',
             'horarios.min' => 'Indica al menos un día con su horario.',

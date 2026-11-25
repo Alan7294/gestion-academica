@@ -3,7 +3,6 @@
 
     $catalogo = collect($materias)->map(fn (array $materia) => [
         'id' => (int) $materia['id'],
-        'carrera_id' => (int) $materia['carrera_id'],
         'codigo' => $materia['codigo'],
         'nombre' => $materia['nombre'],
     ])->values()->all();
@@ -67,11 +66,8 @@
 @endphp
 
 <div x-data="{
-        carreraId: @js($carreraInicial),
-        carreraAnterior: @js($carreraInicial),
         semestres: @js($duracionInicial),
         catalogo: @js($catalogo),
-        catalogoUrl: @js(route('admin.materias.catalogo')),
         materias: @js($materiasIniciales),
         materiaNuevaId: '',
         nueva: { codigo: '', nombre: '' },
@@ -79,8 +75,7 @@
         errorAlta: '',
         get disponibles() {
             return this.catalogo.filter((materia) =>
-                String(materia.carrera_id) === String(this.carreraId)
-                && ! this.materias.some((seleccionada) => Number(seleccionada.id) === Number(materia.id))
+                ! this.materias.some((seleccionada) => Number(seleccionada.id) === Number(materia.id))
             );
         },
         agregarMateria() {
@@ -99,43 +94,6 @@
                 requisitos: [],
             });
             this.materiaNuevaId = '';
-        },
-        async cargarCatalogo() {
-            if (! this.carreraId) {
-                this.catalogo = [];
-
-                return;
-            }
-
-            try {
-                const respuesta = await fetch(`${this.catalogoUrl}?carrera_id=${encodeURIComponent(this.carreraId)}`, {
-                    headers: { 'Accept': 'application/json' },
-                });
-
-                if (! respuesta.ok) {
-                    return;
-                }
-
-                this.catalogo = await respuesta.json();
-            } catch (error) {
-                this.catalogo = [];
-            }
-        },
-        async cambiarCarrera() {
-            const carreraNueva = this.carreraId;
-
-            // Evita perder el trabajo si el cambio fue accidental.
-            if (this.materias.length > 0 && ! confirm(@js(__('Cambiar de carrera quitará las materias seleccionadas del plan. ¿Continuar?')))) {
-                this.carreraId = this.carreraAnterior;
-
-                return;
-            }
-
-            this.carreraAnterior = carreraNueva;
-            // Las materias elegidas pertenecen a la carrera anterior.
-            this.materias = [];
-            this.materiaNuevaId = '';
-            await this.cargarCatalogo();
         },
         requisitosDisponibles(indice) {
             const materia = this.materias[indice];
@@ -203,7 +161,6 @@
                         'X-CSRF-TOKEN': @js(csrf_token()),
                     },
                     body: JSON.stringify({
-                        carrera_id: this.carreraId,
                         codigo: this.nueva.codigo,
                         nombre: this.nueva.nombre,
                     }),
@@ -238,7 +195,7 @@
 
         <div>
             <x-input-label for="carrera_id" :value="__('Carrera')" />
-            <select id="carrera_id" name="carrera_id" x-model="carreraId" @change="cambiarCarrera()" required
+            <select id="carrera_id" name="carrera_id" required
                     class="mt-1 block w-full rounded-md border-slate-300 shadow-sm">
                 <option value="" disabled @selected($carreraInicial === '')>{{ __('Seleccione una carrera') }}</option>
                 @foreach ($carreras as $carrera)
@@ -302,7 +259,7 @@
             <div>
                 <x-input-label for="materia-nueva" :value="__('Agregar materia existente')" />
                 <div class="mt-1 flex gap-2">
-                    <select id="materia-nueva" x-model.number="materiaNuevaId" :disabled="! carreraId"
+                    <select id="materia-nueva" x-model.number="materiaNuevaId"
                             class="block w-full rounded-md border-slate-300 shadow-sm disabled:opacity-50">
                         <option value="">{{ __('Seleccione una materia') }}</option>
                         <template x-for="materia in disponibles" :key="materia.id">
@@ -315,21 +272,21 @@
                         {{ __('Agregar') }}
                     </button>
                 </div>
-                <p class="mt-1 text-xs text-slate-500">{{ __('La lista se filtra por la carrera elegida.') }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ __('El catálogo es compartido; cada plan define el semestre y los créditos de la materia.') }}</p>
             </div>
 
             <div>
                 <p class="text-sm font-medium text-slate-700">{{ __('Crear materia nueva') }}</p>
                 <div class="mt-1 flex flex-col gap-2 sm:flex-row">
-                    <input type="text" x-model="nueva.codigo" maxlength="20" :disabled="! carreraId"
+                    <input type="text" x-model="nueva.codigo" maxlength="20"
                            @keydown.enter.prevent="crearMateria()"
                            placeholder="{{ __('Código') }}"
                            class="block w-full rounded-md border-slate-300 shadow-sm disabled:opacity-50 sm:w-1/3">
-                    <input type="text" x-model="nueva.nombre" maxlength="255" :disabled="! carreraId"
+                    <input type="text" x-model="nueva.nombre" maxlength="255"
                            @keydown.enter.prevent="crearMateria()"
                            placeholder="{{ __('Nombre de la materia') }}"
                            class="block w-full rounded-md border-slate-300 shadow-sm disabled:opacity-50">
-                    <button type="button" @click="crearMateria()" :disabled="! carreraId || creando || ! nueva.codigo || ! nueva.nombre"
+                    <button type="button" @click="crearMateria()" :disabled="creando || ! nueva.codigo || ! nueva.nombre"
                             class="inline-flex shrink-0 items-center justify-center rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40">
                         <span x-text="creando ? @js(__('Creando...')) : @js(__('Crear'))"></span>
                     </button>

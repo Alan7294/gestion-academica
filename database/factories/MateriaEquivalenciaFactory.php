@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Carrera;
 use App\Models\Materia;
 use App\Models\MateriaEquivalencia;
+use App\Models\PlanEstudio;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,17 +13,22 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class MateriaEquivalenciaFactory extends Factory
 {
-    /**
-     * @return array<string, mixed>
-     */
+    protected $model = MateriaEquivalencia::class;
+
     public function definition(): array
     {
-        $carreraDestino = Carrera::factory();
-        $carreraOrigen = Carrera::factory();
+        $planDestino = PlanEstudio::factory()->create(['carrera_id' => Carrera::factory()]);
+        $planOrigen = PlanEstudio::factory()->create(['carrera_id' => Carrera::factory()]);
+
+        $destino = Materia::factory()->create();
+        $origen = Materia::factory()->create();
+
+        $planDestino->vincularMateria($destino, 1, 4);
+        $planOrigen->vincularMateria($origen, 1, 4);
 
         return [
-            'materia_id' => Materia::factory()->for($carreraDestino),
-            'equivalente_id' => Materia::factory()->for($carreraOrigen),
+            'materia_id' => $destino->id,
+            'equivalente_id' => $origen->id,
         ];
     }
 }

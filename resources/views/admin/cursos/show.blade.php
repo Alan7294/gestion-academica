@@ -39,7 +39,7 @@
                     <p class="text-slate-500">{{ __('Materia') }}</p>
                     @if ($curso->materia)
                         <p class="mt-1 font-medium text-slate-900">{{ $curso->materia->codigo }} - {{ $curso->materia->nombre }}</p>
-                        <p class="mt-0.5 text-xs text-slate-500">{{ $curso->materia->carrera->nombre }}</p>
+                        <p class="mt-0.5 text-xs text-slate-500">{{ $curso->carrera->nombre }}</p>
                     @else
                         <p class="mt-1 font-medium text-red-600">{{ __('Sin asignar: no admite inscripciones') }}</p>
                     @endif
@@ -68,6 +68,26 @@
                     <p class="text-slate-500">{{ __('Cupo') }}</p>
                     <p class="mt-1 font-medium text-slate-900">{{ $curso->cupo === 0 ? __('Sin límite') : $curso->cupo }}</p>
                 </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6">
+                <h3 class="font-semibold text-slate-900">{{ __('Planes participantes') }}</h3>
+                <p class="mt-1 text-sm text-slate-600">
+                    {{ __('Los planes habilitados comparten este curso y su cupo.') }}
+                </p>
+
+                <ul class="mt-3 flex flex-wrap gap-2">
+                    @forelse ($curso->planesEstudio as $plan)
+                        <li class="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                            {{ $plan->carrera?->nombre }} · {{ $plan->nombre }}
+                            @if ($plan->id === $curso->plan_estudio_id)
+                                <span class="ms-1 text-xs font-medium text-brand-700">{{ __('Anfitrión') }}</span>
+                            @endif
+                        </li>
+                    @empty
+                        <li class="text-sm text-slate-500">{{ __('No hay planes habilitados.') }}</li>
+                    @endforelse
+                </ul>
             </div>
 
             <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6">

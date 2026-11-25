@@ -6,6 +6,7 @@ use App\Enums\Rol;
 use App\Models\Calificacion;
 use App\Models\Carrera;
 use App\Models\Curso;
+use App\Models\Facultad;
 use App\Models\Inscripcion;
 use App\Models\Matricula;
 use App\Models\Periodo;
@@ -66,16 +67,19 @@ it('permite al administrador crear otro administrador', function () {
 it('crea un estudiante con matrículas en varias carreras', function () {
     $admin = usuarioConRol(Rol::Administrador);
 
+    $facultad = Facultad::factory()->create(['nombre' => 'Facultad de Ingeniería']);
+    $otraFacultad = Facultad::factory()->create(['nombre' => 'Facultad de Ciencias Económicas']);
+
     $carrera = Carrera::create([
         'codigo' => 'SIS',
         'nombre' => 'Ingeniería de Sistemas',
-        'facultad' => 'Facultad de Ingeniería',
+        'facultad_id' => $facultad->id,
         'activo' => true,
     ]);
     $otraCarrera = Carrera::create([
         'codigo' => 'ADM',
         'nombre' => 'Administración de Empresas',
-        'facultad' => 'Facultad de Ciencias Económicas',
+        'facultad_id' => $otraFacultad->id,
         'activo' => true,
     ]);
 

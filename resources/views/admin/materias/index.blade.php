@@ -54,7 +54,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Código') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Nombre') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Carrera') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Carreras') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Cursos') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Planes') }}</th>
                             <th class="px-6 py-3"></th>
@@ -65,7 +65,9 @@
                             <tr>
                                 <td class="px-6 py-4 font-mono text-slate-700">{{ $materia->codigo }}</td>
                                 <td class="px-6 py-4 text-slate-900">{{ $materia->nombre }}</td>
-                                <td class="px-6 py-4 text-slate-600">{{ $materia->carrera->nombre }}</td>
+                                <td class="px-6 py-4 text-slate-600">
+                                    {{ $materia->planesEstudio->pluck('carrera.nombre')->filter()->unique()->join(', ') ?: '—' }}
+                                </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $materia->cursos_count }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $materia->planes_estudio_count }}</td>
                                 <td class="px-6 py-4 text-right space-x-3">

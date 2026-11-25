@@ -6,19 +6,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['carrera_id', 'codigo', 'nombre'])]
+#[Fillable(['codigo', 'nombre'])]
 class Materia extends Model
 {
     use HasFactory;
-
-    public function carrera(): BelongsTo
-    {
-        return $this->belongsTo(Carrera::class);
-    }
 
     /**
      * Planes que incluyen esta materia, con el semestre y los créditos propios de cada plan.
@@ -66,10 +60,13 @@ class Materia extends Model
     }
 
     /**
+     * Materias incluidas en algún plan de la carrera.
+     *
      * @param  Builder<Materia>  $query
      */
     public function scopeDeCarrera(Builder $query, int $carreraId): void
     {
-        $query->where('carrera_id', $carreraId);
+        $query->whereHas('planesEstudio', fn (Builder $planes) => $planes
+            ->where('planes_estudio.carrera_id', $carreraId));
     }
 }
