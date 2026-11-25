@@ -44,7 +44,7 @@ class DashboardController extends Controller
     public function docente(Request $request): View
     {
         $cursos = Curso::query()
-            ->with('carrera')
+            ->with(['carrera', 'materia'])
             ->withCount('alumnosInscritos')
             ->delDocente($request->user())
             ->orderBy('nombre')

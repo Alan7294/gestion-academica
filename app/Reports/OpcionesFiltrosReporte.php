@@ -27,7 +27,7 @@ class OpcionesFiltrosReporte
      */
     public static function para(?User $usuario = null): array
     {
-        $cursos = Curso::query()->with('carrera')->orderBy('nombre');
+        $cursos = Curso::query()->with(['carrera', 'materia'])->orderBy('nombre');
         $docentes = User::role(Rol::Docente->value)->orderBy('name');
 
         if ($usuario?->hasRole(Rol::Docente->value)) {

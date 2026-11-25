@@ -36,7 +36,7 @@ class CursoController extends Controller
         }
 
         $cursos = Curso::query()
-            ->with(['carrera', 'docente', 'horarios'])
+            ->with(['carrera', 'docente', 'materia', 'horarios'])
             ->withCount('alumnosInscritos')
             ->where('activo', true)
             ->whereIn('carrera_id', $carrerasIds ?: [0])
@@ -44,7 +44,7 @@ class CursoController extends Controller
             ->when($busqueda !== '', function ($query) use ($busqueda) {
                 $query->where(function ($sub) use ($busqueda) {
                     $sub->where('nombre', 'ilike', "%{$busqueda}%")
-                        ->orWhere('codigo', 'ilike', "%{$busqueda}%");
+                        ->orWhereHas('materia', fn ($q) => $q->where('codigo', 'ilike', "%{$busqueda}%"));
                 });
             })
             ->when($carreraId, fn ($query, $id) => $query->where('carrera_id', $id))
@@ -72,7 +72,7 @@ class CursoController extends Controller
     {
         Gate::authorize('view', $curso);
 
-        $curso->load(['carrera', 'periodo', 'docente', 'horarios'])
+        $curso->load(['carrera', 'periodo', 'docente', 'materia', 'horarios'])
             ->loadCount('alumnosInscritos');
 
         return view('estudiante.cursos.show', [

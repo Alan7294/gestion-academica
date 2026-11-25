@@ -23,7 +23,7 @@
                             <tr>
                                 <td class="px-6 py-4">
                                     <p class="font-medium text-slate-900">{{ $curso->nombre }}</p>
-                                    <p class="font-mono text-xs text-slate-500">{{ $curso->codigo }}</p>
+                                    <p class="font-mono text-xs text-slate-500">{{ $curso->materia?->codigo ?? '—' }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->carrera->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->periodo->nombre }}</td>

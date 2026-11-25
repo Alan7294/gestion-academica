@@ -4,6 +4,7 @@ use App\Enums\Rol;
 use App\Models\Calificacion;
 use App\Models\Curso;
 use App\Models\Inscripcion;
+use App\Models\Materia;
 use App\Models\Periodo;
 use App\Models\User;
 use App\Reports\Admin\MateriasPorCarreraReporte;
@@ -24,11 +25,15 @@ function contextoDeReportes(): array
 {
     $docente = usuarioConRol(Rol::Docente);
 
-    $curso = Curso::factory()->create([
+    $materia = Materia::factory()->create([
+        'codigo' => 'BD-201',
+        'nombre' => 'Base de Datos II',
+    ]);
+
+    $curso = Curso::factory()->conMateria($materia)->create([
         'docente_id' => $docente->id,
         'periodo_id' => Periodo::factory()->vigente()->create()->id,
         'nombre' => 'Base de Datos II',
-        'codigo' => 'BD-201',
     ]);
 
     $estudiante = usuarioConRol(Rol::Estudiante);
@@ -139,12 +144,16 @@ it('rechaza una inscripción que no pertenece al curso del reporte', function ()
 it('limita el reporte de notas por alumno a la inscripción del curso', function () {
     ['curso' => $curso, 'estudiante' => $estudiante, 'inscripcion' => $inscripcion] = contextoDeReportes();
 
-    $otroCurso = Curso::factory()->create([
-        'docente_id' => $curso->docente_id,
-        'periodo_id' => $curso->periodo_id,
-        'nombre' => 'Redes II',
-        'codigo' => 'RD-202',
-    ]);
+    $otroCurso = Curso::factory()
+        ->conMateria(Materia::factory()->create([
+            'codigo' => 'RD-202',
+            'nombre' => 'Redes II',
+        ]))
+        ->create([
+            'docente_id' => $curso->docente_id,
+            'periodo_id' => $curso->periodo_id,
+            'nombre' => 'Redes II',
+        ]);
 
     Inscripcion::factory()->create([
         'curso_id' => $otroCurso->id,
@@ -206,11 +215,15 @@ it('muestra la vista previa parametrizada del administrador', function () {
     ['curso' => $curso] = contextoDeReportes();
 
     $otroPeriodo = Periodo::factory()->create(['nombre' => 'Periodo Lee']);
-    Curso::factory()->create([
-        'periodo_id' => $otroPeriodo->id,
-        'nombre' => 'Historia del Arte',
-        'codigo' => 'HA-101',
-    ]);
+    Curso::factory()
+        ->conMateria(Materia::factory()->create([
+            'codigo' => 'HA-101',
+            'nombre' => 'Historia del Arte',
+        ]))
+        ->create([
+            'periodo_id' => $otroPeriodo->id,
+            'nombre' => 'Historia del Arte',
+        ]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->get("/admin/reportes/materias-por-carrera/preview?periodo_id={$curso->periodo_id}")
@@ -226,11 +239,15 @@ it('muestra la vista previa parametrizada del administrador', function () {
 
 it('aplica los filtros también a las descargas', function () {
     $otroPeriodo = Periodo::factory()->create(['nombre' => 'Periodo Lee']);
-    Curso::factory()->create([
-        'periodo_id' => $otroPeriodo->id,
-        'nombre' => 'Historia del Arte',
-        'codigo' => 'HA-101',
-    ]);
+    Curso::factory()
+        ->conMateria(Materia::factory()->create([
+            'codigo' => 'HA-101',
+            'nombre' => 'Historia del Arte',
+        ]))
+        ->create([
+            'periodo_id' => $otroPeriodo->id,
+            'nombre' => 'Historia del Arte',
+        ]);
 
     $filas = (new MateriasPorCarreraReporte(
         new FiltrosReporte(periodoId: $otroPeriodo->id),

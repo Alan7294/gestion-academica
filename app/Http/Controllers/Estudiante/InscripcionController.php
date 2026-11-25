@@ -21,7 +21,7 @@ class InscripcionController extends Controller
     public function index(Request $request): View
     {
         $inscripciones = Inscripcion::query()
-            ->with(['curso.carrera', 'curso.docente', 'curso.horarios', 'curso.periodo'])
+            ->with(['curso.carrera', 'curso.docente', 'curso.materia', 'curso.horarios', 'curso.periodo'])
             ->where('user_id', $request->user()->id)
             ->activas()
             ->join('cursos', 'cursos.id', '=', 'inscripciones.curso_id')

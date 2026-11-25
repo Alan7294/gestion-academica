@@ -21,7 +21,7 @@ class AlumnosInscritosReporte implements Reporte
 
     public function titulo(): string
     {
-        return "Alumnos inscritos - {$this->curso->codigo}";
+        return 'Alumnos inscritos - '.$this->codigoMateria();
     }
 
     public function descripcion(): string
@@ -61,11 +61,16 @@ class AlumnosInscritosReporte implements Reporte
     public function contexto(): array
     {
         return array_merge($this->filtros->contexto(), [
-            'Curso' => "{$this->curso->codigo} - {$this->curso->nombre}",
+            'Curso' => $this->codigoMateria()." - {$this->curso->nombre}",
             'Carrera' => $this->curso->carrera->nombre,
             'Periodo' => $this->curso->periodo->nombre,
             'Total inscritos' => (string) $this->inscripcionesFiltradas()->count(),
         ]);
+    }
+
+    private function codigoMateria(): string
+    {
+        return $this->curso->loadMissing('materia')->materia?->codigo ?? '—';
     }
 
     private function inscripcionesFiltradas(): Builder

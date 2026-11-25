@@ -159,7 +159,6 @@ class CursoController extends Controller
             'materia_id' => $materiaId,
             'periodo_id' => $request->validated('periodo_id'),
             'docente_id' => $request->validated('docente_id'),
-            'codigo' => $request->validated('codigo'),
             'cupo' => $request->validated('cupo'),
             'activo' => $request->boolean('activo'),
         ], $this->datosAcademicos($planId, $materiaId));
@@ -198,7 +197,6 @@ class CursoController extends Controller
                 'plan_estudio_id' => 'No puedes cambiar el plan de estudios de un curso que ya tiene inscripciones.',
                 'materia_id' => 'No puedes cambiar la materia de un curso que ya tiene inscripciones.',
                 'periodo_id' => 'No puedes cambiar el periodo de un curso que ya tiene inscripciones.',
-                'codigo' => 'No puedes cambiar el código de un curso que ya tiene inscripciones.',
             ];
 
             foreach ($identidad as $campo => $mensaje) {

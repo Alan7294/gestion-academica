@@ -45,7 +45,7 @@ class MateriasDocenteReporte implements Reporte
     {
         $cursos = Curso::query()
             ->where('docente_id', $this->docente->id)
-            ->with(['carrera', 'periodo', 'horarios'])
+            ->with(['carrera', 'materia', 'periodo', 'horarios'])
             ->withCount('alumnosInscritos')
             ->orderBy('nombre');
 
@@ -53,7 +53,7 @@ class MateriasDocenteReporte implements Reporte
 
         return $cursos->get()
             ->map(fn (Curso $curso) => [
-                $curso->codigo,
+                $curso->materia?->codigo ?? '—',
                 $curso->nombre,
                 $curso->carrera->nombre,
                 $curso->periodo->nombre,

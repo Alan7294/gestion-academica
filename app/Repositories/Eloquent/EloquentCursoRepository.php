@@ -11,14 +11,14 @@ class EloquentCursoRepository implements CursoRepository
     public function paginar(array $filtros = [], int $porPagina = 10): LengthAwarePaginator
     {
         return Curso::query()
-            ->with(['carrera', 'periodo', 'docente'])
+            ->with(['carrera', 'periodo', 'docente', 'materia', 'horarios'])
             ->when($filtros['carrera_id'] ?? null, fn ($q, $id) => $q->where('carrera_id', $id))
             ->when($filtros['periodo_id'] ?? null, fn ($q, $id) => $q->where('periodo_id', $id))
             ->when($filtros['docente_id'] ?? null, fn ($q, $id) => $q->where('docente_id', $id))
             ->when($filtros['busqueda'] ?? null, function ($q, $texto) {
                 $q->where(function ($sub) use ($texto) {
                     $sub->where('nombre', 'ilike', "%{$texto}%")
-                        ->orWhere('codigo', 'ilike', "%{$texto}%");
+                        ->orWhereHas('materia', fn ($q) => $q->where('codigo', 'ilike', "%{$texto}%"));
                 });
             })
             ->orderBy('nombre')

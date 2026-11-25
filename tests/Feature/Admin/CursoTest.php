@@ -44,7 +44,6 @@ function datosCurso(array $sobrescribir = []): array
         'materia_id' => $materia->id,
         'periodo_id' => $periodoId,
         'docente_id' => $docenteId,
-        'codigo' => 'SIS-101',
         'cupo' => 30,
         'activo' => '1',
         'aula' => 'Aula 101',
@@ -74,8 +73,8 @@ it('permite al administrador registrar un curso', function () {
         ->post('/admin/cursos', datosCurso(['docente_id' => $docente->id]))
         ->assertRedirect();
 
-    $curso = Curso::first();
-    expect($curso->codigo)->toBe('SIS-101')
+    $curso = Curso::firstOrFail();
+    expect($curso->nombre)->toBe('Programación IV')
         ->and($curso->docente_id)->toBe($docente->id)
         ->and($curso->materia_id)->not->toBeNull();
 });
@@ -242,37 +241,79 @@ it('exige que el docente asignado tenga el rol docente', function () {
     expect(Curso::count())->toBe(0);
 });
 
-it('rechaza el mismo código dentro del periodo', function () {
+it('permite varios cursos de la misma materia en un mismo periodo', function () {
     $admin = usuarioConRol(Rol::Administrador);
-    $periodo = Periodo::factory()->create();
-
-    Curso::factory()->create(['periodo_id' => $periodo->id, 'codigo' => 'SIS-101']);
+    $datos = datosCurso(['docente_id' => usuarioConRol(Rol::Docente)->id]);
 
     $this->actingAs($admin)
-        ->post('/admin/cursos', datosCurso(['periodo_id' => $periodo->id]))
-        ->assertSessionHasErrors('codigo');
-});
-
-it('permite el mismo código en periodos distintos', function () {
-    $admin = usuarioConRol(Rol::Administrador);
-    $carrera = Carrera::factory()->create();
-    $anterior = Periodo::factory()->create();
-    $actual = Periodo::factory()->create();
-
-    Curso::factory()->create([
-        'carrera_id' => $carrera->id,
-        'periodo_id' => $anterior->id,
-        'codigo' => 'SIS-101',
-    ]);
+        ->post('/admin/cursos', $datos)
+        ->assertRedirect();
 
     $this->actingAs($admin)
-        ->post('/admin/cursos', datosCurso([
-            'carrera_id' => $carrera->id,
-            'periodo_id' => $actual->id,
+        ->post('/admin/cursos', array_merge($datos, [
+            'docente_id' => usuarioConRol(Rol::Docente)->id,
         ]))
         ->assertRedirect();
 
-    expect(Curso::where('codigo', 'SIS-101')->count())->toBe(2);
+    expect(Curso::count())->toBe(2)
+        ->and(Curso::pluck('materia_id')->unique())->toHaveCount(1);
+});
+
+it('mantiene la materia del curso en periodos distintos', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $datos = datosCurso();
+    $anterior = Periodo::factory()->create([
+        'fecha_inicio' => '2025-01-01',
+        'fecha_fin' => '2025-12-31',
+    ]);
+    $actual = Periodo::factory()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+
+    $this->actingAs($admin)
+        ->post('/admin/cursos', array_merge($datos, ['periodo_id' => $anterior->id]))
+        ->assertRedirect();
+
+    $this->actingAs($admin)
+        ->post('/admin/cursos', array_merge($datos, ['periodo_id' => $actual->id]))
+        ->assertRedirect();
+
+    expect(Curso::count())->toBe(2)
+        ->and(Curso::pluck('materia_id')->unique())->toHaveCount(1);
+});
+
+it('busca los cursos por el código de la materia', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    cursoDePrueba(datosCurso());
+
+    $this->actingAs($admin)
+        ->get('/admin/cursos?busqueda=SIS-101')
+        ->assertOk()
+        ->assertSee('SIS-101');
+});
+
+it('muestra los días, el horario y el aula de cada curso en el listado', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $docente = usuarioConRol(Rol::Docente);
+    $curso = cursoDePrueba(datosCurso(['docente_id' => $docente->id]));
+
+    foreach ([1 => ['08:00', '10:00'], 3 => ['14:00', '16:00']] as $dia => [$inicio, $fin]) {
+        $curso->horarios()->create([
+            'docente_id' => $docente->id,
+            'dia_semana' => $dia,
+            'hora_inicio' => $inicio,
+            'hora_fin' => $fin,
+            'aula' => 'Aula 101',
+        ]);
+    }
+
+    $this->actingAs($admin)
+        ->get('/admin/cursos')
+        ->assertOk()
+        ->assertSee('Lunes, Miércoles')
+        ->assertSee('08:00 - 10:00, 14:00 - 16:00')
+        ->assertSee('Aula 101');
 });
 
 it('rechaza un plan que no pertenece a la carrera del curso', function () {
@@ -457,13 +498,11 @@ it('impide cambiar la identidad de un curso que ya tiene inscripciones', functio
     $this->actingAs($admin)
         ->put("/admin/cursos/{$curso->id}", array_merge($datos, [
             'materia_id' => $otraMateria->id,
-            'codigo' => 'SIS-999',
         ]))
-        ->assertSessionHasErrors(['materia_id', 'codigo']);
+        ->assertSessionHasErrors('materia_id');
 
     $curso->refresh();
-    expect($curso->materia_id)->toBe($datos['materia_id'])
-        ->and($curso->codigo)->toBe('SIS-101');
+    expect($curso->materia_id)->toBe($datos['materia_id']);
 });
 
 it('impide eliminar un curso que ya tiene inscripciones', function () {
@@ -487,7 +526,8 @@ it('muestra el formulario sin los campos derivados del plan', function () {
         ->assertSee('Agregar otro día')
         ->assertDontSee('name="nombre"', false)
         ->assertDontSee('name="semestre"', false)
-        ->assertDontSee('name="creditos"', false);
+        ->assertDontSee('name="creditos"', false)
+        ->assertDontSee('name="codigo"', false);
 });
 
 it('permite eliminar un curso sin inscripciones junto con sus horarios y evaluaciones', function () {

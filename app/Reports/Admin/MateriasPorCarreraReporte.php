@@ -41,7 +41,7 @@ class MateriasPorCarreraReporte implements Reporte
     public function filas(): array
     {
         $cursos = Curso::query()
-            ->with(['carrera', 'docente', 'periodo'])
+            ->with(['carrera', 'materia', 'docente', 'periodo'])
             ->withCount('alumnosInscritos');
 
         $this->filtros->aplicarACursos($cursos);
@@ -54,7 +54,7 @@ class MateriasPorCarreraReporte implements Reporte
             ])
             ->map(fn (Curso $curso) => [
                 $curso->carrera->nombre,
-                $curso->codigo,
+                $curso->materia?->codigo ?? '—',
                 $curso->nombre,
                 $curso->semestre,
                 $curso->creditos,

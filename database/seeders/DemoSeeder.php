@@ -61,8 +61,21 @@ class DemoSeeder extends Seeder
             $carrera = $carreras->get($definicion['carrera']);
             $docente = $docentes[$definicion['docente']];
 
+            $materia = Materia::query()
+                ->where('carrera_id', $carrera->id)
+                ->where('codigo', $definicion['codigo'])
+                ->first();
+
+            $materias[$definicion['codigo']] = $materia;
+
+            $claves = ['periodo_id' => $periodo->id, 'materia_id' => $materia?->id];
+
+            if ($materia === null) {
+                $claves['nombre'] = $definicion['nombre'];
+            }
+
             $curso = Curso::firstOrCreate(
-                ['periodo_id' => $periodo->id, 'codigo' => $definicion['codigo']],
+                $claves,
                 [
                     'carrera_id' => $carrera->id,
                     'docente_id' => $docente->id,
@@ -73,13 +86,6 @@ class DemoSeeder extends Seeder
                     'activo' => true,
                 ],
             );
-
-            $materia = Materia::query()
-                ->where('carrera_id', $carrera->id)
-                ->where('codigo', $definicion['codigo'])
-                ->first();
-
-            $materias[$definicion['codigo']] = $materia;
 
             $plan = $materia
                 ? PlanEstudio::where('carrera_id', $carrera->id)

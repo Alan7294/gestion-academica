@@ -3,7 +3,7 @@
         <div class="flex items-center justify-between">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">
                 {{ $curso->nombre }}
-                <span class="ms-2 font-mono text-sm text-slate-500">{{ $curso->codigo }}</span>
+                <span class="ms-2 font-mono text-sm text-slate-500">{{ $curso->materia?->codigo ?? '—' }}</span>
             </h2>
 
             <div class="flex items-center gap-4">

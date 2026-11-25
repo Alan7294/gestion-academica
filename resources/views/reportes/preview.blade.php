@@ -64,7 +64,7 @@
                                         $valor = (string) $opcion->id;
                                         $seleccionado = (string) $valoresSeleccionados[$select['nombre']] === $valor;
                                         $texto = $select['texto'] === 'codigo_nombre'
-                                            ? "{$opcion->codigo} - {$opcion->nombre}"
+                                            ? ($opcion->materia?->codigo ?? '—').' - '.$opcion->nombre
                                             : $opcion->{$select['texto']};
                                     @endphp
                                     <option value="{{ $valor }}" @selected($seleccionado)>{{ $texto }}</option>

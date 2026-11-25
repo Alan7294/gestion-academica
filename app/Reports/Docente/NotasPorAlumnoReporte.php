@@ -51,12 +51,13 @@ class NotasPorAlumnoReporte implements Reporte
         $inscripcion = $this->inscripcion->loadMissing([
             'curso.periodo',
             'curso.docente',
+            'curso.materia',
             'calificaciones',
         ]);
 
         return [[
             $inscripcion->curso->nombre,
-            $inscripcion->curso->codigo,
+            $inscripcion->curso->materia?->codigo ?? '—',
             $inscripcion->curso->periodo->nombre,
             $inscripcion->curso->docente?->name ?? 'Sin asignar',
             $inscripcion->calificaciones->count(),
@@ -68,13 +69,13 @@ class NotasPorAlumnoReporte implements Reporte
     public function contexto(): array
     {
         $estudiante = $this->inscripcion->estudiante;
-        $curso = $this->inscripcion->curso->loadMissing('periodo');
+        $curso = $this->inscripcion->curso->loadMissing(['periodo', 'materia']);
 
         return array_merge($this->filtros->contexto(), [
             'Estudiante' => $estudiante->name,
             'CI' => $estudiante->ci ?? '—',
             'Correo' => $estudiante->email,
-            'Curso' => "{$curso->codigo} - {$curso->nombre}",
+            'Curso' => ($curso->materia?->codigo ?? '—')." - {$curso->nombre}",
             'Periodo' => $curso->periodo->nombre,
         ]);
     }

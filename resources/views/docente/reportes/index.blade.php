@@ -45,7 +45,7 @@
                         <div>
                             <h3 class="text-base font-semibold text-slate-900">
                                 {{ $curso->nombre }}
-                                <span class="ms-1 font-mono text-xs font-normal text-slate-500">{{ $curso->codigo }}</span>
+                                <span class="ms-1 font-mono text-xs font-normal text-slate-500">{{ $curso->materia?->codigo ?? '—' }}</span>
                             </h3>
                             <p class="mt-0.5 text-xs text-slate-500">
                                 {{ $curso->carrera->nombre }} · {{ $curso->periodo->nombre }} ·

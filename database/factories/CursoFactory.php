@@ -24,7 +24,6 @@ class CursoFactory extends Factory
             'materia_id' => null,
             'periodo_id' => Periodo::factory(),
             'docente_id' => null,
-            'codigo' => strtoupper($this->faker->unique()->bothify('##??')),
             'nombre' => ucfirst($this->faker->words(3, true)),
             'creditos' => $this->faker->numberBetween(2, 6),
             'semestre' => $this->faker->numberBetween(1, 8),

@@ -148,13 +148,6 @@
         </div>
 
         <div>
-            <x-input-label for="codigo" :value="__('Código')" />
-            <x-text-input id="codigo" name="codigo" type="text" class="mt-1 block w-full"
-                          :value="old('codigo', $curso?->codigo)" required />
-            <x-input-error class="mt-2" :messages="$errors->get('codigo')" />
-        </div>
-
-        <div>
             <x-input-label for="cupo" :value="__('Cupo (0 = sin límite)')" />
             <x-text-input id="cupo" name="cupo" type="number" min="0" max="500" class="mt-1 block w-full"
                           :value="old('cupo', $curso?->cupo ?? 0)" required />

@@ -25,7 +25,7 @@ class ReporteController extends Controller
     public function index(Request $request): View
     {
         $cursos = Curso::query()
-            ->with(['carrera', 'periodo', 'horarios', 'alumnosInscritos.estudiante'])
+            ->with(['carrera', 'periodo', 'materia', 'horarios', 'alumnosInscritos.estudiante'])
             ->withCount('alumnosInscritos')
             ->delDocente($request->user())
             ->orderBy('nombre')

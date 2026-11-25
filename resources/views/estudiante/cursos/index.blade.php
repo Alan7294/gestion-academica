@@ -54,7 +54,7 @@
                     <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-5 flex flex-col">
                         <div class="flex items-start justify-between gap-2">
                             <div>
-                                <p class="font-mono text-xs text-slate-500">{{ $curso->codigo }}</p>
+                                <p class="font-mono text-xs text-slate-500">{{ $curso->materia?->codigo ?? '—' }}</p>
                                 <h3 class="mt-1 font-semibold text-slate-900">{{ $curso->nombre }}</h3>
                             </div>
 

@@ -58,6 +58,9 @@
                         <tr>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Código') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Curso') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-500">{{ __('Días') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-500">{{ __('Horario') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-500">{{ __('Aula') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Carrera') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Periodo') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Docente') }}</th>
@@ -67,13 +70,17 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($cursos as $curso)
+                            @php($resumen = $curso->resumenHorarios())
                             <tr>
-                                <td class="px-6 py-4 font-mono text-slate-700">{{ $curso->codigo }}</td>
+                                <td class="px-6 py-4 font-mono text-slate-700">{{ $curso->materia?->codigo ?? '—' }}</td>
                                 <td class="px-6 py-4">
                                     <a href="{{ route('admin.cursos.show', $curso) }}" class="text-brand-600 hover:text-brand-900">
                                         {{ $curso->nombre }}
                                     </a>
                                 </td>
+                                <td class="px-4 py-4 text-slate-600">{{ $resumen['dias'] }}</td>
+                                <td class="px-4 py-4 font-mono text-xs text-slate-600">{{ $resumen['horario'] }}</td>
+                                <td class="px-4 py-4 text-slate-600">{{ $resumen['aula'] }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->carrera->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->periodo->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->docente?->name ?? __('Sin asignar') }}</td>
@@ -85,7 +92,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-slate-500">
+                                <td colspan="10" class="px-6 py-8 text-center text-slate-500">
                                     {{ __('No hay cursos que coincidan con los filtros.') }}
                                 </td>
                             </tr>

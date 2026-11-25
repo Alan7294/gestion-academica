@@ -20,7 +20,7 @@ class NotasPorCursoReporte implements Reporte
 
     public function titulo(): string
     {
-        return "Notas por curso - {$this->curso->codigo}";
+        return 'Notas por curso - '.$this->codigoMateria();
     }
 
     public function descripcion(): string
@@ -63,11 +63,16 @@ class NotasPorCursoReporte implements Reporte
     public function contexto(): array
     {
         return array_merge($this->filtros->contexto(), [
-            'Curso' => "{$this->curso->codigo} - {$this->curso->nombre}",
+            'Curso' => $this->codigoMateria()." - {$this->curso->nombre}",
             'Carrera' => $this->curso->carrera->nombre,
             'Periodo' => $this->curso->periodo->nombre,
             'Docente' => $this->curso->docente?->name ?? 'Sin asignar',
         ]);
+    }
+
+    private function codigoMateria(): string
+    {
+        return $this->curso->loadMissing('materia')->materia?->codigo ?? '—';
     }
 
     private function nota(string|float|null $nota): string

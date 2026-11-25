@@ -46,11 +46,11 @@ class MateriasAlumnoReporte implements Reporte
     public function filas(): array
     {
         return $this->inscripcionesFiltradas()
-            ->with(['curso.carrera', 'curso.docente', 'curso.periodo', 'curso.horarios'])
+            ->with(['curso.carrera', 'curso.docente', 'curso.materia', 'curso.periodo', 'curso.horarios'])
             ->get()
             ->sortBy(fn (Inscripcion $inscripcion) => $inscripcion->curso->nombre)
             ->map(fn (Inscripcion $inscripcion) => [
-                $inscripcion->curso->codigo,
+                $inscripcion->curso->materia?->codigo ?? '—',
                 $inscripcion->curso->nombre,
                 $inscripcion->curso->carrera->nombre,
                 $inscripcion->curso->docente?->name ?? 'Sin asignar',

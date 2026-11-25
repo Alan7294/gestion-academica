@@ -29,7 +29,7 @@
                             <tr>
                                 <td class="px-6 py-4">
                                     <p class="font-medium text-slate-900">{{ $inscripcion->curso->nombre }}</p>
-                                    <p class="font-mono text-xs text-slate-500">{{ $inscripcion->curso->codigo }}</p>
+                                    <p class="font-mono text-xs text-slate-500">{{ $inscripcion->curso->materia?->codigo ?? '—' }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $inscripcion->curso->docente?->name ?? __('Por asignar') }}</td>
                                 <td class="px-6 py-4 text-slate-600">

@@ -16,7 +16,7 @@ class CursoController extends Controller
     public function index(Request $request): View
     {
         $cursos = Curso::query()
-            ->with(['carrera', 'periodo'])
+            ->with(['carrera', 'periodo', 'materia'])
             ->withCount('alumnosInscritos')
             ->delDocente($request->user())
             ->orderBy('nombre')
@@ -32,7 +32,7 @@ class CursoController extends Controller
     {
         Gate::authorize('view', $curso);
 
-        $curso->load(['carrera', 'periodo', 'horarios', 'alumnosInscritos.estudiante']);
+        $curso->load(['carrera', 'periodo', 'materia', 'horarios', 'alumnosInscritos.estudiante']);
 
         return view('docente.cursos.show', ['curso' => $curso]);
     }

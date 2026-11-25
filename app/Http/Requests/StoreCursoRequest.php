@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Enums\DiaSemana;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
-use App\Models\Curso;
 use App\Models\PlanEstudio;
 use App\Models\User;
 use Illuminate\Database\Query\Builder;
@@ -25,8 +24,6 @@ class StoreCursoRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var Curso|null $curso */
-        $curso = $this->route('curso');
         $creando = $this->isMethod('POST');
         $semestral = $creando && $this->input('modalidad') === Modalidad::Semestral->value;
         $modular = $creando && $this->input('modalidad') === Modalidad::Modular->value;
@@ -59,14 +56,6 @@ class StoreCursoRequest extends FormRequest
                     });
                 })],
             ),
-            'codigo' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('cursos', 'codigo')
-                    ->where('periodo_id', $this->input('periodo_id'))
-                    ->ignore($curso?->id),
-            ],
             'cupo' => ['required', 'integer', 'min:0', 'max:500'],
             'activo' => ['boolean'],
 
@@ -154,7 +143,6 @@ class StoreCursoRequest extends FormRequest
             'plan_estudio_id.exists' => 'El plan seleccionado no pertenece a la carrera elegida.',
             'materia_id.required' => 'Selecciona la materia que corresponde a este curso.',
             'materia_id.exists' => 'La materia seleccionada no pertenece al plan elegido.',
-            'codigo.unique' => 'Ya existe un curso con ese código en el periodo seleccionado.',
             'aula.required' => 'Indica el aula donde se dictará el curso.',
             'horarios.required' => 'Indica al menos un día con su horario.',
             'horarios.min' => 'Indica al menos un día con su horario.',

@@ -177,8 +177,10 @@ class FiltrosReporte
         }
 
         if ($this->cursoId !== null) {
-            $curso = Curso::find($this->cursoId);
-            $etiquetas['Filtro: Materia'] = $curso === null ? '—' : "{$curso->codigo} - {$curso->nombre}";
+            $curso = Curso::with('materia')->find($this->cursoId);
+            $etiquetas['Filtro: Materia'] = $curso === null
+                ? '—'
+                : ($curso->materia?->codigo ?? '—')." - {$curso->nombre}";
         }
 
         if ($this->docenteId !== null) {

@@ -15,8 +15,8 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6 grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
                 <div>
-                    <p class="text-slate-500">{{ __('Código') }}</p>
-                    <p class="mt-1 font-mono font-medium text-slate-900">{{ $curso->codigo }}</p>
+                    <p class="text-slate-500">{{ __('Código de la materia') }}</p>
+                    <p class="mt-1 font-mono font-medium text-slate-900">{{ $curso->materia?->codigo ?? '—' }}</p>
                 </div>
                 <div>
                     <p class="text-slate-500">{{ __('Carrera') }}</p>

@@ -48,7 +48,7 @@ class HistorialAcademicoReporte implements Reporte
     {
         $inscripciones = Inscripcion::query()
             ->where('user_id', $this->estudiante->id)
-            ->with(['curso.periodo', 'curso.docente']);
+            ->with(['curso.periodo', 'curso.docente', 'curso.materia']);
 
         $this->filtros->aplicarAInscripciones($inscripciones);
 
@@ -56,7 +56,7 @@ class HistorialAcademicoReporte implements Reporte
             ->sortByDesc(fn (Inscripcion $inscripcion) => $inscripcion->curso->periodo->fecha_inicio)
             ->map(fn (Inscripcion $inscripcion) => [
                 $inscripcion->curso->periodo->nombre,
-                $inscripcion->curso->codigo,
+                $inscripcion->curso->materia?->codigo ?? '—',
                 $inscripcion->curso->nombre,
                 $inscripcion->curso->docente?->name ?? 'Sin asignar',
                 $inscripcion->curso->creditos,

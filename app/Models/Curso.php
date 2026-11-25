@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DiaSemana;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,7 +20,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'materia_id',
     'periodo_id',
     'docente_id',
-    'codigo',
     'nombre',
     'creditos',
     'semestre',
@@ -87,6 +87,41 @@ class Curso extends Model
     public function alumnosInscritos(): HasMany
     {
         return $this->hasMany(Inscripcion::class)->where('estado', 'inscrito');
+    }
+
+    /**
+     * Resumen del horario para listados: días, franjas y aulas sin repetir.
+     * Los módulos tienen veinte sesiones, pero muestran una sola vez cada dato.
+     *
+     * @return array{dias: string, horario: string, aula: string}
+     */
+    public function resumenHorarios(): array
+    {
+        $horarios = $this->horarios;
+
+        $dias = $horarios
+            ->pluck('dia_semana')
+            ->unique(fn (DiaSemana $dia) => $dia->value)
+            ->sortBy(fn (DiaSemana $dia) => $dia->value)
+            ->map(fn (DiaSemana $dia) => $dia->etiqueta())
+            ->implode(', ');
+
+        $franjas = $horarios
+            ->map(fn (Horario $horario) => $horario->rango_texto)
+            ->unique()
+            ->implode(', ');
+
+        $aulas = $horarios
+            ->pluck('aula')
+            ->filter()
+            ->unique()
+            ->implode(', ');
+
+        return [
+            'dias' => $dias !== '' ? $dias : '—',
+            'horario' => $franjas !== '' ? $franjas : '—',
+            'aula' => $aulas !== '' ? $aulas : '—',
+        ];
     }
 
     /**
