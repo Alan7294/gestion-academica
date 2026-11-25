@@ -6,6 +6,7 @@ use App\Enums\DiaSemana;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\Curso;
+use App\Models\PlanEstudio;
 use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -102,6 +103,23 @@ class StoreCursoRequest extends FormRequest
     public function after(): array
     {
         return [
+            function (Validator $validator): void {
+                $planId = $this->input('plan_estudio_id');
+                $modalidad = $this->input('modalidad');
+
+                if (! $planId || ! $modalidad) {
+                    return;
+                }
+
+                $modalidadDelPlan = PlanEstudio::find($planId)?->modalidad;
+
+                if ($modalidadDelPlan && $modalidadDelPlan->value !== $modalidad) {
+                    $validator->errors()->add(
+                        'modalidad',
+                        'La modalidad debe coincidir con la del plan seleccionado.',
+                    );
+                }
+            },
             function (Validator $validator): void {
                 if (! $this->isMethod('POST') || $this->input('modalidad') !== Modalidad::Semestral->value) {
                     return;

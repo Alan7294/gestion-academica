@@ -22,11 +22,13 @@ function datosCurso(array $sobrescribir = []): array
     $carreraId = $sobrescribir['carrera_id'] ?? Carrera::factory()->create()->id;
     $periodoId = $sobrescribir['periodo_id'] ?? Periodo::factory()->create()->id;
     $docenteId = $sobrescribir['docente_id'] ?? usuarioConRol(Rol::Docente)->id;
+    $modalidad = $sobrescribir['modalidad'] ?? Modalidad::Semestral->value;
+    $modalidad = $modalidad instanceof Modalidad ? $modalidad : Modalidad::from($modalidad);
 
     $plan = PlanEstudio::factory()->create([
         'carrera_id' => $carreraId,
         'nombre' => 'Plan '.fake()->unique()->word(),
-        'modalidad' => Modalidad::Semestral,
+        'modalidad' => $modalidad,
     ]);
     $materia = materiaEnPlan($plan, [
         'codigo' => 'SIS-101',
@@ -38,7 +40,7 @@ function datosCurso(array $sobrescribir = []): array
     return array_merge([
         'carrera_id' => $carreraId,
         'plan_estudio_id' => $plan->id,
-        'modalidad' => Modalidad::Semestral->value,
+        'modalidad' => $modalidad->value,
         'materia_id' => $materia->id,
         'periodo_id' => $periodoId,
         'docente_id' => $docenteId,
@@ -136,6 +138,19 @@ it('crea el curso modular con veinte sesiones de lunes a viernes', function () {
         ->and($horarios)->toHaveCount(20)
         ->and($horarios->first()->fecha_fin->toDateString())->toBe('2026-01-30')
         ->and($horarios->every(fn ($horario) => $horario->aula === 'Aula 101'))->toBeTrue();
+});
+
+it('rechaza una modalidad que no coincide con el plan elegido', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $datos = datosCurso();
+
+    $this->actingAs($admin)
+        ->post('/admin/cursos', array_merge($datos, [
+            'modalidad' => Modalidad::Modular->value,
+        ]))
+        ->assertSessionHasErrors(['modalidad' => 'La modalidad debe coincidir con la del plan seleccionado.']);
+
+    expect(Curso::count())->toBe(0);
 });
 
 it('rechaza el curso sin docente, aula ni horario', function () {
@@ -342,11 +357,12 @@ it('congela el plan y el periodo de un curso que ya tiene horarios', function ()
 
     $otroPlan = PlanEstudio::factory()->create([
         'carrera_id' => $datos['carrera_id'],
-        'modalidad' => Modalidad::Modular,
+        'modalidad' => Modalidad::Semestral,
+        'activo' => false,
     ]);
     $otraMateria = materiaEnPlan($otroPlan, [
         'codigo' => 'SIS-303',
-        'nombre' => 'Otra materia del plan modular',
+        'nombre' => 'Otra materia del plan',
     ]);
 
     $this->actingAs($admin)
@@ -374,11 +390,22 @@ it('congela la modalidad de un curso que ya tiene horarios', function () {
         'hora_fin' => '10:00',
     ]);
 
+    $planModular = PlanEstudio::factory()->create([
+        'carrera_id' => $datos['carrera_id'],
+        'modalidad' => Modalidad::Modular,
+    ]);
+    $materiaModular = materiaEnPlan($planModular, [
+        'codigo' => 'SIS-303',
+        'nombre' => 'Otra materia del plan modular',
+    ]);
+
     $this->actingAs($admin)
         ->put("/admin/cursos/{$curso->id}", array_merge($datos, [
             'modalidad' => Modalidad::Modular->value,
+            'plan_estudio_id' => $planModular->id,
+            'materia_id' => $materiaModular->id,
         ]))
-        ->assertSessionHasErrors('modalidad');
+        ->assertSessionHasErrors(['modalidad' => 'No puedes cambiar la modalidad de un curso que ya tiene horarios. Elimínalos primero.']);
 
     expect($curso->fresh()->modalidad)->toBe(Modalidad::Semestral);
 });
@@ -390,7 +417,8 @@ it('actualiza los datos derivados al cambiar el plan y la materia', function () 
 
     $otroPlan = PlanEstudio::factory()->create([
         'carrera_id' => $datos['carrera_id'],
-        'modalidad' => Modalidad::Modular,
+        'modalidad' => Modalidad::Semestral,
+        'activo' => false,
     ]);
     $otraMateria = materiaEnPlan($otroPlan, [
         'codigo' => 'SIS-202',

@@ -156,7 +156,6 @@ class CursoController extends Controller
         return array_merge([
             'carrera_id' => $request->validated('carrera_id'),
             'plan_estudio_id' => $planId,
-            'modalidad' => Modalidad::from($request->validated('modalidad')),
             'materia_id' => $materiaId,
             'periodo_id' => $request->validated('periodo_id'),
             'docente_id' => $request->validated('docente_id'),
@@ -169,7 +168,7 @@ class CursoController extends Controller
     /**
      * El nombre, el semestre y los créditos no se piden: se derivan del plan.
      *
-     * @return array{nombre: string, creditos: int, semestre: int}
+     * @return array{nombre: string, modalidad: Modalidad, creditos: int, semestre: int}
      */
     private function datosAcademicos(int $planId, int $materiaId): array
     {
@@ -178,6 +177,7 @@ class CursoController extends Controller
 
         return [
             'nombre' => $materia->nombre,
+            'modalidad' => $plan->modalidad,
             'creditos' => (int) $materia->pivot->creditos,
             'semestre' => (int) $materia->pivot->semestre,
         ];

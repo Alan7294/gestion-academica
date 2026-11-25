@@ -6,12 +6,12 @@
           planId: @js((string) old('plan_estudio_id', $curso?->plan_estudio_id)),
           materiaId: @js((string) old('materia_id', $curso?->materia_id)),
           modalidad: @js((string) old('modalidad', $curso?->modalidad?->value ?? '')),
-          modalidadTocada: @js(old('modalidad') !== null),
           horarios: @js(old('horarios', [['dia_semana' => '', 'hora_inicio' => '', 'hora_fin' => '']])),
           planes: @js($planes),
           errores: @js($errors->messages()),
           get planesDisponibles() {
-              return this.planes.filter((plan) => String(plan.carrera_id) === String(this.carreraId));
+              return this.planes.filter((plan) => String(plan.carrera_id) === String(this.carreraId)
+                  && (this.modalidad === '' || plan.modalidad === this.modalidad));
           },
           get planSeleccionado() {
               return this.planes.find((plan) => String(plan.id) === String(this.planId)) ?? null;
@@ -31,15 +31,14 @@
           cambiarCarrera() {
               this.planId = '';
               this.materiaId = '';
-              if (! this.modalidadTocada) {
-                  this.modalidad = '';
-              }
+          },
+          cambiarModalidad() {
+              this.planId = '';
+              this.materiaId = '';
           },
           cambiarPlan() {
               this.materiaId = '';
-              if (! this.modalidadTocada) {
-                  this.modalidad = this.planSeleccionado?.modalidad ?? '';
-              }
+              this.modalidad = this.planSeleccionado?.modalidad ?? this.modalidad;
           },
           agregarHorario() {
               this.horarios.push({dia_semana: '', hora_inicio: '', hora_fin: ''});
@@ -66,6 +65,24 @@
         </div>
 
         <div>
+            <x-input-label for="modalidad" :value="__('Modalidad del curso')" />
+            <select id="modalidad" name="modalidad" x-model="modalidad" @change="cambiarModalidad()" required
+                    class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                <option value="" disabled>{{ __('Seleccione una modalidad') }}</option>
+                @foreach ($modalidades as $modalidadOpcion)
+                    <option value="{{ $modalidadOpcion->value }}"
+                            @selected(old('modalidad', $curso?->modalidad?->value) === $modalidadOpcion->value)>
+                        {{ $modalidadOpcion->etiqueta() }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-slate-500">
+                {{ __('Filtra los planes disponibles. Al elegir un plan se usa su modalidad.') }}
+            </p>
+            <x-input-error class="mt-2" :messages="$errors->get('modalidad')" />
+        </div>
+
+        <div>
             <x-input-label for="plan_estudio_id" :value="__('Plan de estudios')" />
             <select id="plan_estudio_id" name="plan_estudio_id" x-model="planId" @change="cambiarPlan()" required
                     class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
@@ -74,7 +91,7 @@
                     <option :value="String(plan.id)" x-text="plan.etiqueta"></option>
                 </template>
             </select>
-            <p class="mt-1 text-xs text-slate-500">{{ __('El plan define el semestre y los créditos de la materia.') }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ __('Solo se muestran los planes de la carrera y modalidad elegidas. El plan define semestre y créditos.') }}</p>
             <x-input-error class="mt-2" :messages="$errors->get('plan_estudio_id')" />
         </div>
 
@@ -89,24 +106,6 @@
             </select>
             <p class="mt-1 text-xs text-slate-500">{{ __('Solo se muestran las materias incluidas en el plan elegido.') }}</p>
             <x-input-error class="mt-2" :messages="$errors->get('materia_id')" />
-        </div>
-
-        <div>
-            <x-input-label for="modalidad" :value="__('Modalidad del curso')" />
-            <select id="modalidad" name="modalidad" x-model="modalidad" @change="modalidadTocada = true" required
-                    class="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
-                <option value="" disabled>{{ __('Seleccione una modalidad') }}</option>
-                @foreach ($modalidades as $modalidadOpcion)
-                    <option value="{{ $modalidadOpcion->value }}"
-                            @selected(old('modalidad', $curso?->modalidad?->value) === $modalidadOpcion->value)>
-                        {{ $modalidadOpcion->etiqueta() }}
-                    </option>
-                @endforeach
-            </select>
-            <p class="mt-1 text-xs text-slate-500">
-                {{ __('Se precarga la modalidad del plan, pero puedes elegir otra para este curso.') }}
-            </p>
-            <x-input-error class="mt-2" :messages="$errors->get('modalidad')" />
         </div>
 
         <div>

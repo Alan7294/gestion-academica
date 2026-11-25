@@ -65,7 +65,6 @@ class DemoSeeder extends Seeder
                 ['periodo_id' => $periodo->id, 'codigo' => $definicion['codigo']],
                 [
                     'carrera_id' => $carrera->id,
-                    'modalidad' => Modalidad::Semestral,
                     'docente_id' => $docente->id,
                     'nombre' => $definicion['nombre'],
                     'creditos' => $definicion['creditos'],
@@ -94,7 +93,7 @@ class DemoSeeder extends Seeder
 
             $curso->update([
                 'docente_id' => $docente->id,
-                'modalidad' => Modalidad::Semestral,
+                'modalidad' => $plan?->modalidad ?? Modalidad::Semestral,
                 'plan_estudio_id' => $plan?->id,
                 'materia_id' => $materia?->id,
                 'nombre' => $materia?->nombre ?? $definicion['nombre'],
