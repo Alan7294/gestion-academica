@@ -33,6 +33,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function certificadosDocentes(): HasMany
+    {
+        return $this->hasMany(CertificadoDocente::class);
+    }
+
     public function matriculas(): HasMany
     {
         return $this->hasMany(Matricula::class);

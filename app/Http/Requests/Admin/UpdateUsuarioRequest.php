@@ -22,6 +22,7 @@ class UpdateUsuarioRequest extends FormRequest
     {
         $this->merge(['activo' => $this->boolean('activo')]);
         $this->merge(['matriculas' => $this->matriculasNormalizadas()]);
+        $this->merge(['certificados' => $this->certificadosNormalizados()]);
     }
 
     /**
@@ -70,6 +71,10 @@ class UpdateUsuarioRequest extends FormRequest
             ],
             'matriculas.*.plan_estudio_id' => ['nullable', 'integer', Rule::exists('planes_estudio', 'id')],
             'matriculas.*.es_principal' => ['nullable', 'boolean'],
+            'certificados' => ['nullable', 'array', 'max:20'],
+            'certificados.*.titulo' => ['required', 'string', 'max:255'],
+            'certificados.*.institucion' => ['required', 'string', 'max:255'],
+            'certificados.*.codigo' => ['required', 'string', 'max:100'],
             'activo' => ['boolean'],
         ];
     }
@@ -141,6 +146,9 @@ class UpdateUsuarioRequest extends FormRequest
             'matriculas.*.carrera_id.required' => 'Selecciona la carrera del estudiante.',
             'matriculas.*.carrera_id.distinct' => 'No puedes repetir la misma carrera.',
             'matriculas.*.modalidad.required' => 'Selecciona la modalidad de la carrera.',
+            'certificados.*.titulo.required' => 'Escribe el título del certificado.',
+            'certificados.*.institucion.required' => 'Indica dónde obtuvo el certificado.',
+            'certificados.*.codigo.required' => 'Indica el código del certificado.',
         ];
     }
 
@@ -156,6 +164,26 @@ class UpdateUsuarioRequest extends FormRequest
                 'modalidad' => $matricula['modalidad'] ?? null,
                 'plan_estudio_id' => $matricula['plan_estudio_id'] ?? null,
                 'es_principal' => $this->boolean("matriculas.{$indice}.es_principal"),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function certificadosNormalizados(): array
+    {
+        return collect($this->input('certificados', []))
+            ->filter(fn ($certificado) => is_array($certificado) && (
+                filled($certificado['titulo'] ?? null)
+                || filled($certificado['institucion'] ?? null)
+                || filled($certificado['codigo'] ?? null)
+            ))
+            ->map(fn (array $certificado) => [
+                'titulo' => $certificado['titulo'] ?? null,
+                'institucion' => $certificado['institucion'] ?? null,
+                'codigo' => $certificado['codigo'] ?? null,
             ])
             ->values()
             ->all();

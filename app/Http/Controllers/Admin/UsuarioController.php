@@ -75,7 +75,7 @@ class UsuarioController extends Controller
 
     public function edit(User $usuario): View
     {
-        $usuario->load(['roles', 'matriculas.carrera']);
+        $usuario->load(['roles', 'matriculas.carrera', 'certificadosDocentes']);
 
         return view('admin.usuarios.edit', [
             'usuario' => $usuario,

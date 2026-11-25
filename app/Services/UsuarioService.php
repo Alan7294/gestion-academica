@@ -16,7 +16,7 @@ class UsuarioService
     /**
      * RF09: crea un usuario desde el panel y le asigna un rol.
      *
-     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password: string, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>}  $datos
+     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password: string, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>, certificados?: array<int, array{titulo: string, institucion: string, codigo: string}>}  $datos
      */
     public function crear(array $datos): User
     {
@@ -36,6 +36,10 @@ class UsuarioService
                 $this->matriculas->sincronizar($usuario, $datos['matriculas'] ?? []);
             }
 
+            if ($datos['rol'] === Rol::Docente->value) {
+                $this->sincronizarCertificados($usuario, $datos['certificados'] ?? []);
+            }
+
             return $usuario;
         });
     }
@@ -43,7 +47,7 @@ class UsuarioService
     /**
      * RF09: actualiza los datos y el rol sin dejar el sistema sin administradores.
      *
-     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password?: string|null, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>}  $datos
+     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password?: string|null, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>, certificados?: array<int, array{titulo: string, institucion: string, codigo: string}>}  $datos
      *
      * @throws ValidationException
      */
@@ -75,6 +79,12 @@ class UsuarioService
                 $usuario,
                 $datos['rol'] === Rol::Estudiante->value ? ($datos['matriculas'] ?? []) : [],
             );
+
+            if ($datos['rol'] === Rol::Docente->value) {
+                $this->sincronizarCertificados($usuario, $datos['certificados'] ?? []);
+            } else {
+                $usuario->certificadosDocentes()->delete();
+            }
 
             return $usuario->refresh();
         });
@@ -131,5 +141,17 @@ class UsuarioService
     private function esUltimoAdministrador(): bool
     {
         return User::role(Rol::Administrador->value)->count() <= 1;
+    }
+
+    /**
+     * @param  array<int, array{titulo: string, institucion: string, codigo: string}>  $certificados
+     */
+    private function sincronizarCertificados(User $usuario, array $certificados): void
+    {
+        $usuario->certificadosDocentes()->delete();
+
+        foreach ($certificados as $certificado) {
+            $usuario->certificadosDocentes()->create($certificado);
+        }
     }
 }

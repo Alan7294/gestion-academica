@@ -14,9 +14,19 @@
             ->all()
         : [['carrera_id' => '', 'modalidad' => '', 'es_principal' => true, 'plan_estudio_id' => '']]);
     $matriculasBaja = $usuario?->matriculas->filter(fn ($matricula) => ! $matricula->estaActiva()) ?? collect();
+    $certificadosIniciales = old('certificados', $usuario
+        ? $usuario->certificadosDocentes
+            ->map(fn ($certificado) => [
+                'titulo' => $certificado->titulo,
+                'institucion' => $certificado->institucion,
+                'codigo' => $certificado->codigo,
+            ])
+            ->values()
+            ->all()
+        : [['titulo' => '', 'institucion' => '', 'codigo' => '']]);
 @endphp
 
-<div x-data="{ rol: @js($rolActual), matriculas: @js($matriculasIniciales) }">
+<div x-data="{ rol: @js($rolActual), matriculas: @js($matriculasIniciales), certificados: @js($certificadosIniciales) }">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
             <x-input-label for="name" :value="__('Nombre completo')" />
@@ -99,7 +109,7 @@
                         <div>
                             <x-input-label :value="__('Carrera')" />
                             <select :id="'carrera_' + indice" :name="`matriculas[${indice}][carrera_id]`"
-                                    x-model="matricula.carrera_id" required
+                                    x-model="matricula.carrera_id" :required="rol === 'estudiante'"
                                     class="mt-1 block w-full border-slate-300 rounded-md shadow-sm text-sm">
                                 <option value="">{{ __('Selecciona una carrera') }}</option>
                                 @foreach ($carreras as $carrera)
@@ -111,7 +121,7 @@
                         <div>
                             <x-input-label :value="__('Modalidad')" />
                             <select :id="'modalidad_' + indice" :name="`matriculas[${indice}][modalidad]`"
-                                    x-model="matricula.modalidad" required
+                                    x-model="matricula.modalidad" :required="rol === 'estudiante'"
                                     class="mt-1 block w-full border-slate-300 rounded-md shadow-sm text-sm">
                                 <option value="">{{ __('Selecciona una modalidad') }}</option>
                                 @foreach ($modalidades as $modalidad)
@@ -176,6 +186,72 @@
                     </ul>
                 </div>
             @endif
+        </div>
+
+        {{-- Los certificados son texto; no se adjuntan archivos. --}}
+        <div x-show="rol === 'docente'" x-cloak
+             class="sm:col-span-2 rounded-xl border border-brand-100 bg-brand-50/40 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <p class="text-sm font-medium text-slate-800">{{ __('Certificados del docente') }}</p>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        {{ __('Registra el título, dónde lo obtuvo y su código.') }}
+                    </p>
+                </div>
+
+                <button type="button"
+                        @click="certificados.push({ titulo: '', institucion: '', codigo: '' })"
+                        class="text-sm font-medium text-brand-700 hover:text-brand-900">
+                    + {{ __('Agregar certificado') }}
+                </button>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                <template x-for="(certificado, indice) in certificados" :key="indice">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                        <div>
+                            <x-input-label :value="__('Título')" />
+                            <x-text-input x-bind:name="'certificados[' + indice + '][titulo]'" x-model="certificado.titulo"
+                                          class="mt-1 block w-full text-sm" />
+                        </div>
+
+                        <div>
+                            <x-input-label :value="__('Institution')" />
+                            <x-text-input x-bind:name="'certificados[' + indice + '][institucion]'" x-model="certificado.institucion"
+                                          class="mt-1 block w-full text-sm" />
+                        </div>
+
+                        <div>
+                            <x-input-label :value="__('Codigo')" />
+                            <x-text-input x-bind:name="'certificados[' + indice + '][codigo]'" x-model="certificado.codigo"
+                                          class="mt-1 block w-full text-sm" />
+                        </div>
+
+                        <div class="flex items-end justify-end">
+                            <button type="button" @click="certificados.splice(indice, 1)"
+                                    class="text-sm text-red-600 hover:text-red-900">
+                                {{ __('Quitar') }}
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            @foreach ($errors->get('certificados.*.titulo') as $mensajes)
+                @foreach ($mensajes as $mensaje)
+                    <p class="mt-2 text-sm text-red-600">{{ $mensaje }}</p>
+                @endforeach
+            @endforeach
+            @foreach ($errors->get('certificados.*.institucion') as $mensajes)
+                @foreach ($mensajes as $mensaje)
+                    <p class="mt-2 text-sm text-red-600">{{ $mensaje }}</p>
+                @endforeach
+            @endforeach
+            @foreach ($errors->get('certificados.*.codigo') as $mensajes)
+                @foreach ($mensajes as $mensaje)
+                    <p class="mt-2 text-sm text-red-600">{{ $mensaje }}</p>
+                @endforeach
+            @endforeach
         </div>
     </div>
 
