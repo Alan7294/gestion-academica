@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['inscripcion_id', 'registrado_por', 'nombre', 'ponderacion', 'nota', 'fecha'])]
+#[Fillable(['inscripcion_id', 'curso_evaluacion_id', 'registrado_por', 'nota', 'fecha'])]
 class Calificacion extends Model
 {
     use HasFactory;
@@ -18,7 +18,6 @@ class Calificacion extends Model
     {
         return [
             'nota' => 'decimal:2',
-            'ponderacion' => 'integer',
             'fecha' => 'date',
         ];
     }
@@ -26,6 +25,11 @@ class Calificacion extends Model
     public function inscripcion(): BelongsTo
     {
         return $this->belongsTo(Inscripcion::class);
+    }
+
+    public function evaluacion(): BelongsTo
+    {
+        return $this->belongsTo(CursoEvaluacion::class, 'curso_evaluacion_id');
     }
 
     public function docente(): BelongsTo

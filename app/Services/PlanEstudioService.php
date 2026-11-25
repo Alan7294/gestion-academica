@@ -4,39 +4,40 @@ namespace App\Services;
 
 use App\Models\Materia;
 use App\Models\PlanEstudio;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class PlanEstudioService
 {
     /**
-     * Crea un plan de estudios junto con sus materias y requisitos.
+     * Crea un plan de estudios, vincula materias del catálogo y registra requisitos.
      *
-     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id?: int|null, codigo: string, nombre: string, semestre: int, creditos: int, requisitos?: array<int, string>}>}  $datos
+     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>}  $datos
      */
     public function crear(array $datos): PlanEstudio
     {
         return DB::transaction(function () use ($datos) {
             $plan = PlanEstudio::create($this->atributos($datos));
 
-            $porCodigo = $this->sincronizarMaterias($plan, $datos['materias']);
-            $this->sincronizarRequisitos($porCodigo, $datos['materias']);
+            $porId = $this->sincronizarMaterias($plan, $datos['materias']);
+            $this->sincronizarRequisitos($plan, $porId, $datos['materias']);
 
             return $plan->load('materias.requisitos');
         });
     }
 
     /**
-     * Actualiza el plan y sincroniza sus materias y requisitos sin perder los identificadores.
+     * Actualiza el plan y sincroniza sus vínculos sin cambiar los identificadores del catálogo.
      *
-     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id?: int|null, codigo: string, nombre: string, semestre: int, creditos: int, requisitos?: array<int, string>}>}  $datos
+     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>}  $datos
      */
     public function actualizar(PlanEstudio $plan, array $datos): PlanEstudio
     {
         return DB::transaction(function () use ($plan, $datos) {
             $plan->update($this->atributos($datos));
 
-            $porCodigo = $this->sincronizarMaterias($plan, $datos['materias']);
-            $this->sincronizarRequisitos($porCodigo, $datos['materias']);
+            $porId = $this->sincronizarMaterias($plan, $datos['materias']);
+            $this->sincronizarRequisitos($plan, $porId, $datos['materias']);
 
             return $plan->load('materias.requisitos');
         });
@@ -44,7 +45,7 @@ class PlanEstudioService
 
     public function eliminar(PlanEstudio $plan): void
     {
-        // Las materias y sus requisitos se eliminan en cascada por las llaves foráneas.
+        // Los vínculos con el catálogo y los requisitos del plan se eliminan en cascada.
         $plan->delete();
     }
 
@@ -64,57 +65,51 @@ class PlanEstudioService
     }
 
     /**
-     * @param  array<int, array{id?: int|null, codigo: string, nombre: string, semestre: int, creditos: int, requisitos?: array<int, string>}>  $materias
-     * @return array<string, Materia>
+     * @param  array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>  $materias
+     * @return Collection<int, Materia>
      */
-    private function sincronizarMaterias(PlanEstudio $plan, array $materias): array
+    private function sincronizarMaterias(PlanEstudio $plan, array $materias): Collection
     {
-        $ids = collect($materias)->pluck('id')->filter()->values();
+        $valores = collect($materias)->mapWithKeys(fn (array $materia) => [
+            (int) $materia['id'] => [
+                'semestre' => (int) $materia['semestre'],
+                'creditos' => (int) $materia['creditos'],
+            ],
+        ]);
 
-        $consulta = $plan->materias();
+        $plan->materias()->sync($valores->all());
 
-        if ($ids->isNotEmpty()) {
-            $consulta->whereNotIn('id', $ids->all());
-        }
-
-        // Los requisitos de una materia eliminada desaparecen en cascada.
-        $consulta->delete();
-
-        $porCodigo = [];
-
-        foreach ($materias as $materia) {
-            $atributos = [
-                'codigo' => $materia['codigo'],
-                'nombre' => $materia['nombre'],
-                'semestre' => $materia['semestre'],
-                'creditos' => $materia['creditos'],
-            ];
-
-            if (! empty($materia['id'])) {
-                $registro = $plan->materias()->findOrFail($materia['id']);
-                $registro->update($atributos);
-            } else {
-                $registro = $plan->materias()->create($atributos);
-            }
-
-            $porCodigo[$materia['codigo']] = $registro;
-        }
-
-        return $porCodigo;
+        return $plan->materias()
+            ->whereIn('materias.id', $valores->keys()->all())
+            ->get()
+            ->keyBy('id');
     }
 
     /**
-     * @param  array<string, Materia>  $porCodigo
-     * @param  array<int, array{id?: int|null, codigo: string, nombre: string, semestre: int, creditos: int, requisitos?: array<int, string>}>  $materias
+     * @param  Collection<int, Materia>  $porId
+     * @param  array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>  $materias
      */
-    private function sincronizarRequisitos(array $porCodigo, array $materias): void
+    private function sincronizarRequisitos(PlanEstudio $plan, Collection $porId, array $materias): void
     {
         foreach ($materias as $materia) {
             $idsRequisitos = collect($materia['requisitos'] ?? [])
-                ->map(fn (string $codigo) => $porCodigo[$codigo]->id)
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
                 ->all();
 
-            $porCodigo[$materia['codigo']]->requisitos()->sync($idsRequisitos);
+            $porId->get((int) $materia['id'])->requisitosDelPlan($plan)->sync($idsRequisitos);
         }
+
+        // Las materias que salieron del plan no pueden conservar requisitos dentro de él.
+        $idsDelPlan = $porId->keys()->map(fn ($id) => (int) $id)->all();
+
+        DB::table('materia_requisitos')
+            ->where('plan_estudio_id', $plan->id)
+            ->where(function ($query) use ($idsDelPlan) {
+                $query->whereNotIn('materia_id', $idsDelPlan)
+                    ->orWhereNotIn('requisito_id', $idsDelPlan);
+            })
+            ->delete();
     }
 }

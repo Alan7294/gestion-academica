@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Modalidad;
 use App\Enums\Rol;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'carrera_id',
+    'plan_estudio_id',
+    'modalidad',
     'materia_id',
     'periodo_id',
     'docente_id',
@@ -30,6 +33,7 @@ class Curso extends Model
     protected function casts(): array
     {
         return [
+            'modalidad' => Modalidad::class,
             'creditos' => 'integer',
             'semestre' => 'integer',
             'cupo' => 'integer',
@@ -40,6 +44,14 @@ class Curso extends Model
     public function carrera(): BelongsTo
     {
         return $this->belongsTo(Carrera::class);
+    }
+
+    /**
+     * Plan que aporta el semestre y los créditos de la materia del curso.
+     */
+    public function planEstudio(): BelongsTo
+    {
+        return $this->belongsTo(PlanEstudio::class);
     }
 
     public function materia(): BelongsTo
@@ -60,6 +72,11 @@ class Curso extends Model
     public function horarios(): HasMany
     {
         return $this->hasMany(Horario::class)->orderBy('dia_semana')->orderBy('hora_inicio');
+    }
+
+    public function evaluaciones(): HasMany
+    {
+        return $this->hasMany(CursoEvaluacion::class)->orderBy('id');
     }
 
     public function inscripciones(): HasMany

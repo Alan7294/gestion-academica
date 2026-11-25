@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Calificacion;
+use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\User;
 use App\Notifications\NotaRegistrada;
@@ -13,86 +14,82 @@ use Illuminate\Validation\ValidationException;
 class CalificacionService
 {
     /**
-     * RF07: registra una evaluación y recalcula el promedio del estudiante.
+     * Guarda la grilla de notas de un curso y recalcula el promedio de cada alumno afectado.
      *
-     * @param  array{nombre: string, ponderacion: int, nota: string|float, fecha: string}  $datos
+     * @param  array<int|string, array<int|string, int|float|string|null>>  $notas
      *
-     * @throws ValidationException|AuthorizationException
+     * @throws AuthorizationException|ValidationException
      */
-    public function registrar(Inscripcion $inscripcion, array $datos, User $docente): Calificacion
+    public function guardarNotas(Curso $curso, array $notas, User $docente): void
     {
-        $inscripcion->loadMissing(['curso', 'estudiante']);
+        $this->verificarDocente($curso, $docente);
 
-        $this->verificarDocente($inscripcion, $docente);
-        $this->verificarDuplicado($inscripcion, $datos['nombre']);
-        $this->verificarPonderacion($inscripcion, (int) $datos['ponderacion']);
+        $evaluaciones = $curso->evaluaciones()->get()->keyBy('id');
 
-        $calificacion = DB::transaction(function () use ($inscripcion, $datos, $docente) {
-            $calificacion = $inscripcion->calificaciones()->create([
-                'registrado_por' => $docente->id,
-                'nombre' => $datos['nombre'],
-                'ponderacion' => (int) $datos['ponderacion'],
-                'nota' => $datos['nota'],
-                'fecha' => $datos['fecha'],
+        if ($evaluaciones->isEmpty()) {
+            throw ValidationException::withMessages([
+                'notas' => 'Primero debes definir las actividades y sus ponderaciones.',
             ]);
+        }
 
-            $this->recalcular($inscripcion);
+        $inscripcionesValidas = $curso->inscripciones()->pluck('id')->all();
+        $cambios = collect();
 
-            return $calificacion;
+        DB::transaction(function () use ($notas, $docente, $evaluaciones, $inscripcionesValidas, &$cambios): void {
+            foreach ($notas as $inscripcionId => $valores) {
+                if (! is_array($valores) || ! in_array((int) $inscripcionId, $inscripcionesValidas, true)) {
+                    continue;
+                }
+
+                $inscripcion = Inscripcion::query()
+                    ->whereKey($inscripcionId)
+                    ->with('calificaciones')
+                    ->firstOrFail();
+
+                foreach ($valores as $evaluacionId => $valor) {
+                    $evaluacion = $evaluaciones->get((int) $evaluacionId);
+
+                    if ($evaluacion === null) {
+                        continue;
+                    }
+
+                    $existente = $inscripcion->calificaciones
+                        ->firstWhere('curso_evaluacion_id', $evaluacion->id);
+
+                    if ($valor === null || $valor === '') {
+                        $existente?->delete();
+
+                        continue;
+                    }
+
+                    if ($existente !== null) {
+                        if ((float) $existente->nota !== (float) $valor) {
+                            $existente->update([
+                                'nota' => $valor,
+                                'registrado_por' => $docente->id,
+                            ]);
+
+                            $cambios->push($existente);
+                        }
+
+                        continue;
+                    }
+
+                    $cambios->push($inscripcion->calificaciones()->create([
+                        'curso_evaluacion_id' => $evaluacion->id,
+                        'registrado_por' => $docente->id,
+                        'nota' => $valor,
+                        'fecha' => now()->toDateString(),
+                    ]));
+                }
+
+                $this->recalcular($inscripcion);
+            }
         });
 
-        $inscripcion->estudiante->notify(new NotaRegistrada($calificacion));
-
-        return $calificacion;
-    }
-
-    /**
-     * RF07: edita una calificación existente.
-     *
-     * @param  array{nombre: string, ponderacion: int, nota: string|float, fecha: string}  $datos
-     *
-     * @throws ValidationException|AuthorizationException
-     */
-    public function actualizar(Calificacion $calificacion, array $datos, User $docente): Calificacion
-    {
-        $inscripcion = $calificacion->inscripcion;
-        $inscripcion->loadMissing(['curso', 'estudiante']);
-
-        $this->verificarDocente($inscripcion, $docente);
-
-        $this->verificarPonderacion(
-            $inscripcion,
-            (int) $datos['ponderacion'],
-            $calificacion->id,
-        );
-
-        DB::transaction(function () use ($calificacion, $inscripcion, $datos) {
-            $calificacion->update([
-                'nombre' => $datos['nombre'],
-                'ponderacion' => (int) $datos['ponderacion'],
-                'nota' => $datos['nota'],
-                'fecha' => $datos['fecha'],
-            ]);
-
-            $this->recalcular($inscripcion);
-        });
-
-        return $calificacion->refresh();
-    }
-
-    /**
-     * @throws AuthorizationException
-     */
-    public function eliminar(Calificacion $calificacion, User $docente): void
-    {
-        $inscripcion = $calificacion->inscripcion;
-        $inscripcion->loadMissing('curso');
-
-        $this->verificarDocente($inscripcion, $docente);
-
-        DB::transaction(function () use ($calificacion, $inscripcion) {
-            $calificacion->delete();
-            $this->recalcular($inscripcion);
+        $cambios->each(function (Calificacion $calificacion): void {
+            $calificacion->loadMissing(['inscripcion.curso', 'evaluacion']);
+            $calificacion->inscripcion->estudiante->notify(new NotaRegistrada($calificacion));
         });
     }
 
@@ -111,46 +108,14 @@ class CalificacionService
     /**
      * @throws AuthorizationException
      */
-    private function verificarDocente(Inscripcion $inscripcion, User $docente): void
+    private function verificarDocente(Curso $curso, User $docente): void
     {
         if ($docente->esAdministrador()) {
             return;
         }
 
-        if ($inscripcion->curso->docente_id !== $docente->id) {
+        if ($curso->docente_id !== $docente->id) {
             throw new AuthorizationException('Solo el docente del curso puede gestionar sus calificaciones.');
-        }
-    }
-
-    /**
-     * @throws ValidationException
-     */
-    private function verificarDuplicado(Inscripcion $inscripcion, string $nombre): void
-    {
-        $existe = $inscripcion->calificaciones()->where('nombre', $nombre)->exists();
-
-        if ($existe) {
-            throw ValidationException::withMessages([
-                'nombre' => 'Ya existe una evaluación con ese nombre en este curso.',
-            ]);
-        }
-    }
-
-    /**
-     * La suma de ponderaciones de una inscripción no puede superar 100%.
-     *
-     * @throws ValidationException
-     */
-    private function verificarPonderacion(Inscripcion $inscripcion, int $ponderacion, ?int $excluirId = null): void
-    {
-        $suma = $inscripcion->calificaciones()
-            ->when($excluirId, fn ($query, $id) => $query->whereKeyNot($id))
-            ->sum('ponderacion');
-
-        if ($suma + $ponderacion > 100) {
-            throw ValidationException::withMessages([
-                'ponderacion' => 'La suma de ponderaciones del curso no puede superar el 100%.',
-            ]);
         }
     }
 }

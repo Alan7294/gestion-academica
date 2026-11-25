@@ -1,38 +1,62 @@
 @php
     $plan = $plan ?? null;
 
-    // Se conservan los datos enviados si la validación falla.
-    $materiasIniciales = old('materias');
+    $catalogo = collect($materias)->map(fn (array $materia) => [
+        'id' => (int) $materia['id'],
+        'carrera_id' => (int) $materia['carrera_id'],
+        'codigo' => $materia['codigo'],
+        'nombre' => $materia['nombre'],
+    ])->values()->all();
+
+    $catalogoPorId = collect($catalogo)->keyBy('id');
+
+    // Se conservan los datos enviados si la validación falla. Si se quitaron
+    // todas las materias, no se envía la clave: old() devuelve null, pero la
+    // sesión sí tiene entrada previa, así que hay que respetar el vacío en vez
+    // de volver a cargar las materias del plan.
+    $materiasIniciales = session()->hasOldInput() ? old('materias', []) : null;
+
+    if ($materiasIniciales !== null && ! is_array($materiasIniciales)) {
+        $materiasIniciales = [];
+    }
 
     if ($materiasIniciales === null) {
         $materiasIniciales = $plan
             ? $plan->materias->map(fn ($materia) => [
-                'id' => $materia->id,
+                'id' => (int) $materia->id,
                 'codigo' => $materia->codigo,
                 'nombre' => $materia->nombre,
-                'semestre' => $materia->semestre,
-                'creditos' => $materia->creditos,
-                'requisitos' => $materia->requisitos->pluck('codigo')->values()->all(),
+                'semestre' => (int) $materia->pivot->semestre,
+                'creditos' => (int) $materia->pivot->creditos,
+                'requisitos' => $materia->requisitos->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             ])->values()->all()
             : [];
     }
 
+    // El formulario solo envía el id de cada materia, así que al fallar la
+    // validación el código y el nombre se recuperan desde el catálogo.
     $materiasIniciales = collect($materiasIniciales)
-        ->map(fn (array $materia) => array_merge(['id' => null, 'requisitos' => []], $materia))
+        ->map(function (array $materia) use ($catalogoPorId) {
+            $id = isset($materia['id']) && $materia['id'] !== '' ? (int) $materia['id'] : null;
+            $enCatalogo = $id !== null ? $catalogoPorId->get($id) : null;
+
+            return [
+                'id' => $id,
+                'codigo' => (string) ($materia['codigo'] ?? $enCatalogo['codigo'] ?? ''),
+                'nombre' => (string) ($materia['nombre'] ?? $enCatalogo['nombre'] ?? ''),
+                'semestre' => (int) ($materia['semestre'] ?? 1),
+                'creditos' => (int) ($materia['creditos'] ?? 1),
+                'requisitos' => collect($materia['requisitos'] ?? [])
+                    ->filter(fn ($id) => $id !== '')
+                    ->map(fn ($id) => (int) $id)
+                    ->values()
+                    ->all(),
+            ];
+        })
         ->values()
         ->all();
 
-    if (empty($materiasIniciales)) {
-        $materiasIniciales = [[
-            'id' => null,
-            'codigo' => '',
-            'nombre' => '',
-            'semestre' => 1,
-            'creditos' => 0,
-            'requisitos' => [],
-        ]];
-    }
-
+    $carreraInicial = (string) old('carrera_id', $plan?->carrera_id ?? '');
     $duracionInicial = (int) old('semestres', $plan?->semestres ?? 2);
 
     $erroresMaterias = collect($errors->getBag('default')->keys())
@@ -42,7 +66,167 @@
         ->values();
 @endphp
 
-<div x-data="{ materias: @js($materiasIniciales), semestres: @js($duracionInicial) }" class="space-y-6">
+<div x-data="{
+        carreraId: @js($carreraInicial),
+        carreraAnterior: @js($carreraInicial),
+        semestres: @js($duracionInicial),
+        catalogo: @js($catalogo),
+        catalogoUrl: @js(route('admin.materias.catalogo')),
+        materias: @js($materiasIniciales),
+        materiaNuevaId: '',
+        nueva: { codigo: '', nombre: '' },
+        creando: false,
+        errorAlta: '',
+        get disponibles() {
+            return this.catalogo.filter((materia) =>
+                String(materia.carrera_id) === String(this.carreraId)
+                && ! this.materias.some((seleccionada) => Number(seleccionada.id) === Number(materia.id))
+            );
+        },
+        agregarMateria() {
+            const materia = this.catalogo.find((opcion) => Number(opcion.id) === Number(this.materiaNuevaId));
+
+            if (! materia) {
+                return;
+            }
+
+            this.materias.push({
+                id: materia.id,
+                codigo: materia.codigo,
+                nombre: materia.nombre,
+                semestre: 1,
+                creditos: 1,
+                requisitos: [],
+            });
+            this.materiaNuevaId = '';
+        },
+        async cargarCatalogo() {
+            if (! this.carreraId) {
+                this.catalogo = [];
+
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(`${this.catalogoUrl}?carrera_id=${encodeURIComponent(this.carreraId)}`, {
+                    headers: { 'Accept': 'application/json' },
+                });
+
+                if (! respuesta.ok) {
+                    return;
+                }
+
+                this.catalogo = await respuesta.json();
+            } catch (error) {
+                this.catalogo = [];
+            }
+        },
+        async cambiarCarrera() {
+            const carreraNueva = this.carreraId;
+
+            // Evita perder el trabajo si el cambio fue accidental.
+            if (this.materias.length > 0 && ! confirm(@js(__('Cambiar de carrera quitará las materias seleccionadas del plan. ¿Continuar?')))) {
+                this.carreraId = this.carreraAnterior;
+
+                return;
+            }
+
+            this.carreraAnterior = carreraNueva;
+            // Las materias elegidas pertenecen a la carrera anterior.
+            this.materias = [];
+            this.materiaNuevaId = '';
+            await this.cargarCatalogo();
+        },
+        requisitosDisponibles(indice) {
+            const materia = this.materias[indice];
+            const semestre = Number(materia?.semestre);
+
+            if (! materia || ! Number.isInteger(semestre) || semestre < 1) {
+                return [];
+            }
+
+            return this.materias.filter((otra, posicion) => {
+                const semestreOtro = Number(otra.semestre);
+
+                return posicion !== indice
+                    && otra.id
+                    && Number.isInteger(semestreOtro)
+                    && semestreOtro >= 1
+                    && semestreOtro < semestre;
+            });
+        },
+        depurarRequisitos() {
+            // Mientras haya un semestre vacío no se poda nada: x-model.number lo
+            // convierte en 0 y eso borraría requisitos válidos al teclear otro valor.
+            const semestresValidos = this.materias.every((materia) => {
+                const semestre = Number(materia.semestre);
+
+                return Number.isInteger(semestre) && semestre >= 1;
+            });
+
+            if (! semestresValidos) {
+                return;
+            }
+
+            // Al mover un semestre, los requisitos que dejaron de ser previos se quitan.
+            this.materias.forEach((materia, indice) => {
+                const permitidos = this.requisitosDisponibles(indice).map((otra) => Number(otra.id));
+
+                materia.requisitos = (materia.requisitos ?? [])
+                    .map((id) => Number(id))
+                    .filter((id) => permitidos.includes(id));
+            });
+        },
+        quitarMateria(indice) {
+            const [quitada] = this.materias.splice(indice, 1);
+
+            if (! quitada) {
+                return;
+            }
+
+            // Ninguna materia que queda puede seguir exigiendo la que se quitó.
+            this.materias.forEach((materia) => {
+                materia.requisitos = (materia.requisitos ?? [])
+                    .filter((id) => Number(id) !== Number(quitada.id));
+            });
+        },
+        async crearMateria() {
+            this.errorAlta = '';
+            this.creando = true;
+
+            try {
+                const respuesta = await fetch(@js(route('admin.materias.store')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': @js(csrf_token()),
+                    },
+                    body: JSON.stringify({
+                        carrera_id: this.carreraId,
+                        codigo: this.nueva.codigo,
+                        nombre: this.nueva.nombre,
+                    }),
+                });
+                const datos = await respuesta.json();
+
+                if (! respuesta.ok) {
+                    this.errorAlta = Object.values(datos.errors ?? {}).flat().join(' ');
+
+                    return;
+                }
+
+                this.catalogo.push(datos);
+                this.materiaNuevaId = datos.id;
+                this.agregarMateria();
+                this.nueva = { codigo: '', nombre: '' };
+            } catch (error) {
+                this.errorAlta = @js(__('No se pudo crear la materia. Inténtalo de nuevo.'));
+            } finally {
+                this.creando = false;
+            }
+        },
+     }" class="space-y-6">
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div class="sm:col-span-2">
             <x-input-label for="nombre" :value="__('Nombre del plan')" />
@@ -54,11 +238,11 @@
 
         <div>
             <x-input-label for="carrera_id" :value="__('Carrera')" />
-            <select id="carrera_id" name="carrera_id" required
+            <select id="carrera_id" name="carrera_id" x-model="carreraId" @change="cambiarCarrera()" required
                     class="mt-1 block w-full rounded-md border-slate-300 shadow-sm">
-                <option value="" disabled @selected(! old('carrera_id', $plan?->carrera_id))>{{ __('Seleccione una carrera') }}</option>
+                <option value="" disabled @selected($carreraInicial === '')>{{ __('Seleccione una carrera') }}</option>
                 @foreach ($carreras as $carrera)
-                    <option value="{{ $carrera->id }}" @selected(old('carrera_id', $plan?->carrera_id) == $carrera->id)>
+                    <option value="{{ $carrera->id }}" @selected($carreraInicial === (string) $carrera->id)>
                         {{ $carrera->nombre }}{{ $carrera->activo ? '' : ' (' . __('inactiva') . ')' }}
                     </option>
                 @endforeach
@@ -92,11 +276,15 @@
         </div>
 
         <div class="flex items-end pb-2">
-            <label class="inline-flex items-center">
-                <input type="checkbox" name="activo" value="1" class="rounded border-slate-300 text-brand-600 shadow-sm"
-                       @checked(old('activo', $plan?->activo ?? true))>
-                <span class="ms-2 text-sm text-slate-600">{{ __('Plan activo') }}</span>
-            </label>
+            <div>
+                <label class="inline-flex items-center">
+                    <input type="checkbox" name="activo" value="1" class="rounded border-slate-300 text-brand-600 shadow-sm"
+                           @checked(old('activo', $plan?->activo ?? true))>
+                    <span class="ms-2 text-sm text-slate-600">{{ __('Plan activo') }}</span>
+                </label>
+                <p class="mt-1 text-xs text-slate-500">{{ __('Solo puede haber un plan activo por carrera y modalidad.') }}</p>
+                <x-input-error class="mt-2" :messages="$errors->get('activo')" />
+            </div>
         </div>
     </div>
 
@@ -105,16 +293,50 @@
             <div>
                 <h3 class="font-semibold text-slate-900">{{ __('Materias del plan') }}</h3>
                 <p class="mt-0.5 text-sm text-slate-500">
-                    {{ __('Indica el código, el nombre, el semestre, los créditos y los requisitos de cada materia.') }}
+                    {{ __('Selecciona materias del catálogo, ajusta su semestre y créditos, e indica sus requisitos.') }}
                 </p>
             </div>
+        </div>
 
-            <button type="button"
-                    @click="materias.push({ id: null, codigo: '', nombre: '', semestre: 1, creditos: 0, requisitos: [] })"
-                    class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-100">
-                <x-icon name="plus" class="h-4 w-4" />
-                {{ __('Agregar materia') }}
-            </button>
+        <div class="mt-4 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 lg:grid-cols-2">
+            <div>
+                <x-input-label for="materia-nueva" :value="__('Agregar materia existente')" />
+                <div class="mt-1 flex gap-2">
+                    <select id="materia-nueva" x-model.number="materiaNuevaId" :disabled="! carreraId"
+                            class="block w-full rounded-md border-slate-300 shadow-sm disabled:opacity-50">
+                        <option value="">{{ __('Seleccione una materia') }}</option>
+                        <template x-for="materia in disponibles" :key="materia.id">
+                            <option :value="materia.id" x-text="`${materia.codigo} - ${materia.nombre}`"></option>
+                        </template>
+                    </select>
+                    <button type="button" @click="agregarMateria()" :disabled="! materiaNuevaId"
+                            class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-40">
+                        <x-icon name="plus" class="h-4 w-4" />
+                        {{ __('Agregar') }}
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-slate-500">{{ __('La lista se filtra por la carrera elegida.') }}</p>
+            </div>
+
+            <div>
+                <p class="text-sm font-medium text-slate-700">{{ __('Crear materia nueva') }}</p>
+                <div class="mt-1 flex flex-col gap-2 sm:flex-row">
+                    <input type="text" x-model="nueva.codigo" maxlength="20" :disabled="! carreraId"
+                           @keydown.enter.prevent="crearMateria()"
+                           placeholder="{{ __('Código') }}"
+                           class="block w-full rounded-md border-slate-300 shadow-sm disabled:opacity-50 sm:w-1/3">
+                    <input type="text" x-model="nueva.nombre" maxlength="255" :disabled="! carreraId"
+                           @keydown.enter.prevent="crearMateria()"
+                           placeholder="{{ __('Nombre de la materia') }}"
+                           class="block w-full rounded-md border-slate-300 shadow-sm disabled:opacity-50">
+                    <button type="button" @click="crearMateria()" :disabled="! carreraId || creando || ! nueva.codigo || ! nueva.nombre"
+                            class="inline-flex shrink-0 items-center justify-center rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40">
+                        <span x-text="creando ? @js(__('Creando...')) : @js(__('Crear'))"></span>
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-slate-500">{{ __('Se guarda en el catálogo y queda seleccionada para este plan.') }}</p>
+                <p class="mt-1 text-xs text-red-700" x-show="errorAlta" x-text="errorAlta"></p>
+            </div>
         </div>
 
         @if ($erroresMaterias->isNotEmpty())
@@ -128,26 +350,14 @@
         @endif
 
         <div class="mt-4 space-y-3">
-            <template x-for="(materia, indice) in materias" :key="indice">
+            <template x-for="(materia, indice) in materias" :key="`${indice}-${materia.id}`">
                 <div class="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-12">
-                    <input type="hidden" :name="`materias[${indice}][id]`" :value="materia.id ?? ''">
+                    <input type="hidden" :name="`materias[${indice}][id]`" :value="materia.id">
 
-                    <div class="sm:col-span-2">
-                        <label :for="`materia-codigo-${indice}`" class="block text-xs font-medium text-slate-600">
-                            {{ __('Código') }}
-                        </label>
-                        <input :id="`materia-codigo-${indice}`" :name="`materias[${indice}][codigo]`"
-                               type="text" x-model="materia.codigo" maxlength="20" required
-                               class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
-                    </div>
-
-                    <div class="sm:col-span-4">
-                        <label :for="`materia-nombre-${indice}`" class="block text-xs font-medium text-slate-600">
-                            {{ __('Materia') }}
-                        </label>
-                        <input :id="`materia-nombre-${indice}`" :name="`materias[${indice}][nombre]`"
-                               type="text" x-model="materia.nombre" maxlength="255" required
-                               class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
+                    <div class="sm:col-span-3">
+                        <p class="text-xs font-medium text-slate-600">{{ __('Código') }}</p>
+                        <p class="mt-1 font-mono text-sm text-slate-700" x-text="materia.codigo"></p>
+                        <p class="mt-0.5 text-sm text-slate-900" x-text="materia.nombre"></p>
                     </div>
 
                     <div class="sm:col-span-2">
@@ -156,6 +366,7 @@
                         </label>
                         <input :id="`materia-semestre-${indice}`" :name="`materias[${indice}][semestre]`"
                                type="number" min="1" max="12" x-model.number="materia.semestre" required
+                               @change="depurarRequisitos()"
                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                     </div>
 
@@ -164,37 +375,48 @@
                             {{ __('Créditos') }}
                         </label>
                         <input :id="`materia-creditos-${indice}`" :name="`materias[${indice}][creditos]`"
-                               type="number" min="0" max="20" x-model.number="materia.creditos" required
+                               type="number" min="1" max="20" x-model.number="materia.creditos" required
                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                     </div>
 
-                    <div class="sm:col-span-12">
-                        <label :for="`materia-requisitos-${indice}`" class="block text-xs font-medium text-slate-600">
+                    <div class="sm:col-span-4">
+                        <p class="block text-xs font-medium text-slate-600">
                             {{ __('Requisitos (materias que deben aprobarse antes)') }}
-                        </label>
-                        <select :id="`materia-requisitos-${indice}`" :name="`materias[${indice}][requisitos][]`"
-                                multiple size="3" x-model="materia.requisitos"
-                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
-                            <template x-for="otra in materias.filter((m, i) => i !== indice && m.codigo)" :key="otra.codigo">
-                                <option :value="otra.codigo"
-                                        x-text="`${otra.codigo} - ${otra.nombre} (semestre ${otra.semestre})`"></option>
+                        </p>
+                        <div class="mt-1 max-h-36 space-y-1 overflow-y-auto rounded-md border border-slate-300 bg-white p-2">
+                            <template x-for="otra in requisitosDisponibles(indice)" :key="otra.id">
+                                <label class="flex items-start gap-2 text-sm text-slate-700">
+                                    <input type="checkbox"
+                                           :name="`materias[${indice}][requisitos][]`"
+                                           :value="otra.id"
+                                           x-model.number="materia.requisitos"
+                                           class="mt-0.5 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-brand-500">
+                                    <span x-text="`${otra.codigo} - ${otra.nombre} (semestre ${otra.semestre})`"></span>
+                                </label>
                             </template>
-                        </select>
+                            <p class="text-xs text-slate-400" x-show="requisitosDisponibles(indice).length === 0">
+                                {{ __('No hay materias de semestres anteriores.') }}
+                            </p>
+                        </div>
                         <p class="mt-1 text-xs text-slate-500">
-                            {{ __('Puedes seleccionar varias materias, todas de semestres anteriores.') }}
+                            {{ __('Solo se ofrecen materias de semestres anteriores.') }}
                         </p>
                     </div>
 
-                    <div class="flex items-end sm:col-span-2">
-                        <button type="button" @click="materias.splice(indice, 1)"
-                                :disabled="materias.length === 1"
-                                class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40">
+                    <div class="flex items-end justify-end sm:col-span-1">
+                        <button type="button" @click="quitarMateria(indice)"
+                                title="{{ __('Quitar del plan') }}"
+                                aria-label="{{ __('Quitar del plan') }}"
+                                class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:border-red-300 hover:bg-red-50">
                             <x-icon name="trash" class="h-4 w-4" />
-                            {{ __('Quitar') }}
                         </button>
                     </div>
                 </div>
             </template>
+
+            <p class="text-sm text-slate-500" x-show="materias.length === 0">
+                {{ __('Agrega al menos una materia del catálogo.') }}
+            </p>
         </div>
 
         <p class="mt-3 text-sm text-slate-500">

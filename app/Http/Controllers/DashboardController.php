@@ -67,6 +67,7 @@ class DashboardController extends Controller
 
         return view('estudiante.dashboard', [
             'inscripciones' => $inscripciones,
+            'matriculasActivas' => $request->user()->matriculas()->activas()->with('carrera')->get(),
             'actividad' => $this->actividadReciente($request->user()),
         ]);
     }

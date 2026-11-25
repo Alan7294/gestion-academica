@@ -7,6 +7,7 @@ use App\Models\Curso;
 use App\Models\Horario;
 use App\Models\Inscripcion;
 use App\Models\Materia;
+use App\Models\PlanEstudio;
 use App\Models\User;
 use App\Notifications\InscripcionRegistrada;
 use App\Notifications\NuevoAlumnoInscrito;
@@ -15,8 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 class InscripcionService
 {
+    public function __construct(private readonly ConvalidacionService $convalidaciones) {}
+
     /**
-     * RF05: inscribe a un estudiante validando cupo, duplicidad y choque de horario.
+     * RF05: inscribe a un estudiante validando matrícula activa, cupo, duplicidad y choque de horario.
      *
      * @throws ValidationException
      */
@@ -29,6 +32,12 @@ class InscripcionService
             if (! $estudiante->esEstudiante()) {
                 throw ValidationException::withMessages([
                     'curso' => 'Solo los usuarios con rol de estudiante pueden inscribirse a cursos.',
+                ]);
+            }
+
+            if (! $estudiante->estaMatriculadoEn($curso->carrera_id)) {
+                throw ValidationException::withMessages([
+                    'curso' => 'No tienes una matrícula activa en la carrera de este curso.',
                 ]);
             }
 
@@ -103,7 +112,8 @@ class InscripcionService
             ]);
         }
 
-        $requisitos = $curso->materia->requisitos;
+        $plan = $this->planDelEstudiante($estudiante, $curso);
+        $requisitos = $curso->materia->requisitosDelPlan($plan)->get();
 
         if ($requisitos->isEmpty()) {
             return;
@@ -118,7 +128,8 @@ class InscripcionService
             ->filter(fn (Inscripcion $inscripcion) => $inscripcion->estaAprobada())
             ->map(fn (Inscripcion $inscripcion) => $inscripcion->curso->materia_id);
 
-        $faltantes = $requisitos->reject(fn (Materia $requisito) => $aprobadas->contains($requisito->id));
+        $convalidadas = $this->convalidaciones->idsMateriasConvalidadas($estudiante);
+        $faltantes = $requisitos->reject(fn (Materia $requisito) => $aprobadas->contains($requisito->id) || $convalidadas->contains($requisito->id));
 
         if ($faltantes->isNotEmpty()) {
             $detalle = $faltantes
@@ -129,6 +140,46 @@ class InscripcionService
                 'curso' => "No puedes inscribirte: aún no has aprobado los requisitos: {$detalle}.",
             ]);
         }
+    }
+
+    /**
+     * RF04: resuelve el plan asignado a la matrícula y exige que incluya la materia.
+     *
+     * No se busca un plan alternativo: hacerlo permitiría validar los requisitos
+     * con un plan distinto al del estudiante o dejar la validación sin efecto.
+     *
+     * @throws ValidationException
+     */
+    private function planDelEstudiante(User $estudiante, Curso $curso): PlanEstudio
+    {
+        $planAsignado = $estudiante->matriculas()
+            ->activas()
+            ->where('carrera_id', $curso->carrera_id)
+            ->value('plan_estudio_id');
+
+        if ($planAsignado === null) {
+            throw ValidationException::withMessages([
+                'curso' => 'Tu matrícula no tiene un plan de estudios asignado. Solicita al administrador que lo asigne antes de inscribirte.',
+            ]);
+        }
+
+        $plan = PlanEstudio::whereKey($planAsignado)
+            ->where('carrera_id', $curso->carrera_id)
+            ->first();
+
+        if (! $plan) {
+            throw ValidationException::withMessages([
+                'curso' => 'El plan asignado a tu matrícula no corresponde a la carrera de este curso. Solicita al administrador que lo corrija antes de inscribirte.',
+            ]);
+        }
+
+        if (! $plan->materias()->whereKey($curso->materia_id)->exists()) {
+            throw ValidationException::withMessages([
+                'curso' => 'El plan de estudios asignado a tu matrícula no incluye esta materia. Solicita al administrador que revise el plan antes de inscribirte.',
+            ]);
+        }
+
+        return $plan;
     }
 
     /**
@@ -152,7 +203,7 @@ class InscripcionService
     }
 
     /**
-     * Regla de negocio: un alumno no puede tener dos materias en el mismo día y franja.
+     * Regla de negocio: un alumno no puede tener dos materias en el mismo día, franja y vigencia.
      *
      * @throws ValidationException
      */
@@ -175,7 +226,9 @@ class InscripcionService
                     $query->orWhere(function ($sub) use ($horario) {
                         $sub->where('dia_semana', $horario->dia_semana->value)
                             ->where('hora_inicio', '<', $horario->hora_fin)
-                            ->where('hora_fin', '>', $horario->hora_inicio);
+                            ->where('hora_fin', '>', $horario->hora_inicio)
+                            ->where('fecha_inicio', '<=', $horario->fecha_fin->toDateString())
+                            ->where('fecha_fin', '>=', $horario->fecha_inicio->toDateString());
                     });
                 }
             })

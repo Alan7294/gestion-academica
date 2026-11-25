@@ -53,6 +53,10 @@
             @endif
 
             @php($materiasPorSemestre = $plan->materiasPorSemestre())
+            @php($materiasFueraDeDuracion = $plan->materias
+                ->filter(fn ($materia) => (int) $materia->pivot->semestre > $plan->semestres)
+                ->sortBy(fn ($materia) => (int) $materia->pivot->semestre)
+                ->values())
 
             <div class="space-y-5">
                 @for ($semestre = 1; $semestre <= $plan->semestres; $semestre++)
@@ -63,7 +67,7 @@
                             <h3 class="font-semibold text-slate-900">{{ __('Semestre') }} {{ $semestre }}</h3>
                             <span class="text-xs text-slate-500">
                                 {{ $materias->count() }} {{ $materias->count() === 1 ? __('materia') : __('materias') }}
-                                · {{ $materias->sum('creditos') }} {{ __('créditos') }}
+                                · {{ $materias->sum(fn ($materia) => $materia->pivot->creditos) }} {{ __('créditos') }}
                             </span>
                         </div>
 
@@ -93,7 +97,7 @@
                                                     {{ $materia->requisitos->map(fn ($requisito) => "{$requisito->codigo} - {$requisito->nombre}")->join(', ') }}
                                                 @endif
                                             </td>
-                                            <td class="px-6 py-3 text-slate-600">{{ $materia->creditos }}</td>
+                                            <td class="px-6 py-3 text-slate-600">{{ $materia->pivot->creditos }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -101,6 +105,38 @@
                         @endif
                     </div>
                 @endfor
+
+                @if ($materiasFueraDeDuracion->isNotEmpty())
+                    <div class="rounded-2xl border border-amber-200 bg-amber-50 shadow-card overflow-hidden">
+                        <div class="border-b border-amber-200 px-6 py-4">
+                            <h3 class="font-semibold text-amber-900">{{ __('Materias fuera de la duración del plan') }}</h3>
+                            <p class="mt-0.5 text-sm text-amber-800">
+                                {{ __('Estas materias están en un semestre mayor que la duración del plan (:duracion semestres). Ajusta su semestre o la duración.', ['duracion' => $plan->semestres]) }}
+                            </p>
+                        </div>
+
+                        <table class="min-w-full divide-y divide-amber-200 text-sm">
+                            <thead class="bg-amber-100/60">
+                                <tr>
+                                    <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Semestre') }}</th>
+                                    <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Código') }}</th>
+                                    <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Materia') }}</th>
+                                    <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Créditos') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-amber-100">
+                                @foreach ($materiasFueraDeDuracion as $materia)
+                                    <tr>
+                                        <td class="px-6 py-3 text-amber-900">{{ $materia->pivot->semestre }}</td>
+                                        <td class="px-6 py-3 font-mono text-amber-900">{{ $materia->codigo }}</td>
+                                        <td class="px-6 py-3 text-amber-900">{{ $materia->nombre }}</td>
+                                        <td class="px-6 py-3 text-amber-900">{{ $materia->pivot->creditos }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

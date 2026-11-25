@@ -30,7 +30,8 @@ class CursoPolicy
 
     /**
      * RF05: solo estudiantes, en cursos activos.
-     * La vigencia del periodo se valida en el servicio para dar un mensaje claro.
+     * La matrícula activa en la carrera y la vigencia del periodo se validan en el servicio
+     * para dar un mensaje claro al estudiante.
      */
     public function inscribirse(User $user, Curso $curso): bool
     {

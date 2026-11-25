@@ -5,7 +5,6 @@ use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\Materia;
 use App\Models\Periodo;
-use App\Models\PlanEstudio;
 use App\Models\User;
 use App\Notifications\InscripcionRegistrada;
 use App\Notifications\NotaRegistrada;
@@ -25,9 +24,7 @@ function contextoDeAvisos(): array
 {
     $docente = usuarioConRol(Rol::Docente);
 
-    $materia = Materia::factory()->create([
-        'plan_estudio_id' => PlanEstudio::factory()->create()->id,
-    ]);
+    $materia = Materia::factory()->create();
 
     $curso = Curso::factory()->conMateria($materia)->create([
         'docente_id' => $docente->id,
@@ -35,7 +32,7 @@ function contextoDeAvisos(): array
         'activo' => true,
     ]);
 
-    $estudiante = usuarioConRol(Rol::Estudiante);
+    $estudiante = estudianteMatriculado($curso);
 
     return compact('docente', 'curso', 'estudiante');
 }
@@ -64,17 +61,21 @@ it('notifica al estudiante cuando el docente registra una nota', function () {
         'user_id' => $estudiante->id,
     ]);
 
+    $evaluacion = $curso->evaluaciones()->create(['nombre' => 'Primer parcial', 'ponderacion' => 100]);
+
     $this->actingAs($docente)
-        ->post("/docente/inscripciones/{$inscripcion->id}/calificaciones", [
-            'nombre' => 'Primer parcial',
-            'ponderacion' => 50,
-            'nota' => 85,
-            'fecha' => now()->toDateString(),
+        ->put(route('docente.calificaciones.actualizar', $curso), [
+            'notas' => [
+                $inscripcion->id => [
+                    $evaluacion->id => 85,
+                ],
+            ],
         ])
         ->assertRedirect();
 
     expect($estudiante->notifications()->count())->toBe(1)
-        ->and($estudiante->notifications()->first()->type)->toBe(NotaRegistrada::class);
+        ->and($estudiante->notifications()->first()->type)->toBe(NotaRegistrada::class)
+        ->and($estudiante->notifications()->first()->data['mensaje'])->toContain('Primer parcial');
 });
 
 it('muestra los avisos y la actividad reciente en el panel del estudiante', function () {
@@ -147,11 +148,13 @@ it('marca todas las notificaciones como leídas', function () {
     ]);
 
     $estudiante->notify(new InscripcionRegistrada($inscripcion->load('curso')));
+
+    $evaluacion = $curso->evaluaciones()->create(['nombre' => 'Primer parcial', 'ponderacion' => 100]);
+
     $estudiante->notify(new NotaRegistrada(
         $inscripcion->calificaciones()->create([
+            'curso_evaluacion_id' => $evaluacion->id,
             'registrado_por' => $curso->docente_id,
-            'nombre' => 'Primer parcial',
-            'ponderacion' => 100,
             'nota' => 70,
             'fecha' => now()->toDateString(),
         ]),

@@ -61,7 +61,7 @@ class MateriasDocenteReporte implements Reporte
                 $curso->creditos,
                 $curso->alumnos_inscritos_count,
                 $curso->horarios
-                    ->map(fn ($horario) => $horario->dia_semana->etiqueta().' '.$horario->rango_texto)
+                    ->map(fn ($horario) => $horario->descripcion)
                     ->implode('; ') ?: 'Sin horario',
             ])
             ->all();

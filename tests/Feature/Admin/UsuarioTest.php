@@ -1,12 +1,15 @@
 <?php
 
+use App\Enums\EstadoMatricula;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\Calificacion;
 use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Inscripcion;
+use App\Models\Matricula;
 use App\Models\Periodo;
+use App\Models\PlanEstudio;
 use App\Models\User;
 use Database\Seeders\RolSeeder;
 use Illuminate\Support\Facades\Hash;
@@ -35,7 +38,6 @@ it('permite al administrador crear un usuario con rol', function () {
 
     expect($usuario->hasRole(Rol::Docente->value))->toBeTrue()
         ->and($usuario->activo)->toBeTrue()
-        ->and($usuario->email_verified_at)->not->toBeNull()
         ->and(Hash::check('Password123', $usuario->password))->toBeTrue();
 });
 
@@ -58,17 +60,22 @@ it('permite al administrador crear otro administrador', function () {
     $usuario = User::where('email', 'nuevo.admin@academica.test')->firstOrFail();
 
     expect($usuario->hasRole(Rol::Administrador->value))->toBeTrue()
-        ->and($usuario->activo)->toBeTrue()
-        ->and($usuario->email_verified_at)->not->toBeNull();
+        ->and($usuario->activo)->toBeTrue();
 });
 
-it('crea un estudiante con su carrera y modalidad', function () {
+it('crea un estudiante con matrículas en varias carreras', function () {
     $admin = usuarioConRol(Rol::Administrador);
 
     $carrera = Carrera::create([
         'codigo' => 'SIS',
         'nombre' => 'Ingeniería de Sistemas',
         'facultad' => 'Facultad de Ingeniería',
+        'activo' => true,
+    ]);
+    $otraCarrera = Carrera::create([
+        'codigo' => 'ADM',
+        'nombre' => 'Administración de Empresas',
+        'facultad' => 'Facultad de Ciencias Económicas',
         'activo' => true,
     ]);
 
@@ -81,19 +88,83 @@ it('crea un estudiante con su carrera y modalidad', function () {
             'password' => 'Password123',
             'password_confirmation' => 'Password123',
             'rol' => Rol::Estudiante->value,
-            'carrera_id' => $carrera->id,
-            'modalidad' => Modalidad::Modular->value,
+            'matriculas' => [
+                ['carrera_id' => $carrera->id, 'modalidad' => Modalidad::Modular->value, 'es_principal' => '1'],
+                ['carrera_id' => $otraCarrera->id, 'modalidad' => Modalidad::Semestral->value],
+            ],
             'activo' => '1',
         ])
         ->assertRedirect('/admin/usuarios');
 
     $usuario = User::where('email', 'estudiante.nuevo@academica.test')->firstOrFail();
 
-    expect($usuario->carrera_id)->toBe($carrera->id)
-        ->and($usuario->modalidad)->toBe(Modalidad::Modular);
+    expect($usuario->matriculas()->activas()->count())->toBe(2)
+        ->and($usuario->matriculas()->activas()->where('es_principal', true)->first()->carrera_id)->toBe($carrera->id)
+        ->and($usuario->matriculas()->activas()->where('carrera_id', $otraCarrera->id)->first()->modalidad)->toBe(Modalidad::Semestral);
 });
 
-it('exige carrera y modalidad al crear un estudiante', function () {
+it('guarda el plan de estudios elegido cuando pertenece a la carrera', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $carrera = Carrera::factory()->create();
+    $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id]);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Estudiante Con Plan',
+            'ci' => '9000011',
+            'telefono' => null,
+            'email' => 'estudiante.con.plan@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Estudiante->value,
+            'matriculas' => [
+                [
+                    'carrera_id' => $carrera->id,
+                    'modalidad' => Modalidad::Semestral->value,
+                    'plan_estudio_id' => $plan->id,
+                    'es_principal' => '1',
+                ],
+            ],
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    $usuario = User::where('email', 'estudiante.con.plan@academica.test')->firstOrFail();
+
+    expect($usuario->matriculas()->activas()->first()->plan_estudio_id)->toBe($plan->id);
+});
+
+it('rechaza un plan de estudios de otra carrera en la matrícula', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $carrera = Carrera::factory()->create();
+    $otraCarrera = Carrera::factory()->create();
+    $planDeOtraCarrera = PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id]);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            'name' => 'Estudiante Plan Ajeno',
+            'ci' => '9000012',
+            'telefono' => null,
+            'email' => 'estudiante.plan.ajeno@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Estudiante->value,
+            'matriculas' => [
+                [
+                    'carrera_id' => $carrera->id,
+                    'modalidad' => Modalidad::Semestral->value,
+                    'plan_estudio_id' => $planDeOtraCarrera->id,
+                    'es_principal' => '1',
+                ],
+            ],
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors('matriculas.0.plan_estudio_id');
+
+    expect(User::where('email', 'estudiante.plan.ajeno@academica.test')->exists())->toBeFalse();
+});
+
+it('exige carrera y modalidad válidas al crear un estudiante', function () {
     $admin = usuarioConRol(Rol::Administrador);
 
     $this->actingAs($admin)
@@ -105,28 +176,25 @@ it('exige carrera y modalidad al crear un estudiante', function () {
             'password' => 'Password123',
             'password_confirmation' => 'Password123',
             'rol' => Rol::Estudiante->value,
+            'matriculas' => [
+                ['carrera_id' => 999999, 'modalidad' => ''],
+            ],
             'activo' => '1',
         ])
-        ->assertSessionHasErrors(['carrera_id', 'modalidad']);
+        ->assertSessionHasErrors(['matriculas', 'matriculas.0.carrera_id', 'matriculas.0.modalidad']);
 
     expect(User::where('email', 'estudiante.incompleto@academica.test')->exists())->toBeFalse();
 });
 
-it('limpia carrera y modalidad cuando el usuario deja de ser estudiante', function () {
+it('da de baja las matrículas cuando el usuario deja de ser estudiante', function () {
     $admin = usuarioConRol(Rol::Administrador);
-
-    $carrera = Carrera::create([
-        'codigo' => 'ADM',
-        'nombre' => 'Administración de Empresas',
-        'facultad' => 'Facultad de Ciencias Económicas',
-        'activo' => true,
-    ]);
+    $carrera = Carrera::factory()->create();
 
     $usuario = usuarioConRol(Rol::Estudiante);
-    $usuario->forceFill([
+    $matricula = Matricula::factory()->principal()->create([
+        'user_id' => $usuario->id,
         'carrera_id' => $carrera->id,
-        'modalidad' => Modalidad::Semestral->value,
-    ])->save();
+    ]);
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
@@ -141,8 +209,110 @@ it('limpia carrera y modalidad cuando el usuario deja de ser estudiante', functi
         ])
         ->assertRedirect('/admin/usuarios');
 
-    expect($usuario->fresh()->carrera_id)->toBeNull()
-        ->and($usuario->fresh()->modalidad)->toBeNull();
+    expect($matricula->fresh()->estado)->toBe(EstadoMatricula::Baja)
+        ->and($matricula->fresh()->es_principal)->toBeFalse()
+        ->and($matricula->fresh()->fecha_fin)->not->toBeNull();
+});
+
+it('muestra el formulario de alta con el selector de matrículas', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->get('/admin/usuarios/create')
+        ->assertOk()
+        ->assertSee('Matrículas académicas')
+        ->assertSee('Agregar carrera');
+});
+
+it('muestra las matrículas activas y el historial al editar un estudiante', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $carreraActiva = Carrera::factory()->create(['nombre' => 'Sistemas activos']);
+    $carreraBaja = Carrera::factory()->create(['nombre' => 'Administración anterior']);
+    $estudiante = usuarioConRol(Rol::Estudiante);
+    Matricula::factory()->principal()->create([
+        'user_id' => $estudiante->id,
+        'carrera_id' => $carreraActiva->id,
+    ]);
+    Matricula::factory()->baja()->create([
+        'user_id' => $estudiante->id,
+        'carrera_id' => $carreraBaja->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->get("/admin/usuarios/{$estudiante->id}/edit")
+        ->assertOk()
+        ->assertSee('Sistemas activos')
+        ->assertSee('Historial de bajas')
+        ->assertSee('Administración anterior');
+});
+
+it('cambia la matrícula principal cuando llega primero en el formulario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $carreraA = Carrera::factory()->create();
+    $carreraB = Carrera::factory()->create();
+
+    $usuario = usuarioConRol(Rol::Estudiante);
+    $matriculaA = Matricula::factory()->principal()->create([
+        'user_id' => $usuario->id,
+        'carrera_id' => $carreraA->id,
+    ]);
+    $matriculaB = Matricula::factory()->create([
+        'user_id' => $usuario->id,
+        'carrera_id' => $carreraB->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            'name' => $usuario->name,
+            'ci' => $usuario->ci ?? '9000005',
+            'telefono' => $usuario->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Estudiante->value,
+            'matriculas' => [
+                ['carrera_id' => $carreraB->id, 'modalidad' => Modalidad::Modular->value, 'es_principal' => '1'],
+                ['carrera_id' => $carreraA->id, 'modalidad' => Modalidad::Semestral->value],
+            ],
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    expect($matriculaA->fresh()->es_principal)->toBeFalse()
+        ->and($matriculaB->fresh()->es_principal)->toBeTrue()
+        ->and($usuario->matriculas()->activas()->count())->toBe(2);
+});
+
+it('actualiza las matrículas de un estudiante conservando las bajas', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $carreraAnterior = Carrera::factory()->create();
+    $carreraNueva = Carrera::factory()->create();
+
+    $usuario = usuarioConRol(Rol::Estudiante);
+    $matriculaAnterior = Matricula::factory()->principal()->create([
+        'user_id' => $usuario->id,
+        'carrera_id' => $carreraAnterior->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            'name' => $usuario->name,
+            'ci' => $usuario->ci ?? '9000004',
+            'telefono' => $usuario->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Estudiante->value,
+            'matriculas' => [
+                ['carrera_id' => $carreraNueva->id, 'modalidad' => Modalidad::Modular->value, 'es_principal' => '1'],
+            ],
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    expect($matriculaAnterior->fresh()->estado)->toBe(EstadoMatricula::Baja)
+        ->and($usuario->matriculas()->activas()->count())->toBe(1)
+        ->and($usuario->matriculas()->activas()->first()->carrera_id)->toBe($carreraNueva->id);
 });
 
 it('valida el correo y el carnet duplicados al crear un usuario', function () {
@@ -255,8 +425,11 @@ it('impide eliminar un docente con calificaciones registradas', function () {
         'user_id' => usuarioConRol(Rol::Estudiante)->id,
     ]);
 
+    $evaluacion = $curso->evaluaciones()->create(['nombre' => 'Primer parcial', 'ponderacion' => 100]);
+
     Calificacion::factory()->create([
         'inscripcion_id' => $inscripcion->id,
+        'curso_evaluacion_id' => $evaluacion->id,
         'registrado_por' => $docente->id,
     ]);
 

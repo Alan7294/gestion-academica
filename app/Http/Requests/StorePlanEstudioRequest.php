@@ -3,6 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Enums\Modalidad;
+use App\Models\Curso;
+use App\Models\Materia;
+use App\Models\Matricula;
 use App\Models\PlanEstudio;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -28,6 +31,9 @@ class StorePlanEstudioRequest extends FormRequest
         /** @var PlanEstudio|null $plan */
         $plan = $this->route('planEstudio');
 
+        $reglaMateria = fn () => Rule::exists('materias', 'id')
+            ->where(fn ($query) => $query->where('carrera_id', $this->input('carrera_id')));
+
         return [
             'carrera_id' => ['required', 'integer', Rule::exists('carreras', 'id')],
             'nombre' => [
@@ -42,23 +48,17 @@ class StorePlanEstudioRequest extends FormRequest
             'semestres' => ['required', 'integer', 'min:1', 'max:12'],
             'activo' => ['boolean'],
             'materias' => ['required', 'array', 'min:1'],
-            'materias.*.id' => [
-                'nullable',
-                'integer',
-                Rule::exists('materias', 'id')
-                    ->where(fn ($query) => $query->where('plan_estudio_id', $plan?->id)),
-            ],
-            'materias.*.codigo' => ['required', 'string', 'max:20', 'distinct'],
-            'materias.*.nombre' => ['required', 'string', 'max:255'],
+            'materias.*.id' => ['required', 'integer', 'distinct', $reglaMateria()],
             'materias.*.semestre' => ['required', 'integer', 'min:1', 'max:12'],
-            'materias.*.creditos' => ['required', 'integer', 'min:0', 'max:20'],
+            'materias.*.creditos' => ['required', 'integer', 'min:1', 'max:20'],
             'materias.*.requisitos' => ['nullable', 'array'],
-            'materias.*.requisitos.*' => ['string', 'max:20'],
+            'materias.*.requisitos.*' => ['integer', $reglaMateria()],
         ];
     }
 
     /**
-     * Valida la duración del plan y los requisitos declarados entre materias.
+     * Valida la duración del plan, los requisitos declarados y que no haya
+     * otro plan activo para la misma carrera y modalidad.
      *
      * @return array<int, callable>
      */
@@ -92,43 +92,45 @@ class StorePlanEstudioRequest extends FormRequest
                     return;
                 }
 
-                $porCodigo = [];
+                $ids = collect($materias)
+                    ->pluck('id')
+                    ->filter(fn ($id) => is_numeric($id))
+                    ->map(fn ($id) => (int) $id)
+                    ->values()
+                    ->all();
 
-                foreach ($materias as $materia) {
-                    if (isset($materia['codigo'])) {
-                        $porCodigo[$materia['codigo']] = $materia;
-                    }
-                }
+                $codigos = Materia::whereIn('id', $ids)->pluck('codigo', 'id');
+                $semestresPorId = collect($materias)->mapWithKeys(fn ($materia) => [
+                    (int) ($materia['id'] ?? 0) => (int) ($materia['semestre'] ?? 0),
+                ]);
 
                 foreach ($materias as $indice => $materia) {
-                    $requisitos = $materia['requisitos'] ?? [];
+                    $id = (int) ($materia['id'] ?? 0);
+                    $requisitos = collect($materia['requisitos'] ?? [])
+                        ->filter(fn ($id) => is_numeric($id))
+                        ->map(fn ($id) => (int) $id)
+                        ->values();
 
-                    if (! is_array($requisitos) || ! isset($materia['codigo'], $materia['semestre'])) {
-                        continue;
-                    }
-
-                    if (count($requisitos) !== count(array_unique($requisitos))) {
+                    if ($requisitos->count() !== $requisitos->unique()->count()) {
                         $validator->errors()->add(
                             "materias.{$indice}.requisitos",
                             'No repitas una materia en la lista de requisitos.',
                         );
                     }
 
-                    foreach ($requisitos as $codigoRequisito) {
-                        if (! is_string($codigoRequisito)) {
-                            continue;
-                        }
+                    foreach ($requisitos->unique() as $idRequisito) {
+                        $codigo = $codigos->get($idRequisito, (string) $idRequisito);
 
-                        if (! isset($porCodigo[$codigoRequisito])) {
+                        if (! in_array($idRequisito, $ids, true)) {
                             $validator->errors()->add(
                                 "materias.{$indice}.requisitos",
-                                "La materia '{$codigoRequisito}' no existe en este plan.",
+                                "La materia '{$codigo}' no existe en este plan.",
                             );
 
                             continue;
                         }
 
-                        if ($codigoRequisito === $materia['codigo']) {
+                        if ($idRequisito === $id) {
                             $validator->errors()->add(
                                 "materias.{$indice}.requisitos",
                                 'Una materia no puede ser requisito de sí misma.',
@@ -137,15 +139,82 @@ class StorePlanEstudioRequest extends FormRequest
                             continue;
                         }
 
-                        $semestreRequisito = (int) ($porCodigo[$codigoRequisito]['semestre'] ?? 0);
+                        $semestreRequisito = (int) $semestresPorId->get($idRequisito, 0);
 
-                        if ($semestreRequisito >= (int) $materia['semestre']) {
+                        if ($semestreRequisito >= (int) ($materia['semestre'] ?? 0)) {
                             $validator->errors()->add(
                                 "materias.{$indice}.requisitos",
-                                "El requisito '{$codigoRequisito}' debe pertenecer a un semestre anterior.",
+                                "El requisito '{$codigo}' debe pertenecer a un semestre anterior.",
                             );
                         }
                     }
+                }
+            },
+
+            function (Validator $validator): void {
+                if (! $this->boolean('activo')) {
+                    return;
+                }
+
+                $carreraId = $this->input('carrera_id');
+                $modalidad = $this->input('modalidad');
+
+                if (! $carreraId || ! $modalidad) {
+                    return;
+                }
+
+                /** @var PlanEstudio|null $plan */
+                $plan = $this->route('planEstudio');
+
+                $conflicto = PlanEstudio::query()
+                    ->where('carrera_id', $carreraId)
+                    ->where('modalidad', $modalidad)
+                    ->where('activo', true)
+                    ->when($plan, fn ($query) => $query->whereKeyNot($plan->id))
+                    ->first(['id', 'nombre']);
+
+                if ($conflicto) {
+                    $validator->errors()->add(
+                        'activo',
+                        "Ya existe un plan activo para esa carrera y modalidad: «{$conflicto->nombre}». Desactívalo antes de activar este.",
+                    );
+                }
+            },
+
+            function (Validator $validator): void {
+                /** @var PlanEstudio|null $plan */
+                $plan = $this->route('planEstudio');
+
+                if (! $plan) {
+                    return;
+                }
+
+                $carreraId = $this->input('carrera_id');
+                $modalidad = $this->input('modalidad');
+
+                if (! $carreraId || ! $modalidad) {
+                    return;
+                }
+
+                $tieneMatriculas = Matricula::where('plan_estudio_id', $plan->id)->exists();
+                $tieneCursos = Curso::whereIn('materia_id', $plan->materias()->pluck('materias.id'))->exists();
+
+                if (! $tieneMatriculas && ! $tieneCursos) {
+                    return;
+                }
+
+                if ((int) $carreraId !== $plan->carrera_id) {
+                    $validator->errors()->add(
+                        'carrera_id',
+                        'No puedes cambiar la carrera de un plan que ya tiene matrículas o cursos asociados. Crea un plan nuevo y reasigna las matrículas.',
+                    );
+                }
+
+                if ($modalidad !== $plan->modalidad->value) {
+                    $validator->errors()->add(
+                        'modalidad',
+                        'No puedes cambiar la modalidad de un plan que ya tiene matrículas o cursos asociados. Crea un plan nuevo y reasigna las matrículas.',
+                    );
                 }
             },
         ];
@@ -159,9 +228,12 @@ class StorePlanEstudioRequest extends FormRequest
         return [
             'materias.required' => 'Agrega al menos una materia al plan de estudios.',
             'materias.min' => 'Agrega al menos una materia al plan de estudios.',
-            'materias.*.codigo.distinct' => 'No repitas el código de una materia dentro del mismo plan.',
-            'materias.*.id.exists' => 'La materia seleccionada no pertenece a este plan de estudios.',
+            'materias.*.id.required' => 'Selecciona una materia del catálogo.',
+            'materias.*.id.distinct' => 'No repitas una materia dentro del mismo plan.',
+            'materias.*.id.exists' => 'La materia seleccionada no pertenece a la carrera del plan.',
+            'materias.*.creditos.min' => 'Cada materia debe tener al menos 1 crédito.',
             'materias.*.requisitos.array' => 'La lista de requisitos no es válida.',
+            'materias.*.requisitos.*.exists' => 'Uno de los requisitos no pertenece a la carrera del plan.',
             'nombre.unique' => 'Ya existe un plan de estudios con ese nombre para la carrera seleccionada.',
         ];
     }

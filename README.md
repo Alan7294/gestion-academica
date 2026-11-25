@@ -27,7 +27,7 @@ Proyecto de la materia **Programación IV**.
 ### Docente
 
 - Cursos asignados y listado de alumnos inscritos.
-- Registro, edición y eliminación de calificaciones con ponderación; la nota final del estudiante se calcula automáticamente.
+- Definición de actividades y ponderaciones por curso (la suma debe ser exactamente 100%, con decimales); la planilla permite cargar todas las notas de una vez y recalcula la nota final automáticamente.
 - Reportes de sus materias, notas por curso, alumnos inscritos y notas por alumno, en PDF y Excel, con vista previa parametrizada.
 
 ### Estudiante
@@ -39,7 +39,7 @@ Proyecto de la materia **Programación IV**.
 ### Comunes
 
 - Las cuentas de estudiantes, docentes y administradores las crea exclusivamente el administrador desde `/admin/usuarios`.
-- Autenticación con verificación de correo obligatoria; el administrador crea las cuentas ya verificadas. Recuperación de contraseña y perfil.
+- Autenticación con recuperación de contraseña y perfil; las cuentas las crea el administrador.
 - Notificaciones internas con estado leído/no leído.
 - Los ocho reportes ofrecen una vista previa HTML con filtros por periodo, carrera, materia, docente, estado de inscripción y rango de nota; los mismos parámetros se conservan al descargar PDF o Excel.
 

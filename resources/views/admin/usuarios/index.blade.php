@@ -70,12 +70,20 @@
                                 <td class="px-6 py-4">
                                     <p class="font-medium text-slate-900">{{ $usuario->name }}</p>
                                     <p class="text-xs text-slate-500">{{ $usuario->email }}</p>
-                                    @if ($usuario->carrera)
+                                    @foreach ($usuario->matriculas->filter(fn ($matricula) => $matricula->estaActiva()) as $matricula)
                                         <p class="mt-0.5 text-xs text-slate-500">
-                                            {{ $usuario->carrera->nombre }}
-                                            @if ($usuario->modalidad)
-                                                · {{ $usuario->modalidad->etiqueta() }}
+                                            {{ $matricula->carrera->nombre }}
+                                            @if ($matricula->modalidad)
+                                                · {{ $matricula->modalidad->etiqueta() }}
                                             @endif
+                                            @if ($matricula->es_principal)
+                                                <span class="ms-1 font-semibold text-brand-700">{{ __('(principal)') }}</span>
+                                            @endif
+                                        </p>
+                                    @endforeach
+                                    @if ($usuario->matriculas->contains(fn ($matricula) => ! $matricula->estaActiva()))
+                                        <p class="mt-0.5 text-xs text-slate-400">
+                                            {{ $usuario->matriculas->filter(fn ($matricula) => ! $matricula->estaActiva())->count() }} {{ __('matrícula(s) de baja') }}
                                         </p>
                                     @endif
                                 </td>

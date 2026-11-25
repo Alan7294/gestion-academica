@@ -79,6 +79,12 @@
                             <x-sidebar-link :href="route('admin.carreras.index')" :active="request()->routeIs('admin.carreras.*')" icon="academic-cap">
                                 {{ __('Carreras') }}
                             </x-sidebar-link>
+                            <x-sidebar-link :href="route('admin.materias.index')" :active="request()->routeIs('admin.materias.*')" icon="book">
+                                {{ __('Materias') }}
+                            </x-sidebar-link>
+                            <x-sidebar-link :href="route('admin.equivalencias.index')" :active="request()->routeIs('admin.equivalencias.*')" icon="refresh">
+                                {{ __('Equivalencias') }}
+                            </x-sidebar-link>
                             <x-sidebar-link :href="route('admin.planes.index')" :active="request()->routeIs('admin.planes.*')" icon="document">
                                 {{ __('Planes de estudio') }}
                             </x-sidebar-link>

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 #[Fillable(['codigo', 'nombre', 'facultad', 'activo'])]
 class Carrera extends Model
@@ -27,5 +28,15 @@ class Carrera extends Model
     public function planesEstudio(): HasMany
     {
         return $this->hasMany(PlanEstudio::class);
+    }
+
+    public function matriculas(): HasMany
+    {
+        return $this->hasMany(Matricula::class);
+    }
+
+    public function estudiantes(): HasManyThrough
+    {
+        return $this->hasManyThrough(User::class, Matricula::class, 'carrera_id', 'id', 'id', 'user_id');
     }
 }

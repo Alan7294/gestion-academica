@@ -34,7 +34,7 @@
                                 <td class="px-6 py-4 text-slate-600">{{ $inscripcion->curso->docente?->name ?? __('Por asignar') }}</td>
                                 <td class="px-6 py-4 text-slate-600">
                                     @forelse ($inscripcion->curso->horarios as $horario)
-                                        <div>{{ $horario->dia_semana->etiqueta() }} {{ $horario->rango_texto }}</div>
+                                        <div>{{ $horario->descripcion }}</div>
                                     @empty
                                         {{ __('Sin horario') }}
                                     @endforelse

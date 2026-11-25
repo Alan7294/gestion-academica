@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Modalidad;
 use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Materia;
@@ -19,6 +20,7 @@ class CursoFactory extends Factory
     {
         return [
             'carrera_id' => Carrera::factory(),
+            'modalidad' => Modalidad::Semestral,
             'materia_id' => null,
             'periodo_id' => Periodo::factory(),
             'docente_id' => null,
@@ -34,6 +36,7 @@ class CursoFactory extends Factory
     public function conMateria(Materia $materia): static
     {
         return $this->state(fn (array $atributos) => [
+            'carrera_id' => $materia->carrera_id,
             'materia_id' => $materia->id,
         ]);
     }

@@ -22,6 +22,7 @@ class EloquentCursoRepository implements CursoRepository
                 });
             })
             ->orderBy('nombre')
+            ->orderBy('id')
             ->paginate($porPagina)
             ->withQueryString();
     }

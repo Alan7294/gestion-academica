@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\Modalidad;
 use App\Enums\Rol;
+use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\Materia;
@@ -12,15 +14,12 @@ beforeEach(function () {
     $this->seed(RolSeeder::class);
 });
 
-function cursoDisponible(array $atributos = [], ?Materia $materia = null): Curso
+function cursoDisponible(array $atributos = [], ?Materia $materia = null, ?Periodo $periodo = null): Curso
 {
-    $materia ??= Materia::factory()->create([
-        'plan_estudio_id' => PlanEstudio::factory()->create()->id,
-        'semestre' => 1,
-    ]);
+    $materia ??= Materia::factory()->create();
 
     return Curso::factory()->conMateria($materia)->create(array_merge([
-        'periodo_id' => Periodo::factory()->vigente()->create()->id,
+        'periodo_id' => $periodo?->id ?? Periodo::factory()->vigente()->create()->id,
         'docente_id' => usuarioConRol(Rol::Docente)->id,
         'cupo' => 30,
         'activo' => true,
@@ -34,20 +33,20 @@ function materiaConRequisito(): array
 {
     $plan = PlanEstudio::factory()->create(['semestres' => 3]);
 
-    $previa = $plan->materias()->create([
+    $previa = materiaEnPlan($plan, [
         'codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4,
     ]);
-    $posterior = $plan->materias()->create([
+    $posterior = materiaEnPlan($plan, [
         'codigo' => 'MAT-201', 'nombre' => 'Cálculo II', 'semestre' => 2, 'creditos' => 4,
     ]);
-    $posterior->requisitos()->attach($previa);
+    $posterior->requisitosDelPlan($plan)->attach($previa);
 
     return [$previa, $posterior];
 }
 
 it('permite al estudiante inscribirse en un curso disponible', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
 
     $this->actingAs($estudiante)
         ->post("/estudiante/cursos/{$curso->id}/inscribirse")
@@ -57,8 +56,8 @@ it('permite al estudiante inscribirse en un curso disponible', function () {
 });
 
 it('impide inscribirse dos veces al mismo curso', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
 
     Inscripcion::factory()->create([
         'curso_id' => $curso->id,
@@ -74,13 +73,15 @@ it('impide inscribirse dos veces al mismo curso', function () {
 
 it('rechaza la inscripción cuando el curso no tiene cupo', function () {
     $curso = cursoDisponible(['cupo' => 1]);
+    $otroEstudiante = estudianteMatriculado($curso);
+    $estudiante = estudianteMatriculado($curso);
 
     Inscripcion::factory()->create([
         'curso_id' => $curso->id,
-        'user_id' => usuarioConRol(Rol::Estudiante)->id,
+        'user_id' => $otroEstudiante->id,
     ]);
 
-    $this->actingAs(usuarioConRol(Rol::Estudiante))
+    $this->actingAs($estudiante)
         ->post("/estudiante/cursos/{$curso->id}/inscribirse")
         ->assertSessionHasErrors('curso');
 
@@ -88,10 +89,10 @@ it('rechaza la inscripción cuando el curso no tiene cupo', function () {
 });
 
 it('rechaza la inscripción si el horario se cruza con otro curso', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $docente = usuarioConRol(Rol::Docente);
+    $periodo = Periodo::factory()->vigente()->create();
 
-    $primero = cursoDisponible(['docente_id' => $docente->id]);
+    $primero = cursoDisponible(['docente_id' => $docente->id], null, $periodo);
     $primero->horarios()->create([
         'docente_id' => $docente->id,
         'dia_semana' => 1,
@@ -99,13 +100,15 @@ it('rechaza la inscripción si el horario se cruza con otro curso', function () 
         'hora_fin' => '10:00',
     ]);
 
-    $segundo = cursoDisponible(['docente_id' => usuarioConRol(Rol::Docente)->id]);
+    $segundo = cursoDisponible(['docente_id' => usuarioConRol(Rol::Docente)->id], null, $periodo);
     $segundo->horarios()->create([
         'docente_id' => $segundo->docente_id,
         'dia_semana' => 1,
         'hora_inicio' => '09:00',
         'hora_fin' => '11:00',
     ]);
+
+    $estudiante = estudianteMatriculado($primero, $segundo);
 
     Inscripcion::factory()->create([
         'curso_id' => $primero->id,
@@ -120,7 +123,6 @@ it('rechaza la inscripción si el horario se cruza con otro curso', function () 
 });
 
 it('permite inscribirse si los horarios son en días distintos', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $docente = usuarioConRol(Rol::Docente);
 
     $primero = cursoDisponible(['docente_id' => $docente->id]);
@@ -139,6 +141,46 @@ it('permite inscribirse si los horarios son en días distintos', function () {
         'hora_fin' => '10:00',
     ]);
 
+    $estudiante = estudianteMatriculado($primero, $segundo);
+
+    Inscripcion::factory()->create([
+        'curso_id' => $primero->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$segundo->id}/inscribirse")
+        ->assertRedirect('/estudiante/inscripciones');
+
+    expect(Inscripcion::where('user_id', $estudiante->id)->count())->toBe(2);
+});
+
+it('permite inscribirse si dos cursos comparten franja pero sus vigencias no se solapan', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $primero = cursoDisponible(['periodo_id' => $periodo->id]);
+    $segundo = cursoDisponible(['periodo_id' => $periodo->id]);
+
+    $primero->horarios()->create([
+        'docente_id' => $primero->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => '2026-01-05',
+        'fecha_fin' => '2026-01-30',
+    ]);
+    $segundo->horarios()->create([
+        'docente_id' => $segundo->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => '2026-02-02',
+        'fecha_fin' => '2026-02-27',
+    ]);
+
+    $estudiante = estudianteMatriculado($primero, $segundo);
     Inscripcion::factory()->create([
         'curso_id' => $primero->id,
         'user_id' => $estudiante->id,
@@ -152,10 +194,10 @@ it('permite inscribirse si los horarios son en días distintos', function () {
 });
 
 it('no permite inscribirse a un curso de un periodo cerrado', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $curso = cursoDisponible([
         'periodo_id' => Periodo::factory()->create()->id,
     ]);
+    $estudiante = estudianteMatriculado($curso);
 
     $this->actingAs($estudiante)
         ->post("/estudiante/cursos/{$curso->id}/inscribirse")
@@ -165,8 +207,8 @@ it('no permite inscribirse a un curso de un periodo cerrado', function () {
 });
 
 it('permite retirarse y volver a inscribirse', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
 
     $inscripcion = Inscripcion::factory()->create([
         'curso_id' => $curso->id,
@@ -188,11 +230,14 @@ it('permite retirarse y volver a inscribirse', function () {
 });
 
 it('impide retirar la inscripción de otro estudiante', function () {
+    $curso = Curso::factory()->create();
+    $dueno = estudianteMatriculado($curso);
     $inscripcion = Inscripcion::factory()->create([
-        'user_id' => usuarioConRol(Rol::Estudiante)->id,
+        'curso_id' => $curso->id,
+        'user_id' => $dueno->id,
     ]);
 
-    $this->actingAs(usuarioConRol(Rol::Estudiante))
+    $this->actingAs(estudianteMatriculado($curso))
         ->delete("/estudiante/inscripciones/{$inscripcion->id}")
         ->assertForbidden();
 
@@ -210,7 +255,7 @@ it('impide que un docente se inscriba a cursos', function () {
 it('muestra la oferta académica al estudiante', function () {
     $curso = cursoDisponible(['nombre' => 'Inteligencia Artificial']);
 
-    $this->actingAs(usuarioConRol(Rol::Estudiante))
+    $this->actingAs(estudianteMatriculado($curso))
         ->get('/estudiante/cursos')
         ->assertOk()
         ->assertSee('Inteligencia Artificial')
@@ -218,11 +263,11 @@ it('muestra la oferta académica al estudiante', function () {
 });
 
 it('permite inscribirse cuando el requisito tiene nota final 51', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     [$previa, $posterior] = materiaConRequisito();
 
     $cursoPrevia = cursoDisponible([], $previa);
     $cursoPosterior = cursoDisponible([], $posterior);
+    $estudiante = estudianteMatriculado($cursoPrevia, $cursoPosterior);
 
     Inscripcion::factory()->create([
         'curso_id' => $cursoPrevia->id,
@@ -240,11 +285,11 @@ it('permite inscribirse cuando el requisito tiene nota final 51', function () {
 });
 
 it('bloquea la inscripción cuando el requisito aún no tiene nota final', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     [$previa, $posterior] = materiaConRequisito();
 
     $cursoPrevia = cursoDisponible([], $previa);
     $cursoPosterior = cursoDisponible([], $posterior);
+    $estudiante = estudianteMatriculado($cursoPrevia, $cursoPosterior);
 
     Inscripcion::factory()->create([
         'curso_id' => $cursoPrevia->id,
@@ -259,11 +304,11 @@ it('bloquea la inscripción cuando el requisito aún no tiene nota final', funct
 });
 
 it('bloquea la inscripción cuando el requisito tiene nota final 50', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     [$previa, $posterior] = materiaConRequisito();
 
     $cursoPrevia = cursoDisponible([], $previa);
     $cursoPosterior = cursoDisponible([], $posterior);
+    $estudiante = estudianteMatriculado($cursoPrevia, $cursoPosterior);
 
     Inscripcion::factory()->create([
         'curso_id' => $cursoPrevia->id,
@@ -279,17 +324,17 @@ it('bloquea la inscripción cuando el requisito tiene nota final 50', function (
 });
 
 it('exige que estén aprobados todos los requisitos de la materia', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $plan = PlanEstudio::factory()->create(['semestres' => 3]);
 
-    $primera = $plan->materias()->create(['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4]);
-    $segunda = $plan->materias()->create(['codigo' => 'OTR-101', 'nombre' => 'Otra previa', 'semestre' => 1, 'creditos' => 4]);
-    $posterior = $plan->materias()->create(['codigo' => 'MAT-201', 'nombre' => 'Cálculo II', 'semestre' => 2, 'creditos' => 4]);
-    $posterior->requisitos()->attach([$primera->id, $segunda->id]);
+    $primera = materiaEnPlan($plan, ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4]);
+    $segunda = materiaEnPlan($plan, ['codigo' => 'OTR-101', 'nombre' => 'Otra previa', 'semestre' => 1, 'creditos' => 4]);
+    $posterior = materiaEnPlan($plan, ['codigo' => 'MAT-201', 'nombre' => 'Cálculo II', 'semestre' => 2, 'creditos' => 4]);
+    $posterior->requisitosDelPlan($plan)->attach([$primera->id, $segunda->id]);
 
     $cursoPrimera = cursoDisponible([], $primera);
     $cursoSegunda = cursoDisponible([], $segunda);
     $cursoPosterior = cursoDisponible([], $posterior);
+    $estudiante = estudianteMatriculado($cursoPrimera, $cursoSegunda, $cursoPosterior);
 
     Inscripcion::factory()->create([
         'curso_id' => $cursoPrimera->id,
@@ -310,11 +355,11 @@ it('exige que estén aprobados todos los requisitos de la materia', function () 
 });
 
 it('considera aprobado un requisito retirado con nota final suficiente', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     [$previa, $posterior] = materiaConRequisito();
 
     $cursoPrevia = cursoDisponible([], $previa);
     $cursoPosterior = cursoDisponible([], $posterior);
+    $estudiante = estudianteMatriculado($cursoPrevia, $cursoPosterior);
 
     Inscripcion::factory()->retirada()->create([
         'curso_id' => $cursoPrevia->id,
@@ -330,13 +375,124 @@ it('considera aprobado un requisito retirado con nota final suficiente', functio
 });
 
 it('bloquea la inscripción si el curso no tiene materia asignada', function () {
-    $estudiante = usuarioConRol(Rol::Estudiante);
     $curso = cursoDisponible();
     $curso->update(['materia_id' => null]);
+    $estudiante = estudianteMatriculado($curso);
 
     $this->actingAs($estudiante)
         ->post("/estudiante/cursos/{$curso->id}/inscribirse")
         ->assertSessionHasErrors(['curso' => 'Este curso aún no tiene una materia del plan asignada. Corrígelo antes de inscribirte.']);
+
+    expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
+});
+
+it('valida los requisitos según el plan asignado al estudiante', function () {
+    $carrera = Carrera::factory()->create();
+
+    $planExigente = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Plan exigente',
+        'modalidad' => Modalidad::Semestral,
+    ]);
+    $planFlexible = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Plan flexible',
+        'modalidad' => Modalidad::Modular,
+    ]);
+
+    $previa = Materia::factory()->create(['carrera_id' => $carrera->id, 'codigo' => 'PRE-101', 'nombre' => 'Previa']);
+    $posterior = Materia::factory()->create(['carrera_id' => $carrera->id, 'codigo' => 'POS-201', 'nombre' => 'Posterior']);
+
+    foreach ([$planExigente, $planFlexible] as $plan) {
+        $plan->vincularMateria($previa, 1, 4);
+        $plan->vincularMateria($posterior, 2, 4);
+    }
+
+    // Solo el plan exigente declara que la materia previa es requisito.
+    $posterior->requisitosDelPlan($planExigente)->attach($previa);
+
+    $curso = cursoDisponible(['carrera_id' => $carrera->id], $posterior);
+
+    $estudianteExigente = estudianteMatriculado($curso);
+    $estudianteExigente->matriculas()
+        ->where('carrera_id', $carrera->id)
+        ->update(['plan_estudio_id' => $planExigente->id]);
+
+    $this->actingAs($estudianteExigente)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertSessionHasErrors('curso');
+
+    expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
+
+    $estudianteFlexible = estudianteMatriculado($curso);
+    $estudianteFlexible->matriculas()
+        ->where('carrera_id', $carrera->id)
+        ->update(['plan_estudio_id' => $planFlexible->id]);
+
+    $this->actingAs($estudianteFlexible)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertRedirect('/estudiante/inscripciones');
+
+    expect(Inscripcion::where('curso_id', $curso->id)->where('user_id', $estudianteFlexible->id)->exists())->toBeTrue();
+});
+
+it('bloquea la inscripción si la matrícula no tiene plan asignado', function () {
+    $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
+    $estudiante->matriculas()
+        ->where('carrera_id', $curso->carrera_id)
+        ->update(['plan_estudio_id' => null]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertSessionHasErrors(['curso' => 'Tu matrícula no tiene un plan de estudios asignado. Solicita al administrador que lo asigne antes de inscribirte.']);
+
+    expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
+});
+
+it('bloquea la inscripción si el plan asignado pertenece a otra carrera', function () {
+    $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
+    $planAjeno = PlanEstudio::factory()->create(['carrera_id' => Carrera::factory()->create()->id]);
+    $estudiante->matriculas()
+        ->where('carrera_id', $curso->carrera_id)
+        ->update(['plan_estudio_id' => $planAjeno->id]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertSessionHasErrors(['curso' => 'El plan asignado a tu matrícula no corresponde a la carrera de este curso. Solicita al administrador que lo corrija antes de inscribirte.']);
+
+    expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
+});
+
+it('no usa un plan alternativo cuando el asignado no incluye la materia', function () {
+    $carrera = Carrera::factory()->create();
+    $planAsignado = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'modalidad' => Modalidad::Semestral,
+    ]);
+    $planExigente = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'modalidad' => Modalidad::Modular,
+    ]);
+
+    $previa = materiaEnPlan($planExigente, [
+        'codigo' => 'PRE-101', 'nombre' => 'Previa', 'semestre' => 1, 'creditos' => 4,
+    ]);
+    $posterior = materiaEnPlan($planExigente, [
+        'codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4,
+    ]);
+    $posterior->requisitosDelPlan($planExigente)->attach($previa);
+
+    $curso = cursoDisponible(['carrera_id' => $carrera->id], $posterior);
+    $estudiante = estudianteMatriculado($curso);
+    $estudiante->matriculas()
+        ->where('carrera_id', $carrera->id)
+        ->update(['plan_estudio_id' => $planAsignado->id]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertSessionHasErrors(['curso' => 'El plan de estudios asignado a tu matrícula no incluye esta materia. Solicita al administrador que revise el plan antes de inscribirte.']);
 
     expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
 });

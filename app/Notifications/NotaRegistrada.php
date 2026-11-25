@@ -26,7 +26,7 @@ class NotaRegistrada extends Notification
 
         return [
             'titulo' => 'Nueva calificación',
-            'mensaje' => "Se publicó {$this->calificacion->nombre} ({$this->calificacion->nota}) en {$curso->nombre}.",
+            'mensaje' => "Se publicó {$this->calificacion->evaluacion->nombre} ({$this->calificacion->nota}) en {$curso->nombre}.",
             'url' => route('estudiante.notas.index'),
             'tipo' => 'calificacion',
         ];

@@ -2,10 +2,12 @@
 
 namespace App\Reports\Estudiante;
 
+use App\Enums\EstadoInscripcion;
 use App\Models\Inscripcion;
 use App\Models\User;
 use App\Reports\FiltrosReporte;
 use App\Reports\Reporte;
+use App\Services\ConvalidacionService;
 
 /**
  * RF12: historial académico del alumno.
@@ -15,6 +17,7 @@ class HistorialAcademicoReporte implements Reporte
     public function __construct(
         private readonly User $estudiante,
         private readonly FiltrosReporte $filtros = new FiltrosReporte,
+        private readonly ConvalidacionService $convalidaciones = new ConvalidacionService,
     ) {}
 
     public function titulo(): string
@@ -49,7 +52,7 @@ class HistorialAcademicoReporte implements Reporte
 
         $this->filtros->aplicarAInscripciones($inscripciones);
 
-        return $inscripciones->get()
+        $filas = $inscripciones->get()
             ->sortByDesc(fn (Inscripcion $inscripcion) => $inscripcion->curso->periodo->fecha_inicio)
             ->map(fn (Inscripcion $inscripcion) => [
                 $inscripcion->curso->periodo->nombre,
@@ -63,6 +66,39 @@ class HistorialAcademicoReporte implements Reporte
             ])
             ->values()
             ->all();
+
+        $convalidaciones = $this->convalidaciones->paraEstudiante($this->estudiante);
+
+        foreach ($convalidaciones as $convalidacion) {
+            if ($this->filtros->carreraId !== null && $convalidacion->materia->carrera_id !== $this->filtros->carreraId) {
+                continue;
+            }
+
+            if ($this->filtros->notaDesde !== null && $convalidacion->nota < $this->filtros->notaDesde) {
+                continue;
+            }
+
+            if ($this->filtros->notaHasta !== null && $convalidacion->nota > $this->filtros->notaHasta) {
+                continue;
+            }
+
+            if ($this->filtros->estado !== null && $this->filtros->estado !== EstadoInscripcion::Inscrito->value) {
+                continue;
+            }
+
+            $filas[] = [
+                'Convalidación',
+                $convalidacion->materia->codigo,
+                $convalidacion->materia->nombre,
+                '—',
+                $convalidacion->creditos ?? '—',
+                'Convalidada',
+                number_format($convalidacion->nota, 2),
+                'Aprobado por equivalencia: '.$convalidacion->origen(),
+            ];
+        }
+
+        return $filas;
     }
 
     public function contexto(): array

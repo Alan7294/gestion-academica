@@ -57,7 +57,7 @@ class MateriasAlumnoReporte implements Reporte
                 $inscripcion->curso->periodo->nombre,
                 $inscripcion->curso->creditos,
                 $inscripcion->curso->horarios
-                    ->map(fn ($horario) => $horario->dia_semana->etiqueta().' '.$horario->rango_texto)
+                    ->map(fn ($horario) => $horario->descripcion)
                     ->implode('; ') ?: 'Sin horario',
                 $inscripcion->estado->etiqueta(),
             ])

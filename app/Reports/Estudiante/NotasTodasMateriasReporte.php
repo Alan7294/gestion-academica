@@ -2,6 +2,7 @@
 
 namespace App\Reports\Estudiante;
 
+use App\Models\Calificacion;
 use App\Models\Inscripcion;
 use App\Models\User;
 use App\Reports\FiltrosReporte;
@@ -43,16 +44,16 @@ class NotasTodasMateriasReporte implements Reporte
     {
         $inscripciones = Inscripcion::query()
             ->where('user_id', $this->estudiante->id)
-            ->with(['curso.periodo', 'calificaciones']);
+            ->with(['curso.periodo', 'calificaciones.evaluacion']);
 
         $this->filtros->aplicarAInscripciones($inscripciones);
 
         return $inscripciones->get()
-            ->flatMap(fn (Inscripcion $inscripcion) => $inscripcion->calificaciones->map(fn ($calificacion) => [
+            ->flatMap(fn (Inscripcion $inscripcion) => $inscripcion->calificaciones->map(fn (Calificacion $calificacion) => [
                 $inscripcion->curso->nombre,
                 $inscripcion->curso->periodo->nombre,
-                $calificacion->nombre,
-                $calificacion->ponderacion,
+                $calificacion->evaluacion->nombre,
+                number_format((float) $calificacion->evaluacion->ponderacion, 2),
                 number_format((float) $calificacion->nota, 2),
                 $calificacion->fecha->format('d/m/Y'),
             ]))

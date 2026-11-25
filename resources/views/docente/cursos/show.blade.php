@@ -6,9 +6,17 @@
                 <span class="ms-2 font-mono text-sm text-slate-500">{{ $curso->codigo }}</span>
             </h2>
 
-            <a href="{{ route('docente.cursos.index') }}" class="text-sm text-slate-600 hover:text-slate-900">
-                {{ __('Volver') }}
-            </a>
+            <div class="flex items-center gap-4">
+                <a href="{{ route('docente.cursos.calificaciones', $curso) }}"
+                   class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                    <x-icon name="document" class="h-4 w-4" />
+                    {{ __('Calificaciones') }}
+                </a>
+
+                <a href="{{ route('docente.cursos.index') }}" class="text-sm text-slate-600 hover:text-slate-900">
+                    {{ __('Volver') }}
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -33,7 +41,7 @@
                     <p class="text-slate-500">{{ __('Horario') }}</p>
                     <div class="mt-1 font-medium text-slate-900">
                         @forelse ($curso->horarios as $horario)
-                            <div class="text-sm">{{ $horario->dia_semana->etiqueta() }} {{ $horario->rango_texto }}</div>
+                            <div class="text-sm">{{ $horario->descripcion }}</div>
                         @empty
                             <span class="text-sm">{{ __('Por definir') }}</span>
                         @endforelse

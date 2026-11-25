@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Calificacion;
+use App\Models\CursoEvaluacion;
 use App\Models\Inscripcion;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -18,14 +19,14 @@ class CalificacionFactory extends Factory
     {
         return [
             'inscripcion_id' => Inscripcion::factory(),
+            'curso_evaluacion_id' => function (array $attributes): int {
+                $inscripcion = Inscripcion::findOrFail($attributes['inscripcion_id']);
+
+                return CursoEvaluacion::factory()
+                    ->create(['curso_id' => $inscripcion->curso_id])
+                    ->id;
+            },
             'registrado_por' => User::factory(),
-            'nombre' => $this->faker->unique()->randomElement([
-                'Primer parcial',
-                'Segundo parcial',
-                'Examen final',
-                'Trabajo práctico',
-            ]),
-            'ponderacion' => 25,
             'nota' => $this->faker->numberBetween(40, 100),
             'fecha' => now()->toDateString(),
         ];

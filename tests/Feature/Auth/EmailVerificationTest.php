@@ -1,54 +1,26 @@
 <?php
 
+use App\Enums\Rol;
 use App\Models\User;
-use Illuminate\Auth\Events\Verified;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\URL;
+use Database\Seeders\RolSeeder;
 
-test('email verification screen can be rendered', function () {
-    $user = User::factory()->unverified()->create();
-
-    $response = $this->actingAs($user)->get('/verify-email');
-
-    $response->assertStatus(200);
+beforeEach(function () {
+    $this->seed(RolSeeder::class);
 });
 
-test('un usuario con el correo sin verificar no puede acceder al panel', function () {
-    $user = User::factory()->unverified()->create();
+test('el panel es accesible sin verificar el correo', function () {
+    $usuario = usuarioConRol(Rol::Administrador);
 
-    $this->actingAs($user)
+    $this->actingAs($usuario)
         ->get('/dashboard')
-        ->assertRedirect(route('verification.notice', absolute: false));
+        ->assertRedirect(route('admin.dashboard', absolute: false));
 });
 
-test('email can be verified', function () {
-    $user = User::factory()->unverified()->create();
+test('las rutas de verificación de correo ya no están disponibles', function (string $metodo, string $uri) {
+    $usuario = User::factory()->create();
 
-    Event::fake();
-
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)]
-    );
-
-    $response = $this->actingAs($user)->get($verificationUrl);
-
-    Event::assertDispatched(Verified::class);
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
-});
-
-test('email is not verified with invalid hash', function () {
-    $user = User::factory()->unverified()->create();
-
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1('wrong-email')]
-    );
-
-    $this->actingAs($user)->get($verificationUrl);
-
-    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
-});
+    $this->actingAs($usuario)->{$metodo}($uri)->assertNotFound();
+})->with([
+    'aviso de verificación' => ['get', '/verify-email'],
+    'reenvío del correo' => ['post', '/email/verification-notification'],
+]);

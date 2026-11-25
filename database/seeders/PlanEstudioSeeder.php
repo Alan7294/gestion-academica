@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\Modalidad;
 use App\Models\Carrera;
+use App\Models\Materia;
 use App\Models\PlanEstudio;
 use Illuminate\Database\Seeder;
 
@@ -78,24 +79,29 @@ class PlanEstudioSeeder extends Seeder
             );
 
             $porCodigo = [];
+            $valoresPivote = [];
 
             foreach ($definicion['materias'] as $materia) {
-                $porCodigo[$materia['codigo']] = $plan->materias()->updateOrCreate(
-                    ['codigo' => $materia['codigo']],
-                    [
-                        'nombre' => $materia['nombre'],
-                        'semestre' => $materia['semestre'],
-                        'creditos' => $materia['creditos'],
-                    ],
+                $registro = Materia::firstOrCreate(
+                    ['carrera_id' => $carrera->id, 'codigo' => $materia['codigo']],
+                    ['nombre' => $materia['nombre']],
                 );
+
+                $porCodigo[$materia['codigo']] = $registro;
+                $valoresPivote[$registro->id] = [
+                    'semestre' => $materia['semestre'],
+                    'creditos' => $materia['creditos'],
+                ];
             }
+
+            $plan->materias()->sync($valoresPivote);
 
             foreach ($definicion['materias'] as $materia) {
                 $idsRequisitos = collect($materia['requisitos'] ?? [])
                     ->map(fn (string $codigoRequisito) => $porCodigo[$codigoRequisito]->id)
                     ->all();
 
-                $porCodigo[$materia['codigo']]->requisitos()->sync($idsRequisitos);
+                $porCodigo[$materia['codigo']]->requisitosDelPlan($plan)->sync($idsRequisitos);
             }
         }
     }

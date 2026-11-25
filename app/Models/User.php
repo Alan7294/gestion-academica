@@ -2,21 +2,20 @@
 
 namespace App\Models;
 
-use App\Enums\Modalidad;
 use App\Enums\Rol;
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'ci', 'telefono', 'email', 'password', 'activo', 'carrera_id', 'modalidad'])]
+#[Fillable(['name', 'ci', 'telefono', 'email', 'password', 'activo'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
@@ -29,16 +28,40 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'activo' => 'boolean',
-            'modalidad' => Modalidad::class,
         ];
     }
 
-    public function carrera(): BelongsTo
+    public function matriculas(): HasMany
     {
-        return $this->belongsTo(Carrera::class);
+        return $this->hasMany(Matricula::class);
+    }
+
+    /**
+     * @return Collection<int, Matricula>
+     */
+    public function carrerasActivas(): Collection
+    {
+        return $this->matriculas()->activas()->with('carrera')->get();
+    }
+
+    public function carreraPrincipal(): ?Carrera
+    {
+        return $this->matriculas()
+            ->activas()
+            ->where('es_principal', true)
+            ->with('carrera')
+            ->first()
+            ?->carrera;
+    }
+
+    public function estaMatriculadoEn(int $carreraId): bool
+    {
+        return $this->matriculas()
+            ->activas()
+            ->where('carrera_id', $carreraId)
+            ->exists();
     }
 
     public function esAdministrador(): bool

@@ -17,7 +17,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             <form method="GET" action="{{ route('admin.planes.index') }}"
                   class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-4">
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-5">
                     <div class="sm:col-span-2">
                         <x-input-label for="busqueda" :value="__('Buscar')" />
                         <x-text-input id="busqueda" name="busqueda" type="text" class="mt-1 block w-full"
@@ -50,6 +50,16 @@
                                     {{ $modalidad->etiqueta() }}
                                 </option>
                             @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <x-input-label for="activo" :value="__('Estado')" />
+                        <select id="activo" name="activo"
+                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm">
+                            <option value="">{{ __('Todos') }}</option>
+                            <option value="1" @selected($filtros['activo'] === '1')>{{ __('Activos') }}</option>
+                            <option value="0" @selected($filtros['activo'] === '0')>{{ __('Inactivos') }}</option>
                         </select>
                     </div>
                 </div>
@@ -100,7 +110,7 @@
                                     {{ $plan->semestres }} {{ $plan->semestres === 1 ? __('semestre') : __('semestres') }}
                                 </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $plan->materias_count }}</td>
-                                <td class="px-6 py-4 text-slate-600">{{ (int) $plan->materias_sum_creditos }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $plan->totalCreditos() }}</td>
                                 <td class="px-6 py-4">
                                     @if ($plan->activo)
                                         <span class="inline-flex rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">{{ __('Activo') }}</span>

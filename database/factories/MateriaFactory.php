@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Carrera;
 use App\Models\Materia;
-use App\Models\PlanEstudio;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,11 +16,9 @@ class MateriaFactory extends Factory
     public function definition(): array
     {
         return [
-            'plan_estudio_id' => PlanEstudio::factory(),
+            'carrera_id' => Carrera::factory(),
             'codigo' => strtoupper($this->faker->unique()->bothify('???-###')),
             'nombre' => 'Materia de '.$this->faker->words(2, true),
-            'semestre' => 1,
-            'creditos' => $this->faker->numberBetween(1, 6),
         ];
     }
 }

@@ -39,11 +39,12 @@ function contextoDeReportes(): array
         'user_id' => $estudiante->id,
     ]);
 
+    $evaluacion = $curso->evaluaciones()->create(['nombre' => 'Primer parcial', 'ponderacion' => 100]);
+
     Calificacion::factory()->create([
         'inscripcion_id' => $inscripcion->id,
+        'curso_evaluacion_id' => $evaluacion->id,
         'registrado_por' => $docente->id,
-        'nombre' => 'Primer parcial',
-        'ponderacion' => 100,
         'nota' => 88,
     ]);
 

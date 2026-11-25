@@ -6,8 +6,10 @@ use App\Enums\Modalidad;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePlanEstudioRequest;
 use App\Models\Carrera;
+use App\Models\Materia;
 use App\Models\PlanEstudio;
 use App\Services\PlanEstudioService;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,16 +24,20 @@ class PlanEstudioController extends Controller
             'busqueda' => trim((string) $request->query('busqueda')),
             'carrera_id' => (string) $request->query('carrera_id'),
             'modalidad' => (string) $request->query('modalidad'),
+            'activo' => (string) $request->query('activo'),
         ];
 
         if (! in_array($filtros['modalidad'], Modalidad::valores(), true)) {
             $filtros['modalidad'] = '';
         }
 
+        if (! in_array($filtros['activo'], ['', '1', '0'], true)) {
+            $filtros['activo'] = '';
+        }
+
         $planes = PlanEstudio::query()
-            ->with('carrera')
+            ->with(['carrera', 'materias'])
             ->withCount('materias')
-            ->withSum('materias', 'creditos')
             ->when($filtros['busqueda'] !== '', function ($query) use ($filtros) {
                 $query->where(function ($sub) use ($filtros) {
                     $sub->where('nombre', 'ilike', "%{$filtros['busqueda']}%")
@@ -40,6 +46,7 @@ class PlanEstudioController extends Controller
             })
             ->when($filtros['carrera_id'] !== '', fn ($query) => $query->where('carrera_id', $filtros['carrera_id']))
             ->when($filtros['modalidad'] !== '', fn ($query) => $query->where('modalidad', $filtros['modalidad']))
+            ->when($filtros['activo'] !== '', fn ($query) => $query->where('activo', $filtros['activo'] === '1'))
             ->orderBy('nombre')
             ->paginate(10)
             ->withQueryString();
@@ -68,16 +75,16 @@ class PlanEstudioController extends Controller
 
     public function show(PlanEstudio $planEstudio): View
     {
-        $planEstudio->load(['carrera', 'materias.requisitos']);
+        $this->cargarPlanConRequisitos($planEstudio);
 
         return view('admin.planes.show', ['plan' => $planEstudio]);
     }
 
     public function edit(PlanEstudio $planEstudio): View
     {
-        $planEstudio->load('materias.requisitos');
+        $this->cargarPlanConRequisitos($planEstudio);
 
-        return view('admin.planes.edit', ['plan' => $planEstudio] + $this->opciones());
+        return view('admin.planes.edit', ['plan' => $planEstudio] + $this->opciones($planEstudio));
     }
 
     public function update(StorePlanEstudioRequest $request, PlanEstudio $planEstudio): RedirectResponse
@@ -99,13 +106,46 @@ class PlanEstudioController extends Controller
     }
 
     /**
+     * Carga las materias del plan con los requisitos declarados en ese plan.
+     */
+    private function cargarPlanConRequisitos(PlanEstudio $plan): void
+    {
+        $plan->load([
+            'carrera',
+            'materias' => fn (BelongsToMany $materias) => $materias->with([
+                'requisitos' => fn (BelongsToMany $requisitos) => $requisitos
+                    ->withPivotValue('plan_estudio_id', $plan->id),
+            ]),
+        ]);
+    }
+
+    /**
+     * Opciones del formulario. Solo se carga el catálogo de la carrera elegida;
+     * el resto se consulta al cambiar de carrera para no traer todo el catálogo.
+     *
      * @return array<string, mixed>
      */
-    private function opciones(): array
+    private function opciones(?PlanEstudio $plan = null): array
     {
+        $carreraId = (int) old('carrera_id', $plan?->carrera_id ?? 0);
+
         return [
             'carreras' => Carrera::orderBy('nombre')->get(),
             'modalidades' => Modalidad::cases(),
+            'materias' => $carreraId > 0
+                ? Materia::query()
+                    ->where('carrera_id', $carreraId)
+                    ->select(['id', 'carrera_id', 'codigo', 'nombre'])
+                    ->orderBy('codigo')
+                    ->get()
+                    ->map(fn (Materia $materia) => [
+                        'id' => $materia->id,
+                        'carrera_id' => $materia->carrera_id,
+                        'codigo' => $materia->codigo,
+                        'nombre' => $materia->nombre,
+                    ])
+                    ->all()
+                : [],
         ];
     }
 

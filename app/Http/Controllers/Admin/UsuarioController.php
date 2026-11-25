@@ -33,7 +33,7 @@ class UsuarioController extends Controller
         }
 
         $usuarios = User::query()
-            ->with(['roles', 'carrera'])
+            ->with(['roles', 'matriculas.carrera'])
             ->when($filtros['busqueda'] !== '', function ($query) use ($filtros) {
                 $termino = "%{$filtros['busqueda']}%";
 
@@ -75,8 +75,10 @@ class UsuarioController extends Controller
 
     public function edit(User $usuario): View
     {
+        $usuario->load(['roles', 'matriculas.carrera']);
+
         return view('admin.usuarios.edit', [
-            'usuario' => $usuario->load('roles'),
+            'usuario' => $usuario,
             'roles' => Rol::cases(),
             'carreras' => Carrera::query()->where('activo', true)->orderBy('nombre')->get(),
             'modalidades' => Modalidad::cases(),

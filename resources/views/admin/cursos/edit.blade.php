@@ -12,7 +12,7 @@
                     @csrf
                     @method('PUT')
 
-                    @include('admin.cursos._form')
+                    @include('admin.cursos._form', ['creando' => false])
 
                     <div class="mt-6 flex items-center gap-3">
                         <x-primary-button>{{ __('Guardar cambios') }}</x-primary-button>

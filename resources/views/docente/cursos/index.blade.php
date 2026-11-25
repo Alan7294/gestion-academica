@@ -28,7 +28,11 @@
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->carrera->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->periodo->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->alumnos_inscritos_count }}</td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4 text-right space-x-3">
+                                    <a href="{{ route('docente.cursos.calificaciones', $curso) }}" class="text-brand-600 hover:text-brand-900">
+                                        {{ __('Calificaciones') }}
+                                    </a>
+
                                     <a href="{{ route('docente.cursos.show', $curso) }}" class="text-brand-600 hover:text-brand-900">
                                         {{ __('Ver detalle') }}
                                     </a>

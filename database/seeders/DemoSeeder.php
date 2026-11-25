@@ -3,13 +3,17 @@
 namespace Database\Seeders;
 
 use App\Enums\EstadoInscripcion;
+use App\Enums\EstadoMatricula;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\Carrera;
 use App\Models\Curso;
 use App\Models\Inscripcion;
 use App\Models\Materia;
+use App\Models\MateriaEquivalencia;
+use App\Models\Matricula;
 use App\Models\Periodo;
+use App\Models\PlanEstudio;
 use App\Models\User;
 use App\Services\CalificacionService;
 use App\Services\InscripcionService;
@@ -51,6 +55,7 @@ class DemoSeeder extends Seeder
         ];
 
         $cursos = [];
+        $materias = [];
 
         foreach ($definiciones as $definicion) {
             $carrera = $carreras->get($definicion['carrera']);
@@ -60,6 +65,7 @@ class DemoSeeder extends Seeder
                 ['periodo_id' => $periodo->id, 'codigo' => $definicion['codigo']],
                 [
                     'carrera_id' => $carrera->id,
+                    'modalidad' => Modalidad::Semestral,
                     'docente_id' => $docente->id,
                     'nombre' => $definicion['nombre'],
                     'creditos' => $definicion['creditos'],
@@ -70,16 +76,30 @@ class DemoSeeder extends Seeder
             );
 
             $materia = Materia::query()
+                ->where('carrera_id', $carrera->id)
                 ->where('codigo', $definicion['codigo'])
-                ->whereHas('planEstudio', fn ($query) => $query->where('carrera_id', $carrera->id))
                 ->first();
+
+            $materias[$definicion['codigo']] = $materia;
+
+            $plan = $materia
+                ? PlanEstudio::where('carrera_id', $carrera->id)
+                    ->whereHas('materias', fn ($query) => $query->whereKey($materia->id))
+                    ->orderByDesc('activo')
+                    ->orderBy('id')
+                    ->first()
+                : null;
+
+            $pivote = $plan?->materias->firstWhere('id', $materia->id)?->pivot;
 
             $curso->update([
                 'docente_id' => $docente->id,
+                'modalidad' => Modalidad::Semestral,
+                'plan_estudio_id' => $plan?->id,
                 'materia_id' => $materia?->id,
                 'nombre' => $materia?->nombre ?? $definicion['nombre'],
-                'semestre' => $materia?->semestre ?? $definicion['semestre'],
-                'creditos' => $materia?->creditos ?? $definicion['creditos'],
+                'semestre' => (int) ($pivote?->semestre ?? $definicion['semestre']),
+                'creditos' => (int) ($pivote?->creditos ?? $definicion['creditos']),
             ]);
 
             $curso->horarios()->firstOrCreate(
@@ -97,6 +117,12 @@ class DemoSeeder extends Seeder
             $cursos[$definicion['codigo']] = $curso;
         }
 
+        // Derecho Penal I reconoce Estructura de Datos cursada en Sistemas.
+        MateriaEquivalencia::firstOrCreate([
+            'materia_id' => $materias['DER-201']->id,
+            'equivalente_id' => $materias['SIS-201']->id,
+        ]);
+
         // El orden de cada lista respeta los requisitos: primero la materia previa y su nota.
         $matriculas = [
             'estudiante1@academica.test' => ['SIS-101', 'ADM-101'],
@@ -109,11 +135,21 @@ class DemoSeeder extends Seeder
 
         $inscripciones = app(InscripcionService::class);
         $calificaciones = app(CalificacionService::class);
-        $evaluaciones = [
-            ['nombre' => 'Primer parcial', 'ponderacion' => 30, 'dias' => 45],
-            ['nombre' => 'Segundo parcial', 'ponderacion' => 30, 'dias' => 20],
-            ['nombre' => 'Examen final', 'ponderacion' => 40, 'dias' => 5],
+        $definicionEvaluaciones = [
+            ['nombre' => 'Primer parcial', 'ponderacion' => 30],
+            ['nombre' => 'Segundo parcial', 'ponderacion' => 30],
+            ['nombre' => 'Examen final', 'ponderacion' => 40],
         ];
+
+        foreach ($cursos as $curso) {
+            if ($curso->evaluaciones()->exists()) {
+                continue;
+            }
+
+            foreach ($definicionEvaluaciones as $definicion) {
+                $curso->evaluaciones()->create($definicion);
+            }
+        }
 
         $indice = 0;
 
@@ -136,16 +172,13 @@ class DemoSeeder extends Seeder
                     continue;
                 }
 
-                foreach ($evaluaciones as $posicion => $evaluacion) {
-                    $nota = 62 + (($indice * 7 + $posicion * 11) % 33);
+                $notas = [];
 
-                    $calificaciones->registrar($inscripcion, [
-                        'nombre' => $evaluacion['nombre'],
-                        'ponderacion' => $evaluacion['ponderacion'],
-                        'nota' => $nota,
-                        'fecha' => now()->subDays($evaluacion['dias'])->toDateString(),
-                    ], $curso->docente);
+                foreach ($curso->evaluaciones as $posicion => $evaluacion) {
+                    $notas[$evaluacion->id] = 62 + (($indice * 7 + $posicion * 11) % 33);
                 }
+
+                $calificaciones->guardarNotas($curso, [$inscripcion->id => $notas], $curso->docente);
 
                 $indice++;
             }
@@ -180,24 +213,39 @@ class DemoSeeder extends Seeder
     private function crearEstudiantes($carreras): array
     {
         $definiciones = [
-            ['name' => 'Ana Quispe', 'email' => 'estudiante1@academica.test', 'ci' => '7020001', 'telefono' => '70020001', 'carrera' => 'SIS', 'modalidad' => Modalidad::Semestral],
-            ['name' => 'Luis Condori', 'email' => 'estudiante2@academica.test', 'ci' => '7020002', 'telefono' => '70020002', 'carrera' => 'SIS', 'modalidad' => Modalidad::Modular],
-            ['name' => 'María Choque', 'email' => 'estudiante3@academica.test', 'ci' => '7020003', 'telefono' => '70020003', 'carrera' => 'ADM', 'modalidad' => Modalidad::Semestral],
-            ['name' => 'Diego Vargas', 'email' => 'estudiante4@academica.test', 'ci' => '7020004', 'telefono' => '70020004', 'carrera' => 'ADM', 'modalidad' => Modalidad::Modular],
-            ['name' => 'Sofía Limachi', 'email' => 'estudiante5@academica.test', 'ci' => '7020005', 'telefono' => '70020005', 'carrera' => 'DER', 'modalidad' => Modalidad::Semestral],
-            ['name' => 'Pedro Céspedes', 'email' => 'estudiante6@academica.test', 'ci' => '7020006', 'telefono' => '70020006', 'carrera' => 'DER', 'modalidad' => Modalidad::Modular],
+            ['name' => 'Ana Quispe', 'email' => 'estudiante1@academica.test', 'ci' => '7020001', 'telefono' => '70020001', 'carreras' => ['SIS' => Modalidad::Semestral, 'ADM' => Modalidad::Modular]],
+            ['name' => 'Luis Condori', 'email' => 'estudiante2@academica.test', 'ci' => '7020002', 'telefono' => '70020002', 'carreras' => ['SIS' => Modalidad::Semestral, 'DER' => Modalidad::Semestral]],
+            ['name' => 'María Choque', 'email' => 'estudiante3@academica.test', 'ci' => '7020003', 'telefono' => '70020003', 'carreras' => ['ADM' => Modalidad::Modular, 'SIS' => Modalidad::Semestral]],
+            ['name' => 'Diego Vargas', 'email' => 'estudiante4@academica.test', 'ci' => '7020004', 'telefono' => '70020004', 'carreras' => ['ADM' => Modalidad::Modular, 'DER' => Modalidad::Semestral]],
+            ['name' => 'Sofía Limachi', 'email' => 'estudiante5@academica.test', 'ci' => '7020005', 'telefono' => '70020005', 'carreras' => ['DER' => Modalidad::Semestral, 'SIS' => Modalidad::Semestral]],
+            ['name' => 'Pedro Céspedes', 'email' => 'estudiante6@academica.test', 'ci' => '7020006', 'telefono' => '70020006', 'carreras' => ['DER' => Modalidad::Semestral, 'ADM' => Modalidad::Modular]],
         ];
 
         $estudiantes = [];
 
         foreach ($definiciones as $definicion) {
             $estudiante = $this->crearUsuario($definicion, Rol::Estudiante);
+            $esPrincipal = true;
 
-            // La carrera y la modalidad identifican la inscripción académica del estudiante.
-            $estudiante->forceFill([
-                'carrera_id' => $carreras[$definicion['carrera']]->id,
-                'modalidad' => $definicion['modalidad']->value,
-            ])->save();
+            foreach ($definicion['carreras'] as $codigo => $modalidad) {
+                $plan = PlanEstudio::where('carrera_id', $carreras[$codigo]->id)
+                    ->where('modalidad', $modalidad->value)
+                    ->where('activo', true)
+                    ->firstOrFail();
+
+                Matricula::updateOrCreate(
+                    ['user_id' => $estudiante->id, 'carrera_id' => $carreras[$codigo]->id],
+                    [
+                        'plan_estudio_id' => $plan->id,
+                        'estado' => EstadoMatricula::Activa,
+                        'es_principal' => $esPrincipal,
+                        'modalidad' => $modalidad,
+                        'fecha_inicio' => now()->toDateString(),
+                    ],
+                );
+
+                $esPrincipal = false;
+            }
 
             $estudiantes[$definicion['email']] = $estudiante;
         }
@@ -220,10 +268,6 @@ class DemoSeeder extends Seeder
                 'activo' => true,
             ],
         );
-
-        if ($usuario->wasRecentlyCreated) {
-            $usuario->forceFill(['email_verified_at' => now()])->save();
-        }
 
         $usuario->syncRoles([$rol->value]);
 

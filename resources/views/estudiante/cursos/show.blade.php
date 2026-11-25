@@ -52,12 +52,18 @@
                         @foreach ($curso->horarios as $horario)
                             <li class="py-2 flex justify-between">
                                 <span class="text-slate-900">{{ $horario->dia_semana->etiqueta() }}</span>
-                                <span class="text-slate-600">{{ $horario->rango_texto }} · {{ $horario->aula ?? __('Aula por definir') }}</span>
+                                <span class="text-slate-600">{{ $horario->rango_texto }} · {{ $horario->vigencia_texto }} · {{ $horario->aula ?? __('Aula por definir') }}</span>
                             </li>
                         @endforeach
                     </ul>
                 @endif
             </div>
+
+            @if ($curso->materia_id && $convalidadas->contains($curso->materia_id))
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    {{ __('Ya tienes esta materia convalidada por equivalencia. Puedes inscribirte igual si deseas cursarla.') }}
+                </div>
+            @endif
 
             <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6 flex items-center justify-between">
                 <p class="text-sm text-slate-600">

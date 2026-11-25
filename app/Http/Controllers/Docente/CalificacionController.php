@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Docente;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreCalificacionRequest;
-use App\Models\Calificacion;
+use App\Http\Requests\StoreNotasCursoRequest;
 use App\Models\Curso;
-use App\Models\Inscripcion;
 use App\Services\CalificacionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +24,7 @@ class CalificacionController extends Controller
         $curso->load([
             'carrera',
             'periodo',
+            'evaluaciones',
             'alumnosInscritos.estudiante',
             'alumnosInscritos.calificaciones',
         ]);
@@ -33,32 +32,18 @@ class CalificacionController extends Controller
         return view('docente.calificaciones.index', ['curso' => $curso]);
     }
 
-    public function store(StoreCalificacionRequest $request, Inscripcion $inscripcion): RedirectResponse
+    public function actualizar(StoreNotasCursoRequest $request, Curso $curso): RedirectResponse
     {
-        $this->calificaciones->registrar($inscripcion, $request->validated(), $request->user());
+        Gate::authorize('view', $curso);
+
+        $this->calificaciones->guardarNotas(
+            $curso,
+            $request->validated('notas') ?? [],
+            $request->user(),
+        );
 
         return redirect()
-            ->route('docente.cursos.calificaciones', $inscripcion->curso_id)
-            ->with('status', 'Calificación registrada correctamente.');
-    }
-
-    public function update(StoreCalificacionRequest $request, Calificacion $calificacion): RedirectResponse
-    {
-        $this->calificaciones->actualizar($calificacion, $request->validated(), $request->user());
-
-        return redirect()
-            ->route('docente.cursos.calificaciones', $calificacion->inscripcion->curso_id)
-            ->with('status', 'Calificación actualizada correctamente.');
-    }
-
-    public function destroy(Calificacion $calificacion): RedirectResponse
-    {
-        $cursoId = $calificacion->inscripcion->curso_id;
-
-        $this->calificaciones->eliminar($calificacion, request()->user());
-
-        return redirect()
-            ->route('docente.cursos.calificaciones', $cursoId)
-            ->with('status', 'Calificación eliminada.');
+            ->route('docente.cursos.calificaciones', $curso)
+            ->with('status', 'Calificaciones guardadas correctamente.');
     }
 }

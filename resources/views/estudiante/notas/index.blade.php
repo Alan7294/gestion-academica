@@ -7,6 +7,28 @@
 
     <div class="py-8">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            @forelse ($convalidaciones as $convalidacion)
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <h3 class="font-semibold text-slate-900">
+                                {{ $convalidacion->materia->codigo }} - {{ $convalidacion->materia->nombre }}
+                            </h3>
+                            <p class="mt-1 text-xs text-amber-800">
+                                {{ __('Convalidada') }} · {{ $convalidacion->origen() }}
+                            </p>
+                            <p class="text-xs text-slate-500">{{ $convalidacion->materia->carrera->nombre }}</p>
+                        </div>
+
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500">{{ __('Nota de origen') }}</p>
+                            <p class="text-2xl font-semibold text-green-700">{{ number_format($convalidacion->nota, 2) }}</p>
+                        </div>
+                    </div>
+                </div>
+            @empty
+            @endforelse
+
             @forelse ($inscripciones as $inscripcion)
                 <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-6">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -41,8 +63,8 @@
                             <tbody class="divide-y divide-slate-100">
                                 @foreach ($inscripcion->calificaciones as $calificacion)
                                     <tr>
-                                        <td class="px-4 py-2 text-slate-900">{{ $calificacion->nombre }}</td>
-                                        <td class="px-4 py-2 text-slate-600">{{ $calificacion->ponderacion }}%</td>
+                                        <td class="px-4 py-2 text-slate-900">{{ $calificacion->evaluacion->nombre }}</td>
+                                        <td class="px-4 py-2 text-slate-600">{{ number_format((float) $calificacion->evaluacion->ponderacion, 2) }}%</td>
                                         <td class="px-4 py-2 font-medium text-slate-900">{{ $calificacion->nota }}</td>
                                         <td class="px-4 py-2 text-slate-600">{{ $calificacion->fecha->format('d/m/Y') }}</td>
                                     </tr>

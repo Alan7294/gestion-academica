@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\CarreraController;
 use App\Http\Controllers\Admin\CursoController;
+use App\Http\Controllers\Admin\EquivalenciaController;
 use App\Http\Controllers\Admin\HorarioController;
+use App\Http\Controllers\Admin\MateriaController;
 use App\Http\Controllers\Admin\PeriodoController;
 use App\Http\Controllers\Admin\PlanEstudioController;
 use App\Http\Controllers\Admin\ReporteController as ReporteAdminController;
@@ -10,6 +12,7 @@ use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Docente\CalificacionController;
 use App\Http\Controllers\Docente\CursoController as CursoDocenteController;
+use App\Http\Controllers\Docente\CursoEvaluacionController;
 use App\Http\Controllers\Docente\ReporteController as ReporteDocenteController;
 use App\Http\Controllers\Estudiante\CursoController as CursoEstudianteController;
 use App\Http\Controllers\Estudiante\InscripcionController;
@@ -27,10 +30,10 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', DashboardController::class)
-    ->middleware(['auth', 'verified'])
+    ->middleware('auth')
     ->name('dashboard');
 
-Route::middleware(['auth', 'verified', 'role:administrador'])
+Route::middleware(['auth', 'role:administrador'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
@@ -46,6 +49,14 @@ Route::middleware(['auth', 'verified', 'role:administrador'])
 
         Route::resource('carreras', CarreraController::class)->except('show');
 
+        Route::get('materias/catalogo', [MateriaController::class, 'catalogo'])->name('materias.catalogo');
+
+        Route::resource('materias', MateriaController::class)->except('show');
+
+        Route::get('equivalencias', [EquivalenciaController::class, 'index'])->name('equivalencias.index');
+        Route::post('equivalencias', [EquivalenciaController::class, 'store'])->name('equivalencias.store');
+        Route::delete('equivalencias/{equivalencia}', [EquivalenciaController::class, 'destroy'])->name('equivalencias.destroy');
+
         Route::resource('planes', PlanEstudioController::class)
             ->parameters(['planes' => 'planEstudio']);
 
@@ -57,7 +68,7 @@ Route::middleware(['auth', 'verified', 'role:administrador'])
         Route::delete('cursos/{curso}/horarios/{horario}', [HorarioController::class, 'destroy'])->name('horarios.destroy');
     });
 
-Route::middleware(['auth', 'verified', 'role:docente'])
+Route::middleware(['auth', 'role:docente'])
     ->prefix('docente')
     ->name('docente.')
     ->group(function () {
@@ -77,12 +88,11 @@ Route::middleware(['auth', 'verified', 'role:docente'])
         Route::get('reportes/cursos/{curso}/inscripciones/{inscripcion}/notas/{formato}', [ReporteDocenteController::class, 'notasAlumno'])->name('reportes.notas-alumno');
 
         Route::get('cursos/{curso}/calificaciones', [CalificacionController::class, 'index'])->name('cursos.calificaciones');
-        Route::post('inscripciones/{inscripcion}/calificaciones', [CalificacionController::class, 'store'])->name('calificaciones.store');
-        Route::put('calificaciones/{calificacion}', [CalificacionController::class, 'update'])->name('calificaciones.update');
-        Route::delete('calificaciones/{calificacion}', [CalificacionController::class, 'destroy'])->name('calificaciones.destroy');
+        Route::put('cursos/{curso}/calificaciones', [CalificacionController::class, 'actualizar'])->name('calificaciones.actualizar');
+        Route::put('cursos/{curso}/evaluaciones', [CursoEvaluacionController::class, 'update'])->name('evaluaciones.update');
     });
 
-Route::middleware(['auth', 'verified', 'role:estudiante'])
+Route::middleware(['auth', 'role:estudiante'])
     ->prefix('estudiante')
     ->name('estudiante.')
     ->group(function () {

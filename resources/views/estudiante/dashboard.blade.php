@@ -2,6 +2,8 @@
     $notas = $inscripciones->pluck('nota_final')->filter(fn ($nota) => $nota !== null);
     $promedio = $notas->isEmpty() ? null : number_format($notas->avg(), 2);
     $creditos = $inscripciones->sum(fn ($inscripcion) => $inscripcion->curso->creditos);
+    $matriculaPrincipal = $matriculasActivas->first(fn ($matricula) => $matricula->es_principal)
+        ?? $matriculasActivas->first();
 @endphp
 
 <x-app-layout>
@@ -10,13 +12,19 @@
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-600">{{ __('Panel del estudiante') }}</p>
                 <h2 class="text-xl font-semibold text-slate-900">{{ __('Hola, ') . auth()->user()->name }}</h2>
-                @if (auth()->user()->carrera)
+                @if ($matriculaPrincipal)
                     <p class="mt-0.5 text-xs text-slate-500">
-                        {{ auth()->user()->carrera->nombre }}
-                        @if (auth()->user()->modalidad)
-                            · {{ __('Modalidad') }} {{ auth()->user()->modalidad->etiqueta() }}
+                        {{ $matriculaPrincipal->carrera->nombre }}
+                        @if ($matriculaPrincipal->modalidad)
+                            · {{ __('Modalidad') }} {{ $matriculaPrincipal->modalidad->etiqueta() }}
                         @endif
                     </p>
+                    @if ($matriculasActivas->count() > 1)
+                        <p class="mt-0.5 text-xs text-slate-400">
+                            {{ __('También matriculado en') }}:
+                            {{ $matriculasActivas->reject(fn ($matricula) => $matricula->is($matriculaPrincipal))->pluck('carrera.nombre')->join(', ') }}
+                        </p>
+                    @endif
                 @endif
             </div>
 

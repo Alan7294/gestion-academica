@@ -64,15 +64,19 @@ class Inscripcion extends Model
     {
         $calificaciones = $this->relationLoaded('calificaciones')
             ? $this->calificaciones
-            : $this->calificaciones()->get();
+            : $this->calificaciones()->with('evaluacion')->get();
 
-        $ponderacion = $calificaciones->sum('ponderacion');
+        $calificaciones->loadMissing('evaluacion');
 
-        if ($ponderacion === 0) {
+        $ponderacion = $calificaciones->sum(fn (Calificacion $calificacion) => (float) $calificacion->evaluacion->ponderacion);
+
+        if ($ponderacion <= 0) {
             return null;
         }
 
-        $acumulado = $calificaciones->sum(fn ($c) => (float) $c->nota * $c->ponderacion);
+        $acumulado = $calificaciones->sum(
+            fn (Calificacion $calificacion) => (float) $calificacion->nota * (float) $calificacion->evaluacion->ponderacion,
+        );
 
         return round($acumulado / $ponderacion, 2);
     }
