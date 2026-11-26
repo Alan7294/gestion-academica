@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 #[Fillable([
     'carrera_id',
@@ -132,6 +133,22 @@ class Curso extends Model
             'horario' => $franjas !== '' ? $franjas : '—',
             'aula' => $aulas !== '' ? $aulas : '—',
         ];
+    }
+
+    /**
+     * El ciclo termina cuando pasa la última fecha de fin de los horarios.
+     * Si el curso no tiene horarios, se usa la fecha de fin del periodo.
+     */
+    public function cicloFinalizado(): bool
+    {
+        $fechaFin = $this->horarios
+            ->pluck('fecha_fin')
+            ->filter()
+            ->map(fn (Carbon $fecha): string => $fecha->toDateString())
+            ->max()
+            ?? $this->periodo?->fecha_fin?->toDateString();
+
+        return $fechaFin !== null && $fechaFin < today()->toDateString();
     }
 
     /**

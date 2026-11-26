@@ -47,6 +47,18 @@ function horariosDeModulo(Curso $curso, array $fechasSesion): void
     }
 }
 
+function horarioHasta(Curso $curso, string $fechaFin): void
+{
+    $curso->horarios()->create([
+        'docente_id' => $curso->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => $fechaFin,
+        'fecha_fin' => $fechaFin,
+    ]);
+}
+
 /**
  * @return array{0: Materia, 1: Materia}
  */
@@ -406,7 +418,11 @@ it('no permite inscribirse a un curso de un periodo cerrado', function () {
 });
 
 it('permite retirarse y volver a inscribirse', function () {
-    $curso = cursoDisponible();
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => today()->toDateString(),
+        'fecha_fin' => today()->addMonth()->toDateString(),
+    ]);
+    $curso = cursoDisponible(['periodo_id' => $periodo->id]);
     $estudiante = estudianteMatriculado($curso);
 
     $inscripcion = Inscripcion::factory()->create([
@@ -426,6 +442,85 @@ it('permite retirarse y volver a inscribirse', function () {
 
     expect(Inscripcion::where('curso_id', $curso->id)->count())->toBe(1)
         ->and($inscripcion->fresh()->estado->value)->toBe('inscrito');
+});
+
+it('oculta el retiro cuando el ciclo del curso ya terminó', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => today()->subMonth()->toDateString(),
+        'fecha_fin' => today()->addMonth()->toDateString(),
+    ]);
+    $curso = cursoDisponible(['periodo_id' => $periodo->id]);
+    horarioHasta($curso, today()->subDay()->toDateString());
+    $estudiante = estudianteMatriculado($curso);
+    Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->get('/estudiante/inscripciones')
+        ->assertOk()
+        ->assertSee('Ciclo finalizado')
+        ->assertDontSee('Retirarme');
+});
+
+it('rechaza retirarse por DELETE cuando el ciclo del curso ya terminó', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => today()->subMonth()->toDateString(),
+        'fecha_fin' => today()->addMonth()->toDateString(),
+    ]);
+    $curso = cursoDisponible(['periodo_id' => $periodo->id]);
+    horarioHasta($curso, today()->subDay()->toDateString());
+    $estudiante = estudianteMatriculado($curso);
+    $inscripcion = Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->delete("/estudiante/inscripciones/{$inscripcion->id}")
+        ->assertSessionHasErrors(['inscripcion' => 'No puedes retirarte: el ciclo del curso ya terminó.']);
+
+    expect($inscripcion->fresh()->estado->value)->toBe('inscrito');
+});
+
+it('rechaza retirarse cuando el periodo terminó y el curso no tiene horarios', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => today()->subMonths(3)->toDateString(),
+        'fecha_fin' => today()->subDay()->toDateString(),
+    ]);
+    $curso = cursoDisponible(['periodo_id' => $periodo->id]);
+    $estudiante = estudianteMatriculado($curso);
+    $inscripcion = Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->delete("/estudiante/inscripciones/{$inscripcion->id}")
+        ->assertSessionHasErrors(['inscripcion' => 'No puedes retirarte: el ciclo del curso ya terminó.']);
+
+    expect($inscripcion->fresh()->estado->value)->toBe('inscrito');
+});
+
+it('permite retirarse el último día del ciclo', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => today()->subMonth()->toDateString(),
+        'fecha_fin' => today()->addMonth()->toDateString(),
+    ]);
+    $curso = cursoDisponible(['periodo_id' => $periodo->id]);
+    horarioHasta($curso, today()->toDateString());
+    $estudiante = estudianteMatriculado($curso);
+    $inscripcion = Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->delete("/estudiante/inscripciones/{$inscripcion->id}")
+        ->assertRedirect('/estudiante/inscripciones');
+
+    expect($inscripcion->fresh()->estado->value)->toBe('retirado');
 });
 
 it('impide retirar la inscripción de otro estudiante', function () {

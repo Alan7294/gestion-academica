@@ -80,12 +80,16 @@
                                         <a href="{{ route('estudiante.inscripciones.show', $inscripcion) }}" class="text-brand-600 hover:text-brand-900">
                                             {{ __('Ver calificaciones') }}
                                         </a>
-                                        <form method="POST" action="{{ route('estudiante.inscripciones.destroy', $inscripcion) }}" class="inline"
-                                              onsubmit="return confirm('{{ __('¿Retirarte de este curso?') }}')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900">{{ __('Retirarme') }}</button>
-                                        </form>
+                                        @if ($inscripcion->curso->cicloFinalizado())
+                                            <span class="text-xs text-slate-500">{{ __('Ciclo finalizado') }}</span>
+                                        @else
+                                            <form method="POST" action="{{ route('estudiante.inscripciones.destroy', $inscripcion) }}" class="inline"
+                                                  onsubmit="return confirm('{{ __('¿Retirarte de este curso?') }}')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900">{{ __('Retirarme') }}</button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

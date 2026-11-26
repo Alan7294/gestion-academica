@@ -255,9 +255,19 @@ class InscripcionService
 
     /**
      * Retira al estudiante del curso conservando el historial.
+     *
+     * @throws ValidationException
      */
     public function retirar(Inscripcion $inscripcion): Inscripcion
     {
+        $inscripcion->loadMissing('curso.horarios', 'curso.periodo');
+
+        if ($inscripcion->curso?->cicloFinalizado()) {
+            throw ValidationException::withMessages([
+                'inscripcion' => 'No puedes retirarte: el ciclo del curso ya terminó.',
+            ]);
+        }
+
         $inscripcion->update(['estado' => EstadoInscripcion::Retirado]);
 
         return $inscripcion;
