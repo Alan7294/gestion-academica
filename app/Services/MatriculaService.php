@@ -108,7 +108,7 @@ class MatriculaService
      */
     private function planEstudioId(int $carreraId, ?int $planEstudioId, ?string $modalidad): ?int
     {
-        if ($planEstudioId !== null && $this->planPerteneceALaCarrera($planEstudioId, $carreraId)) {
+        if ($planEstudioId !== null && $this->planEsValido($planEstudioId, $carreraId, $modalidad)) {
             return $planEstudioId;
         }
 
@@ -120,18 +120,20 @@ class MatriculaService
             ->value('id')
             ?? PlanEstudio::query()
                 ->where('carrera_id', $carreraId)
+                ->when($modalidad, fn ($query) => $query->where('modalidad', $modalidad))
                 ->orderBy('id')
                 ->value('id');
     }
 
     /**
-     * Un plan solo puede asignarse a una matrícula de su propia carrera.
+     * Un plan solo puede asignarse a una matrícula de su carrera y modalidad.
      */
-    private function planPerteneceALaCarrera(int $planEstudioId, int $carreraId): bool
+    private function planEsValido(int $planEstudioId, int $carreraId, ?string $modalidad): bool
     {
         return PlanEstudio::query()
             ->whereKey($planEstudioId)
             ->where('carrera_id', $carreraId)
+            ->when($modalidad, fn ($query) => $query->where('modalidad', $modalidad))
             ->exists();
     }
 }

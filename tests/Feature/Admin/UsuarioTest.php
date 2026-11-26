@@ -110,7 +110,10 @@ it('crea un estudiante con matrículas en varias carreras', function () {
 it('guarda el plan de estudios elegido cuando pertenece a la carrera', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $carrera = Carrera::factory()->create();
-    $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id]);
+    $plan = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'modalidad' => Modalidad::Semestral,
+    ]);
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
@@ -385,6 +388,51 @@ it('actualiza las matrículas de un estudiante conservando las bajas', function 
     expect($matriculaAnterior->fresh()->estado)->toBe(EstadoMatricula::Baja)
         ->and($usuario->matriculas()->activas()->count())->toBe(1)
         ->and($usuario->matriculas()->activas()->first()->carrera_id)->toBe($carreraNueva->id);
+});
+
+it('resuelve el plan según la modalidad aunque llegue un plan anterior en la matrícula', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $carrera = Carrera::factory()->create();
+    $planSemestral = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'modalidad' => Modalidad::Semestral,
+    ]);
+    $planModular = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'modalidad' => Modalidad::Modular,
+    ]);
+
+    $usuario = usuarioConRol(Rol::Estudiante);
+    $matricula = Matricula::factory()->principal()->create([
+        'user_id' => $usuario->id,
+        'carrera_id' => $carrera->id,
+        'plan_estudio_id' => $planSemestral->id,
+        'modalidad' => Modalidad::Semestral,
+    ]);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            'name' => $usuario->name,
+            'ci' => $usuario->ci ?? '9000006',
+            'telefono' => $usuario->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Estudiante->value,
+            'matriculas' => [
+                [
+                    'carrera_id' => $carrera->id,
+                    'modalidad' => Modalidad::Modular->value,
+                    'plan_estudio_id' => $planSemestral->id,
+                    'es_principal' => '1',
+                ],
+            ],
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    expect($matricula->fresh()->modalidad)->toBe(Modalidad::Modular)
+        ->and($matricula->fresh()->plan_estudio_id)->toBe($planModular->id);
 });
 
 it('valida el correo y el carnet duplicados al crear un usuario', function () {
