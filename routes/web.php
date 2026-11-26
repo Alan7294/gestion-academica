@@ -105,6 +105,7 @@ Route::middleware(['auth', 'role:estudiante'])
         Route::get('cursos/{curso}', [CursoEstudianteController::class, 'show'])->name('cursos.show');
 
         Route::get('inscripciones', [InscripcionController::class, 'index'])->name('inscripciones.index');
+        Route::get('inscripciones/{inscripcion}', [InscripcionController::class, 'show'])->name('inscripciones.show');
         Route::post('cursos/{curso}/inscribirse', [InscripcionController::class, 'store'])->name('inscripciones.store');
         Route::delete('inscripciones/{inscripcion}', [InscripcionController::class, 'destroy'])->name('inscripciones.destroy');
 

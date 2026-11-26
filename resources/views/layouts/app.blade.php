@@ -126,9 +126,6 @@
                             <x-sidebar-link :href="route('estudiante.inscripciones.index')" :active="request()->routeIs('estudiante.inscripciones.*')" icon="book">
                                 {{ __('Mis cursos') }}
                             </x-sidebar-link>
-                            <x-sidebar-link :href="route('estudiante.notas.index')" :active="request()->routeIs('estudiante.notas.*')" icon="document">
-                                {{ __('Mis notas') }}
-                            </x-sidebar-link>
                             <x-sidebar-link :href="route('estudiante.reportes.index')" :active="request()->routeIs('estudiante.reportes.*')" icon="chart">
                                 {{ __('Reportes') }}
                             </x-sidebar-link>

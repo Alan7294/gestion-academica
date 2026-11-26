@@ -99,7 +99,7 @@
                     <p class="mt-0.5 text-xs text-slate-500">{{ __('Accesos directos a tu información.') }}</p>
 
                     <div class="mt-5 space-y-2">
-                        <a href="{{ route('estudiante.notas.index') }}"
+                        <a href="{{ route('estudiante.inscripciones.index') }}"
                            class="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-50/50">
                             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><x-icon name="document" class="h-4 w-4" /></span>
                             <span class="text-sm font-medium text-slate-800">{{ __('Mis calificaciones') }}</span>

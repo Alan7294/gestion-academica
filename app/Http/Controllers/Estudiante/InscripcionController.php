@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Estudiante;
 use App\Http\Controllers\Controller;
 use App\Models\Curso;
 use App\Models\Inscripcion;
+use App\Services\ConvalidacionService;
 use App\Services\InscripcionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Illuminate\View\View;
 
 class InscripcionController extends Controller
 {
-    public function __construct(private readonly InscripcionService $inscripciones) {}
+    public function __construct(
+        private readonly InscripcionService $inscripciones,
+        private readonly ConvalidacionService $convalidaciones,
+    ) {}
 
     /**
      * RF06: cursos en los que el estudiante está inscrito.
@@ -31,6 +35,26 @@ class InscripcionController extends Controller
 
         return view('estudiante.inscripciones.index', [
             'inscripciones' => $inscripciones,
+            'convalidaciones' => $this->convalidaciones->paraEstudiante($request->user()),
+        ]);
+    }
+
+    /**
+     * RF07: evaluaciones y nota final de una inscripción.
+     */
+    public function show(Inscripcion $inscripcion): View
+    {
+        Gate::authorize('view', $inscripcion);
+
+        $inscripcion->load([
+            'curso.carrera',
+            'curso.docente',
+            'curso.materia',
+            'calificaciones.evaluacion',
+        ]);
+
+        return view('estudiante.inscripciones.show', [
+            'inscripcion' => $inscripcion,
         ]);
     }
 

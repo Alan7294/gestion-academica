@@ -3,30 +3,18 @@
 namespace App\Http\Controllers\Estudiante;
 
 use App\Http\Controllers\Controller;
-use App\Models\Inscripcion;
-use App\Services\ConvalidacionService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class NotaController extends Controller
 {
-    public function __construct(private readonly ConvalidacionService $convalidaciones) {}
+    public function __construct(private readonly InscripcionController $inscripciones) {}
 
     /**
-     * RF07/RF12: rendimiento del estudiante en sus cursos.
+     * RF07: alias histórico de «Mis cursos», donde viven las calificaciones.
      */
     public function index(Request $request): View
     {
-        $inscripciones = Inscripcion::query()
-            ->with(['curso.carrera', 'curso.docente', 'calificaciones.evaluacion'])
-            ->where('user_id', $request->user()->id)
-            ->activas()
-            ->get()
-            ->sortBy(fn ($inscripcion) => $inscripcion->curso->nombre);
-
-        return view('estudiante.notas.index', [
-            'inscripciones' => $inscripciones,
-            'convalidaciones' => $this->convalidaciones->paraEstudiante($request->user()),
-        ]);
+        return $this->inscripciones->index($request);
     }
 }

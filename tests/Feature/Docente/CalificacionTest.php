@@ -376,6 +376,13 @@ it('muestra al estudiante sus calificaciones y su promedio', function () {
     $this->actingAs($estudiante)
         ->get('/estudiante/notas')
         ->assertOk()
+        ->assertSee('Ver calificaciones')
+        ->assertSee('78.00');
+
+    $this->actingAs($estudiante)
+        ->get(route('estudiante.inscripciones.show', $inscripcion))
+        ->assertOk()
         ->assertSee('Primer parcial')
-        ->assertSee('78');
+        ->assertSee('Promedio final')
+        ->assertSee('78.00');
 });

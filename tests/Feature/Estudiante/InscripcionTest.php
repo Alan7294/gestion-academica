@@ -3,8 +3,10 @@
 use App\Enums\EstadoMatricula;
 use App\Enums\Modalidad;
 use App\Enums\Rol;
+use App\Models\Calificacion;
 use App\Models\Carrera;
 use App\Models\Curso;
+use App\Models\CursoEvaluacion;
 use App\Models\Inscripcion;
 use App\Models\Materia;
 use App\Models\Periodo;
@@ -477,6 +479,28 @@ it('muestra el rango de fechas y la hora sin los días de la semana en la oferta
         ->assertDontSee('Lunes 08:00 - 10:00');
 });
 
+it('muestra el rango de fechas y la hora sin los días de la semana en mis cursos', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $curso = cursoDisponible([], null, $periodo);
+    horariosDeModulo($curso, ['2026-01-05', '2026-01-12']);
+    $estudiante = estudianteMatriculado($curso);
+    Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->get('/estudiante/inscripciones')
+        ->assertOk()
+        ->assertSee('Fecha de Inicio: 05/01/2026')
+        ->assertSee('Fecha de Fin: 30/01/2026')
+        ->assertSee('Horario: 08:00 - 10:00')
+        ->assertDontSee('Lunes 08:00 - 10:00');
+});
+
 it('oculta los créditos en el detalle del curso para el estudiante', function () {
     $curso = cursoDisponible(['nombre' => 'Base de Datos III']);
 
@@ -705,6 +729,70 @@ it('bloquea la inscripción si el plan asignado no está habilitado en el curso'
         ->assertSessionHasErrors(['curso' => 'Tu plan de estudios no está habilitado para este curso.']);
 
     expect(Inscripcion::where('curso_id', $curso->id)->exists())->toBeFalse();
+});
+
+it('muestra el promedio y el enlace a calificaciones en mis cursos', function () {
+    $curso = cursoDisponible(['nombre' => 'Diseño de sistemas']);
+    $estudiante = estudianteMatriculado($curso);
+    $inscripcion = Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+        'nota_final' => 88,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->get('/estudiante/inscripciones')
+        ->assertOk()
+        ->assertSee('Ver calificaciones')
+        ->assertSee('href="'.route('estudiante.inscripciones.show', $inscripcion).'"', false)
+        ->assertSee('88.00')
+        ->assertDontSee('Mis notas');
+});
+
+it('muestra las evaluaciones y el promedio final del curso', function () {
+    $curso = cursoDisponible(['nombre' => 'Diseño de sistemas']);
+    $estudiante = estudianteMatriculado($curso);
+    $inscripcion = Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+        'nota_final' => 88,
+    ]);
+    $evaluacion = CursoEvaluacion::factory()->create([
+        'curso_id' => $curso->id,
+        'nombre' => 'Primer parcial',
+        'ponderacion' => 40,
+    ]);
+    Calificacion::factory()->create([
+        'inscripcion_id' => $inscripcion->id,
+        'curso_evaluacion_id' => $evaluacion->id,
+        'nota' => 90,
+        'fecha' => '2026-01-15',
+    ]);
+
+    $this->actingAs($estudiante)
+        ->get("/estudiante/inscripciones/{$inscripcion->id}")
+        ->assertOk()
+        ->assertSee('Calificaciones de Diseño de sistemas')
+        ->assertSee('Promedio final')
+        ->assertSee('88.00')
+        ->assertSee('Primer parcial')
+        ->assertSee('40.00%')
+        ->assertSee('90.00')
+        ->assertSee('15/01/2026')
+        ->assertDontSee('Créditos');
+});
+
+it('impide ver las calificaciones de otro estudiante', function () {
+    $curso = cursoDisponible();
+    $dueno = estudianteMatriculado($curso);
+    $inscripcion = Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $dueno->id,
+    ]);
+
+    $this->actingAs(estudianteMatriculado($curso))
+        ->get("/estudiante/inscripciones/{$inscripcion->id}")
+        ->assertForbidden();
 });
 
 it('no usa un plan alternativo cuando el asignado no está habilitado en el curso', function () {
