@@ -24,7 +24,7 @@ it('permite al administrador crear un usuario con rol', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Nuevo Docente',
+            ...datosNombre('Nuevo', 'Docente'),
             'ci' => '8765432',
             'telefono' => '70012345',
             'email' => 'nuevo.docente@academica.test',
@@ -42,12 +42,79 @@ it('permite al administrador crear un usuario con rol', function () {
         ->and(Hash::check('Password123', $usuario->password))->toBeTrue();
 });
 
+it('compone el nombre completo a partir de los campos separados', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            ...datosNombre('Ana María', 'Quispe', 'Mamani'),
+            'ci' => '8765498',
+            'telefono' => null,
+            'email' => 'nombre.separado@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    $usuario = User::where('email', 'nombre.separado@academica.test')->firstOrFail();
+
+    expect($usuario->nombres)->toBe('Ana María')
+        ->and($usuario->primer_apellido)->toBe('Quispe')
+        ->and($usuario->segundo_apellido)->toBe('Mamani')
+        ->and($usuario->name)->toBe('Ana María Quispe Mamani');
+});
+
+it('crea un usuario sin segundo apellido', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            ...datosNombre('Luis', 'Condori'),
+            'ci' => '8765497',
+            'telefono' => null,
+            'email' => 'sin.segundo.apellido@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    $usuario = User::where('email', 'sin.segundo.apellido@academica.test')->firstOrFail();
+
+    expect($usuario->segundo_apellido)->toBeNull()
+        ->and($usuario->name)->toBe('Luis Condori');
+});
+
+it('exige nombres y primer apellido al crear un usuario', function (array $nombre, string $campo) {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', $nombre + [
+            'ci' => '8765496',
+            'telefono' => null,
+            'email' => 'nombre.incompleto@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors($campo);
+
+    expect(User::where('email', 'nombre.incompleto@academica.test')->exists())->toBeFalse();
+})->with([
+    'sin nombres' => [['primer_apellido' => 'Quispe'], 'nombres'],
+    'sin primer apellido' => [['nombres' => 'Ana'], 'primer_apellido'],
+]);
+
 it('permite al administrador crear otro administrador', function () {
     $admin = usuarioConRol(Rol::Administrador);
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Nuevo Administrador',
+            ...datosNombre('Nuevo', 'Administrador'),
             'ci' => '8765433',
             'telefono' => '70012346',
             'email' => 'nuevo.admin@academica.test',
@@ -85,7 +152,7 @@ it('crea un estudiante con matrículas en varias carreras', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Estudiante Nuevo',
+            ...datosNombre('Estudiante', 'Nuevo'),
             'ci' => '9000001',
             'telefono' => null,
             'email' => 'estudiante.nuevo@academica.test',
@@ -117,7 +184,7 @@ it('guarda el plan de estudios elegido cuando pertenece a la carrera', function 
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Estudiante Con Plan',
+            ...datosNombre('Estudiante', 'Con Plan'),
             'ci' => '9000011',
             'telefono' => null,
             'email' => 'estudiante.con.plan@academica.test',
@@ -149,7 +216,7 @@ it('rechaza un plan de estudios de otra carrera en la matrícula', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Estudiante Plan Ajeno',
+            ...datosNombre('Estudiante', 'Plan Ajeno'),
             'ci' => '9000012',
             'telefono' => null,
             'email' => 'estudiante.plan.ajeno@academica.test',
@@ -176,7 +243,7 @@ it('exige carrera y modalidad válidas al crear un estudiante', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Estudiante Incompleto',
+            ...datosNombre('Estudiante', 'Incompleto'),
             'ci' => '9000002',
             'telefono' => null,
             'email' => 'estudiante.incompleto@academica.test',
@@ -205,7 +272,7 @@ it('da de baja las matrículas cuando el usuario deja de ser estudiante', functi
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => $usuario->name,
+            ...datosNombre(),
             'ci' => $usuario->ci ?? '9000003',
             'telefono' => $usuario->telefono,
             'email' => $usuario->email,
@@ -338,7 +405,7 @@ it('cambia la matrícula principal cuando llega primero en el formulario', funct
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => $usuario->name,
+            ...datosNombre(),
             'ci' => $usuario->ci ?? '9000005',
             'telefono' => $usuario->telefono,
             'email' => $usuario->email,
@@ -371,7 +438,7 @@ it('actualiza las matrículas de un estudiante conservando las bajas', function 
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => $usuario->name,
+            ...datosNombre(),
             'ci' => $usuario->ci ?? '9000004',
             'telefono' => $usuario->telefono,
             'email' => $usuario->email,
@@ -412,7 +479,7 @@ it('resuelve el plan según la modalidad aunque llegue un plan anterior en la ma
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => $usuario->name,
+            ...datosNombre(),
             'ci' => $usuario->ci ?? '9000006',
             'telefono' => $usuario->telefono,
             'email' => $usuario->email,
@@ -441,7 +508,7 @@ it('valida el correo y el carnet duplicados al crear un usuario', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Duplicado',
+            ...datosNombre('Duplicado', 'Usuario'),
             'ci' => $existente->ci ?? '1234567',
             'telefono' => null,
             'email' => $existente->email,
@@ -452,12 +519,12 @@ it('valida el correo y el carnet duplicados al crear un usuario', function () {
         ->assertSessionHasErrors(['email']);
 });
 
-it('rechaza un nombre con números al crear un usuario', function () {
+it('rechaza nombres con números al crear un usuario', function () {
     $admin = usuarioConRol(Rol::Administrador);
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Usuario 123',
+            ...datosNombre('Usuario 123', 'Valido'),
             'ci' => '8765509',
             'telefono' => null,
             'email' => 'nombre.no.valido@academica.test',
@@ -466,18 +533,18 @@ it('rechaza un nombre con números al crear un usuario', function () {
             'rol' => Rol::Docente->value,
             'activo' => '1',
         ])
-        ->assertSessionHasErrors(['name' => 'El nombre solo puede contener letras.']);
+        ->assertSessionHasErrors(['nombres' => 'Los nombres solo pueden contener letras.']);
 
     expect(User::where('email', 'nombre.no.valido@academica.test')->exists())->toBeFalse();
 });
 
-it('rechaza actualizar el nombre con números', function () {
+it('rechaza actualizar el apellido con números', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $usuario = usuarioConRol(Rol::Docente);
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => 'Docente 456',
+            ...datosNombre('Docente', 'Apellido 456'),
             'ci' => $usuario->ci ?? '8765512',
             'telefono' => $usuario->telefono,
             'email' => $usuario->email,
@@ -486,9 +553,9 @@ it('rechaza actualizar el nombre con números', function () {
             'rol' => Rol::Docente->value,
             'activo' => '1',
         ])
-        ->assertSessionHasErrors(['name' => 'El nombre solo puede contener letras.']);
+        ->assertSessionHasErrors(['primer_apellido' => 'El primer apellido solo puede contener letras.']);
 
-    expect($usuario->fresh()->name)->not->toBe('Docente 456');
+    expect($usuario->fresh()->name)->not->toBe('Docente Apellido 456');
 });
 
 it('rechaza un carnet de identidad con letras al crear un usuario', function () {
@@ -496,7 +563,7 @@ it('rechaza un carnet de identidad con letras al crear un usuario', function () 
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'CI No Numérico',
+            ...datosNombre('CI', 'No Numérico'),
             'ci' => 'ABC123',
             'telefono' => null,
             'email' => 'ci.no.numerico@academica.test',
@@ -517,7 +584,7 @@ it('rechaza actualizar el carnet de identidad con letras', function () {
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => $usuario->name,
+            ...datosNombre(),
             'ci' => '12A4567',
             'telefono' => $usuario->telefono,
             'email' => $usuario->email,
@@ -536,7 +603,7 @@ it('rechaza un teléfono con caracteres no numéricos al crear un usuario', func
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Teléfono No Numérico',
+            ...datosNombre('Teléfono', 'No Numérico'),
             'ci' => '8765510',
             'telefono' => '700-12345',
             'email' => 'telefono.no.numerico@academica.test',
@@ -557,7 +624,7 @@ it('rechaza actualizar el teléfono con caracteres no numéricos', function () {
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => $usuario->name,
+            ...datosNombre(),
             'ci' => $usuario->ci ?? '8765511',
             'telefono' => '700 12345',
             'email' => $usuario->email,
@@ -576,7 +643,7 @@ it('exige al menos 6 dígitos y sin espacios en el carnet de identidad', functio
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Carnet Inválido',
+            ...datosNombre('Carnet', 'Inválido'),
             'ci' => $ci,
             'telefono' => null,
             'email' => 'ci.invalido@academica.test',
@@ -596,7 +663,7 @@ it('muestra un mensaje específico según el error del correo', function (string
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Correo Inválido',
+            ...datosNombre('Correo', 'Inválido'),
             'ci' => '8765520',
             'telefono' => null,
             'email' => $email,
@@ -620,7 +687,7 @@ it('muestra un único mensaje cuando el correo está vacío', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Correo Vacío',
+            ...datosNombre('Correo', 'Vacío'),
             'ci' => '8765522',
             'telefono' => null,
             'email' => '',
@@ -641,7 +708,7 @@ it('exige al menos 8 dígitos y sin espacios en el teléfono', function (string 
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Teléfono Inválido',
+            ...datosNombre('Teléfono', 'Inválido'),
             'ci' => '8765521',
             'telefono' => $telefono,
             'email' => 'telefono.invalido@academica.test',
@@ -662,7 +729,7 @@ it('permite al administrador cambiar el rol de un usuario', function () {
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$usuario->id}", [
-            'name' => $usuario->name,
+            ...datosNombre(),
             'ci' => $usuario->ci ?? '7654321',
             'telefono' => $usuario->telefono,
             'email' => $usuario->email,
@@ -682,7 +749,7 @@ it('impide quitar el rol al último administrador', function () {
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$admin->id}", [
-            'name' => $admin->name,
+            ...datosNombre(),
             'ci' => $admin->ci ?? '1111111',
             'telefono' => $admin->telefono,
             'email' => $admin->email,
@@ -701,7 +768,7 @@ it('impide desactivar al último administrador', function () {
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$admin->id}", [
-            'name' => $admin->name,
+            ...datosNombre(),
             'ci' => $admin->ci ?? '2222222',
             'telefono' => $admin->telefono,
             'email' => $admin->email,

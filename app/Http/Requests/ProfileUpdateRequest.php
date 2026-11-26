@@ -17,7 +17,9 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'nombres' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
+            'primer_apellido' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
+            'segundo_apellido' => ['nullable', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
             'ci' => [
                 'nullable',
                 'string',
@@ -33,6 +35,18 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'nombres.regex' => 'Los nombres solo pueden contener letras.',
+            'primer_apellido.regex' => 'El primer apellido solo puede contener letras.',
+            'segundo_apellido.regex' => 'El segundo apellido solo puede contener letras.',
         ];
     }
 }

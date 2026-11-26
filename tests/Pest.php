@@ -61,6 +61,18 @@ function usuarioConRol(Rol $rol): User
 }
 
 /**
+ * @return array{nombres: string, primer_apellido: string, segundo_apellido: string|null}
+ */
+function datosNombre(string $nombres = 'Ana', string $primerApellido = 'Quispe', ?string $segundoApellido = null): array
+{
+    return [
+        'nombres' => $nombres,
+        'primer_apellido' => $primerApellido,
+        'segundo_apellido' => $segundoApellido,
+    ];
+}
+
+/**
  * Crea un estudiante con matrícula activa en los planes autorizados de los cursos dados.
  */
 function estudianteMatriculado(Curso ...$cursos): User

@@ -31,7 +31,9 @@ class StoreUsuarioRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', 'regex:/^[\p{L} ]+$/u'],
+            'nombres' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
+            'primer_apellido' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
+            'segundo_apellido' => ['nullable', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
             'ci' => ['required', 'string', 'min:6', 'max:20', 'regex:/^\d+$/', Rule::unique('users', 'ci')],
             'telefono' => ['nullable', 'string', 'min:8', 'max:30', 'regex:/^\d+$/'],
             'email' => [
@@ -134,7 +136,9 @@ class StoreUsuarioRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.regex' => 'El nombre solo puede contener letras.',
+            'nombres.regex' => 'Los nombres solo pueden contener letras.',
+            'primer_apellido.regex' => 'El primer apellido solo puede contener letras.',
+            'segundo_apellido.regex' => 'El segundo apellido solo puede contener letras.',
             'ci.unique' => 'Ya existe un usuario registrado con ese carnet de identidad.',
             'ci.min' => 'El carnet de identidad debe tener al menos 6 dígitos.',
             'ci.regex' => 'El carnet de identidad solo puede contener números.',

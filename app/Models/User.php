@@ -11,9 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'ci', 'telefono', 'email', 'password', 'activo'])]
+#[Fillable(['name', 'nombres', 'primer_apellido', 'segundo_apellido', 'ci', 'telefono', 'email', 'password', 'activo'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -31,6 +32,24 @@ class User extends Authenticatable
             'password' => 'hashed',
             'activo' => 'boolean',
         ];
+    }
+
+    /**
+     * El nombre completo se deriva de los campos separados para conservar una sola columna en reportes y listados.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (User $usuario): void {
+            if (! filled($usuario->nombres) || ! filled($usuario->primer_apellido)) {
+                return;
+            }
+
+            $usuario->name = Str::squish(implode(' ', array_filter([
+                $usuario->nombres,
+                $usuario->primer_apellido,
+                $usuario->segundo_apellido,
+            ], fn (?string $valor): bool => filled($valor))));
+        });
     }
 
     public function certificadosDocentes(): HasMany

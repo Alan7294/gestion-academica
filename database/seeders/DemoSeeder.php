@@ -199,9 +199,9 @@ class DemoSeeder extends Seeder
     private function crearDocentes(): array
     {
         $definiciones = [
-            ['name' => 'Carlos Mamani', 'email' => 'docente1@academica.test', 'ci' => '7010001', 'telefono' => '70010001'],
-            ['name' => 'Lucía Fernández', 'email' => 'docente2@academica.test', 'ci' => '7010002', 'telefono' => '70010002'],
-            ['name' => 'Jorge Rojas', 'email' => 'docente3@academica.test', 'ci' => '7010003', 'telefono' => '70010003'],
+            ['nombres' => 'Carlos', 'primer_apellido' => 'Mamani', 'email' => 'docente1@academica.test', 'ci' => '7010001', 'telefono' => '70010001'],
+            ['nombres' => 'Lucía', 'primer_apellido' => 'Fernández', 'email' => 'docente2@academica.test', 'ci' => '7010002', 'telefono' => '70010002'],
+            ['nombres' => 'Jorge', 'primer_apellido' => 'Rojas', 'email' => 'docente3@academica.test', 'ci' => '7010003', 'telefono' => '70010003'],
         ];
 
         $docentes = [];
@@ -221,12 +221,12 @@ class DemoSeeder extends Seeder
     private function crearEstudiantes($carreras): array
     {
         $definiciones = [
-            ['name' => 'Ana Quispe', 'email' => 'estudiante1@academica.test', 'ci' => '7020001', 'telefono' => '70020001', 'carreras' => ['SIS' => Modalidad::Semestral, 'ADM' => Modalidad::Modular]],
-            ['name' => 'Luis Condori', 'email' => 'estudiante2@academica.test', 'ci' => '7020002', 'telefono' => '70020002', 'carreras' => ['SIS' => Modalidad::Semestral, 'DER' => Modalidad::Semestral]],
-            ['name' => 'María Choque', 'email' => 'estudiante3@academica.test', 'ci' => '7020003', 'telefono' => '70020003', 'carreras' => ['ADM' => Modalidad::Modular, 'SIS' => Modalidad::Semestral]],
-            ['name' => 'Diego Vargas', 'email' => 'estudiante4@academica.test', 'ci' => '7020004', 'telefono' => '70020004', 'carreras' => ['ADM' => Modalidad::Modular, 'DER' => Modalidad::Semestral]],
-            ['name' => 'Sofía Limachi', 'email' => 'estudiante5@academica.test', 'ci' => '7020005', 'telefono' => '70020005', 'carreras' => ['DER' => Modalidad::Semestral, 'SIS' => Modalidad::Semestral]],
-            ['name' => 'Pedro Céspedes', 'email' => 'estudiante6@academica.test', 'ci' => '7020006', 'telefono' => '70020006', 'carreras' => ['DER' => Modalidad::Semestral, 'ADM' => Modalidad::Modular]],
+            ['nombres' => 'Ana', 'primer_apellido' => 'Quispe', 'email' => 'estudiante1@academica.test', 'ci' => '7020001', 'telefono' => '70020001', 'carreras' => ['SIS' => Modalidad::Semestral, 'ADM' => Modalidad::Modular]],
+            ['nombres' => 'Luis', 'primer_apellido' => 'Condori', 'email' => 'estudiante2@academica.test', 'ci' => '7020002', 'telefono' => '70020002', 'carreras' => ['SIS' => Modalidad::Semestral, 'DER' => Modalidad::Semestral]],
+            ['nombres' => 'María', 'primer_apellido' => 'Choque', 'email' => 'estudiante3@academica.test', 'ci' => '7020003', 'telefono' => '70020003', 'carreras' => ['ADM' => Modalidad::Modular, 'SIS' => Modalidad::Semestral]],
+            ['nombres' => 'Diego', 'primer_apellido' => 'Vargas', 'email' => 'estudiante4@academica.test', 'ci' => '7020004', 'telefono' => '70020004', 'carreras' => ['ADM' => Modalidad::Modular, 'DER' => Modalidad::Semestral]],
+            ['nombres' => 'Sofía', 'primer_apellido' => 'Limachi', 'email' => 'estudiante5@academica.test', 'ci' => '7020005', 'telefono' => '70020005', 'carreras' => ['DER' => Modalidad::Semestral, 'SIS' => Modalidad::Semestral]],
+            ['nombres' => 'Pedro', 'primer_apellido' => 'Céspedes', 'email' => 'estudiante6@academica.test', 'ci' => '7020006', 'telefono' => '70020006', 'carreras' => ['DER' => Modalidad::Semestral, 'ADM' => Modalidad::Modular]],
         ];
 
         $estudiantes = [];
@@ -262,20 +262,37 @@ class DemoSeeder extends Seeder
     }
 
     /**
-     * @param  array{name: string, email: string, ci: string, telefono: string}  $datos
+     * @param  array{nombres: string, primer_apellido: string, segundo_apellido?: string|null, email: string, ci: string, telefono: string}  $datos
      */
     private function crearUsuario(array $datos, Rol $rol): User
     {
+        $segundoApellido = $datos['segundo_apellido'] ?? null;
+
+        $partesDelNombre = [
+            'name' => trim(implode(' ', array_filter([
+                $datos['nombres'],
+                $datos['primer_apellido'],
+                $segundoApellido,
+            ]))),
+            'nombres' => $datos['nombres'],
+            'primer_apellido' => $datos['primer_apellido'],
+            'segundo_apellido' => $segundoApellido,
+        ];
+
         $usuario = User::firstOrCreate(
             ['email' => $datos['email']],
-            [
-                'name' => $datos['name'],
+            $partesDelNombre + [
                 'ci' => $datos['ci'],
                 'telefono' => $datos['telefono'],
                 'password' => Hash::make('Demo1234!'),
                 'activo' => true,
             ],
         );
+
+        // Los usuarios de demostración creados antes del cambio conservan el nombre íntegro.
+        if ($usuario->nombres === null) {
+            $usuario->update($partesDelNombre);
+        }
 
         $usuario->syncRoles([$rol->value]);
 

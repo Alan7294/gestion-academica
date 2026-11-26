@@ -9,7 +9,10 @@ test('profile page is displayed', function () {
         ->actingAs($user)
         ->get('/profile');
 
-    $response->assertOk();
+    $response->assertOk()
+        ->assertSee('name="nombres"', false)
+        ->assertSee('name="primer_apellido"', false)
+        ->assertSee('name="segundo_apellido"', false);
 });
 
 test('profile information can be updated', function () {
@@ -18,7 +21,7 @@ test('profile information can be updated', function () {
     $response = $this
         ->actingAs($user)
         ->patch('/profile', [
-            'name' => 'Test User',
+            ...datosNombre('Ana María', 'Quispe', 'Mamani'),
             'email' => 'test@example.com',
         ]);
 
@@ -28,7 +31,10 @@ test('profile information can be updated', function () {
 
     $user->refresh();
 
-    $this->assertSame('Test User', $user->name);
+    $this->assertSame('Ana María Quispe Mamani', $user->name);
+    $this->assertSame('Ana María', $user->nombres);
+    $this->assertSame('Quispe', $user->primer_apellido);
+    $this->assertSame('Mamani', $user->segundo_apellido);
     $this->assertSame('test@example.com', $user->email);
 });
 
@@ -39,7 +45,7 @@ test('el correo electrónico se conserva cuando el formulario envía el mismo va
     $response = $this
         ->actingAs($user)
         ->patch('/profile', [
-            'name' => 'Test User',
+            ...datosNombre('Ana', 'Quispe'),
             'email' => $correoOriginal,
         ]);
 
@@ -47,9 +53,20 @@ test('el correo electrónico se conserva cuando el formulario envía el mismo va
         ->assertSessionHasNoErrors()
         ->assertRedirect('/profile');
 
-    $this->assertSame('Test User', $user->refresh()->name);
+    $this->assertSame('Ana Quispe', $user->refresh()->name);
     $this->assertSame($correoOriginal, $user->email);
 });
+
+test('el perfil exige nombres y primer apellido', function (array $nombre, string $campo) {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/profile', $nombre + ['email' => $user->email])
+        ->assertSessionHasErrors($campo);
+})->with([
+    'sin nombres' => [['primer_apellido' => 'Quispe'], 'nombres'],
+    'sin primer apellido' => [['nombres' => 'Ana'], 'primer_apellido'],
+]);
 
 test('user can delete their account', function () {
     $user = User::factory()->create();

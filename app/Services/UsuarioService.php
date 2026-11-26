@@ -16,13 +16,15 @@ class UsuarioService
     /**
      * RF09: crea un usuario desde el panel y le asigna un rol.
      *
-     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password: string, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>, certificados?: array<int, array{titulo: string, institucion: string, codigo: string}>}  $datos
+     * @param  array{nombres: string, primer_apellido: string, segundo_apellido?: string|null, ci: string, telefono?: string|null, email: string, password: string, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>, certificados?: array<int, array{titulo: string, institucion: string, codigo: string}>}  $datos
      */
     public function crear(array $datos): User
     {
         return DB::transaction(function () use ($datos) {
             $usuario = User::create([
-                'name' => $datos['name'],
+                'nombres' => $datos['nombres'],
+                'primer_apellido' => $datos['primer_apellido'],
+                'segundo_apellido' => $datos['segundo_apellido'] ?? null,
                 'ci' => $datos['ci'],
                 'telefono' => $datos['telefono'] ?? null,
                 'email' => $datos['email'],
@@ -47,7 +49,7 @@ class UsuarioService
     /**
      * RF09: actualiza los datos y el rol sin dejar el sistema sin administradores.
      *
-     * @param  array{name: string, ci: string, telefono?: string|null, email: string, password?: string|null, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>, certificados?: array<int, array{titulo: string, institucion: string, codigo: string}>}  $datos
+     * @param  array{nombres: string, primer_apellido: string, segundo_apellido?: string|null, ci: string, telefono?: string|null, email: string, password?: string|null, rol: string, activo?: bool, matriculas?: array<int, array{carrera_id: int, modalidad?: string|null, es_principal?: bool, plan_estudio_id?: int|null}>, certificados?: array<int, array{titulo: string, institucion: string, codigo: string}>}  $datos
      *
      * @throws ValidationException
      */
@@ -61,7 +63,9 @@ class UsuarioService
 
         return DB::transaction(function () use ($usuario, $datos) {
             $atributos = [
-                'name' => $datos['name'],
+                'nombres' => $datos['nombres'],
+                'primer_apellido' => $datos['primer_apellido'],
+                'segundo_apellido' => $datos['segundo_apellido'] ?? null,
                 'ci' => $datos['ci'],
                 'telefono' => $datos['telefono'] ?? null,
                 'email' => $datos['email'],

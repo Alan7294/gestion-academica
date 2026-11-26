@@ -29,11 +29,27 @@
 <div x-data="{ rol: @js($rolActual), matriculas: @js($matriculasIniciales), certificados: @js($certificadosIniciales) }">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
-            <x-input-label for="name" :value="__('Nombre completo')" />
-            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full"
-                          :value="old('name', $usuario?->name)" required autofocus
+            <x-input-label for="nombres" :value="__('Nombres')" />
+            <x-text-input id="nombres" name="nombres" type="text" class="mt-1 block w-full"
+                          :value="old('nombres', $usuario?->nombres ?? $usuario?->name)" required autofocus
                           pattern="[\p{L} ]+" title="Solo se permiten letras" />
-            <x-input-error class="mt-2" :messages="$errors->get('name')" />
+            <x-input-error class="mt-2" :messages="$errors->get('nombres')" />
+        </div>
+
+        <div>
+            <x-input-label for="primer_apellido" :value="__('Primer apellido')" />
+            <x-text-input id="primer_apellido" name="primer_apellido" type="text" class="mt-1 block w-full"
+                          :value="old('primer_apellido', $usuario?->primer_apellido)" required
+                          pattern="[\p{L} ]+" title="Solo se permiten letras" />
+            <x-input-error class="mt-2" :messages="$errors->get('primer_apellido')" />
+        </div>
+
+        <div>
+            <x-input-label for="segundo_apellido" :value="__('Segundo apellido (opcional)')" />
+            <x-text-input id="segundo_apellido" name="segundo_apellido" type="text" class="mt-1 block w-full"
+                          :value="old('segundo_apellido', $usuario?->segundo_apellido)"
+                          pattern="[\p{L} ]+" title="Solo se permiten letras" />
+            <x-input-error class="mt-2" :messages="$errors->get('segundo_apellido')" />
         </div>
 
         <div>

@@ -15,7 +15,7 @@ it('guarda los certificados al crear un docente', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Docente Certificado',
+            ...datosNombre('Docente', 'Certificado'),
             'ci' => '8765499',
             'telefono' => null,
             'email' => 'docente.certificado@academica.test',
@@ -52,7 +52,7 @@ it('actualiza los certificados de un docente', function () {
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$docente->id}", [
-            'name' => $docente->name,
+            ...datosNombre(),
             'ci' => $docente->ci ?? '8765500',
             'telefono' => $docente->telefono,
             'email' => $docente->email,
@@ -80,7 +80,7 @@ it('exige los tres datos cuando se captura un certificado', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Docente Incompleto',
+            ...datosNombre('Docente', 'Incompleto'),
             'ci' => '8765501',
             'telefono' => null,
             'email' => 'docente.incompleto@academica.test',
@@ -105,7 +105,7 @@ it('exige el título aunque se llene otro dato del certificado', function () {
 
     $this->actingAs($admin)
         ->post('/admin/usuarios', [
-            'name' => 'Docente Sin Título',
+            ...datosNombre('Docente', 'Sin Título'),
             'ci' => '8765503',
             'telefono' => null,
             'email' => 'docente.sin.titulo@academica.test',
@@ -134,7 +134,7 @@ it('elimina los certificados cuando el usuario deja de ser docente', function ()
 
     $this->actingAs($admin)
         ->put("/admin/usuarios/{$docente->id}", [
-            'name' => $docente->name,
+            ...datosNombre(),
             'ci' => $docente->ci ?? '8765502',
             'telefono' => $docente->telefono,
             'email' => $docente->email,

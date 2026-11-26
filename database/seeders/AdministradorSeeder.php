@@ -14,14 +14,23 @@ class AdministradorSeeder extends Seeder
      */
     public function run(): void
     {
+        $partesDelNombre = [
+            'name' => 'Administrador del Sistema',
+            'nombres' => 'Administrador',
+            'primer_apellido' => 'del Sistema',
+        ];
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@academica.test'],
-            [
-                'name' => 'Administrador del Sistema',
+            $partesDelNombre + [
                 'password' => Hash::make('Admin1234!'),
                 'activo' => true,
             ],
         );
+
+        if ($admin->nombres === null) {
+            $admin->update($partesDelNombre);
+        }
 
         $admin->syncRoles([Rol::Administrador->value]);
     }
