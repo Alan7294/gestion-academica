@@ -135,10 +135,10 @@ class DemoSeeder extends Seeder
         $matriculas = [
             'estudiante1@academica.test' => ['SIS-101', 'ADM-101'],
             'estudiante2@academica.test' => ['SIS-101', 'SIS-201', 'DER-101'],
-            'estudiante3@academica.test' => ['ADM-101', 'ADM-201', 'SIS-101'],
+            'estudiante3@academica.test' => ['ADM-101', 'SIS-101', 'SIS-201'],
             'estudiante4@academica.test' => ['DER-101', 'DER-201', 'ADM-101'],
             'estudiante5@academica.test' => ['SIS-101', 'SIS-201'],
-            'estudiante6@academica.test' => ['ADM-101', 'ADM-201'],
+            'estudiante6@academica.test' => ['ADM-101', 'DER-101'],
         ];
 
         $inscripciones = app(InscripcionService::class);

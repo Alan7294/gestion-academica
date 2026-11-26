@@ -238,6 +238,140 @@ it('permite inscribirse si dos cursos comparten franja pero sus vigencias no se 
     expect(Inscripcion::where('user_id', $estudiante->id)->count())->toBe(2);
 });
 
+it('rechaza un segundo módulo activo aunque tenga otro horario', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $primero = cursoDisponible([
+        'modalidad' => Modalidad::Modular,
+        'periodo_id' => $periodo->id,
+        'nombre' => 'Módulo de Sistemas',
+    ]);
+    $segundo = cursoDisponible([
+        'modalidad' => Modalidad::Modular,
+        'periodo_id' => $periodo->id,
+        'nombre' => 'Módulo de Base de Datos',
+    ]);
+
+    $primero->horarios()->create([
+        'docente_id' => $primero->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => '2026-01-05',
+        'fecha_fin' => '2026-01-30',
+    ]);
+    $segundo->horarios()->create([
+        'docente_id' => $segundo->docente_id,
+        'dia_semana' => 2,
+        'hora_inicio' => '10:00',
+        'hora_fin' => '12:00',
+        'fecha_inicio' => '2026-01-05',
+        'fecha_fin' => '2026-01-30',
+    ]);
+
+    $estudiante = estudianteMatriculado($primero, $segundo);
+    Inscripcion::factory()->create([
+        'curso_id' => $primero->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$segundo->id}/inscribirse")
+        ->assertSessionHasErrors(['curso' => 'No puedes inscribirte: en modalidad modular solo puedes cursar un módulo a la vez. Retírate de «Módulo de Sistemas» antes de inscribirte a otro.']);
+
+    expect(Inscripcion::where('user_id', $estudiante->id)->count())->toBe(1);
+});
+
+it('permite otro módulo cuando el primero ya terminó', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $primero = cursoDisponible([
+        'modalidad' => Modalidad::Modular,
+        'periodo_id' => $periodo->id,
+    ]);
+    $segundo = cursoDisponible([
+        'modalidad' => Modalidad::Modular,
+        'periodo_id' => $periodo->id,
+    ]);
+
+    $primero->horarios()->create([
+        'docente_id' => $primero->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => '2026-01-05',
+        'fecha_fin' => '2026-01-30',
+    ]);
+    $segundo->horarios()->create([
+        'docente_id' => $segundo->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => '2026-02-02',
+        'fecha_fin' => '2026-02-27',
+    ]);
+
+    $estudiante = estudianteMatriculado($primero, $segundo);
+    Inscripcion::factory()->create([
+        'curso_id' => $primero->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$segundo->id}/inscribirse")
+        ->assertRedirect('/estudiante/inscripciones');
+
+    expect(Inscripcion::where('user_id', $estudiante->id)->count())->toBe(2);
+});
+
+it('permite inscribirse a otro módulo cuando el anterior fue retirado', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $primero = cursoDisponible([
+        'modalidad' => Modalidad::Modular,
+        'periodo_id' => $periodo->id,
+    ]);
+    $segundo = cursoDisponible([
+        'modalidad' => Modalidad::Modular,
+        'periodo_id' => $periodo->id,
+    ]);
+
+    $primero->horarios()->create([
+        'docente_id' => $primero->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => '2026-01-05',
+        'fecha_fin' => '2026-01-30',
+    ]);
+    $segundo->horarios()->create([
+        'docente_id' => $segundo->docente_id,
+        'dia_semana' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '10:00',
+        'fecha_inicio' => '2026-01-05',
+        'fecha_fin' => '2026-01-30',
+    ]);
+
+    $estudiante = estudianteMatriculado($primero, $segundo);
+    Inscripcion::factory()->retirada()->create([
+        'curso_id' => $primero->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$segundo->id}/inscribirse")
+        ->assertRedirect('/estudiante/inscripciones');
+
+    expect(Inscripcion::where('user_id', $estudiante->id)->count())->toBe(2);
+});
+
 it('no permite inscribirse a un curso de un periodo cerrado', function () {
     $curso = cursoDisponible([
         'periodo_id' => Periodo::factory()->create()->id,

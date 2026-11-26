@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\EstadoInscripcion;
+use App\Enums\Modalidad;
 use App\Models\Curso;
 use App\Models\Horario;
 use App\Models\Inscripcion;
@@ -69,6 +70,7 @@ class InscripcionService
             }
 
             $this->verificarChoqueHorario($estudiante, $curso);
+            $this->verificarModuloUnico($estudiante, $curso);
 
             if ($existente) {
                 $existente->update([
@@ -192,6 +194,53 @@ class InscripcionService
         }
 
         return $plan;
+    }
+
+    /**
+     * RF05: en modalidad modular solo se permite un módulo activo a la vez.
+     *
+     * @throws ValidationException
+     */
+    private function verificarModuloUnico(User $estudiante, Curso $curso): void
+    {
+        if ($curso->modalidad !== Modalidad::Modular) {
+            return;
+        }
+
+        $horarios = $curso->horarios;
+
+        if ($horarios->isEmpty()) {
+            return;
+        }
+
+        $inicio = $horarios->pluck('fecha_inicio')->filter()->map(fn ($fecha) => $fecha->toDateString())->min();
+        $fin = $horarios->pluck('fecha_fin')->filter()->map(fn ($fecha) => $fecha->toDateString())->max();
+
+        if ($inicio === null || $fin === null) {
+            return;
+        }
+
+        $moduloActivo = Inscripcion::query()
+            ->with('curso')
+            ->where('user_id', $estudiante->id)
+            ->where('estado', EstadoInscripcion::Inscrito->value)
+            ->where('curso_id', '!=', $curso->id)
+            ->whereHas('curso', function ($query) use ($inicio, $fin) {
+                $query->where('modalidad', Modalidad::Modular->value)
+                    ->whereHas('horarios', function ($sub) use ($inicio, $fin) {
+                        $sub->where('fecha_inicio', '<=', $fin)
+                            ->where('fecha_fin', '>=', $inicio);
+                    });
+            })
+            ->first();
+
+        if ($moduloActivo === null) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'curso' => 'No puedes inscribirte: en modalidad modular solo puedes cursar un módulo a la vez. Retírate de «'.$moduloActivo->curso->nombre.'» antes de inscribirte a otro.',
+        ]);
     }
 
     /**
