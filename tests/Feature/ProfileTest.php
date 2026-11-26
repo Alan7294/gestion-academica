@@ -57,6 +57,51 @@ test('el correo electrónico se conserva cuando el formulario envía el mismo va
     $this->assertSame($correoOriginal, $user->email);
 });
 
+test('el perfil permite conservar el teléfono propio', function () {
+    $user = User::factory()->create(['telefono' => '70055555']);
+
+    $this->actingAs($user)
+        ->patch('/profile', [
+            ...datosNombre('Ana', 'Quispe'),
+            'telefono' => '70055555',
+            'email' => $user->email,
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/profile');
+
+    expect($user->refresh()->telefono)->toBe('70055555');
+});
+
+test('el perfil rechaza un teléfono registrado por otro usuario', function () {
+    $user = User::factory()->create(['telefono' => '70066666']);
+    $otro = User::factory()->create(['telefono' => '70077777']);
+
+    $this->actingAs($user)
+        ->patch('/profile', [
+            ...datosNombre('Ana', 'Quispe'),
+            'telefono' => $otro->telefono,
+            'email' => $user->email,
+        ])
+        ->assertSessionHasErrors(['telefono' => 'Ya existe un usuario registrado con ese teléfono.']);
+
+    expect($user->refresh()->telefono)->toBe('70066666');
+});
+
+test('el perfil valida el formato del teléfono', function (string $telefono, string $mensaje) {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/profile', [
+            ...datosNombre('Ana', 'Quispe'),
+            'telefono' => $telefono,
+            'email' => $user->email,
+        ])
+        ->assertSessionHasErrors(['telefono' => $mensaje]);
+})->with([
+    'menos de 8 dígitos' => ['1234567', 'El teléfono debe tener al menos 8 dígitos.'],
+    'con espacios' => ['1234 5678', 'El teléfono solo puede contener números.'],
+]);
+
 test('el perfil exige nombres y primer apellido', function (array $nombre, string $campo) {
     $user = User::factory()->create();
 

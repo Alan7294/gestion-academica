@@ -35,7 +35,7 @@ class StoreUsuarioRequest extends FormRequest
             'primer_apellido' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
             'segundo_apellido' => ['nullable', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
             'ci' => ['required', 'string', 'min:6', 'max:20', 'regex:/^\d+$/', Rule::unique('users', 'ci')],
-            'telefono' => ['nullable', 'string', 'min:8', 'max:30', 'regex:/^\d+$/'],
+            'telefono' => ['nullable', 'string', 'min:8', 'max:30', 'regex:/^\d+$/', Rule::unique('users', 'telefono')],
             'email' => [
                 'required',
                 'string',
@@ -142,6 +142,7 @@ class StoreUsuarioRequest extends FormRequest
             'ci.unique' => 'Ya existe un usuario registrado con ese carnet de identidad.',
             'ci.min' => 'El carnet de identidad debe tener al menos 6 dígitos.',
             'ci.regex' => 'El carnet de identidad solo puede contener números.',
+            'telefono.unique' => 'Ya existe un usuario registrado con ese teléfono.',
             'telefono.min' => 'El teléfono debe tener al menos 8 dígitos.',
             'telefono.regex' => 'El teléfono solo puede contener números.',
             'email.unique' => 'Ya existe un usuario registrado con ese correo.',

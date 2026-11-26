@@ -13,7 +13,10 @@ use App\Models\Periodo;
 use App\Models\PlanEstudio;
 use App\Models\User;
 use Database\Seeders\RolSeeder;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     $this->seed(RolSeeder::class);
@@ -517,6 +520,95 @@ it('valida el correo y el carnet duplicados al crear un usuario', function () {
             'rol' => Rol::Estudiante->value,
         ])
         ->assertSessionHasErrors(['email']);
+});
+
+it('rechaza un teléfono duplicado al crear un usuario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $existente = User::factory()->create(['telefono' => '70012345']);
+
+    $this->actingAs($admin)
+        ->post('/admin/usuarios', [
+            ...datosNombre('Teléfono', 'Duplicado'),
+            'ci' => '8765531',
+            'telefono' => $existente->telefono,
+            'email' => 'telefono.duplicado@academica.test',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['telefono' => 'Ya existe un usuario registrado con ese teléfono.']);
+
+    expect(User::where('email', 'telefono.duplicado@academica.test')->exists())->toBeFalse();
+});
+
+it('rechaza un teléfono duplicado al actualizar un usuario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $usuario = User::factory()->create(['telefono' => '70011111']);
+    $otro = User::factory()->create(['telefono' => '70022222']);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            ...datosNombre(),
+            'ci' => $usuario->ci ?? '8765532',
+            'telefono' => $otro->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertSessionHasErrors(['telefono' => 'Ya existe un usuario registrado con ese teléfono.']);
+
+    expect($usuario->fresh()->telefono)->toBe('70011111');
+});
+
+it('permite conservar el teléfono propio al actualizar un usuario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $usuario = User::factory()->create(['telefono' => '70033333']);
+
+    $this->actingAs($admin)
+        ->put("/admin/usuarios/{$usuario->id}", [
+            ...datosNombre(),
+            'ci' => $usuario->ci ?? '8765533',
+            'telefono' => $usuario->telefono,
+            'email' => $usuario->email,
+            'password' => '',
+            'password_confirmation' => '',
+            'rol' => Rol::Docente->value,
+            'activo' => '1',
+        ])
+        ->assertRedirect('/admin/usuarios');
+
+    expect($usuario->fresh()->telefono)->toBe('70033333');
+});
+
+it('conserva el teléfono más antiguo y limpia los duplicados antes de crear el índice', function () {
+    Schema::table('users', function (Blueprint $table) {
+        $table->dropUnique(['telefono']);
+    });
+
+    $primero = User::factory()->create(['telefono' => '70012345']);
+    $segundo = User::factory()->create(['telefono' => '70012345']);
+    $tercero = User::factory()->create(['telefono' => '70012345']);
+    $sinTelefono = User::factory()->create(['telefono' => '   ']);
+
+    $migracion = require database_path('migrations/2026_11_26_045503_add_unique_to_telefono_in_users_table.php');
+    $migracion->up();
+
+    expect($primero->fresh()->telefono)->toBe('70012345')
+        ->and($segundo->fresh()->telefono)->toBeNull()
+        ->and($tercero->fresh()->telefono)->toBeNull()
+        ->and($sinTelefono->fresh()->telefono)->toBeNull();
+});
+
+it('impide guardar teléfonos duplicados directamente en la base de datos', function () {
+    $telefono = '70044444';
+
+    User::factory()->create(['telefono' => $telefono]);
+
+    expect(fn () => User::factory()->create(['telefono' => $telefono]))
+        ->toThrow(QueryException::class);
 });
 
 it('rechaza nombres con números al crear un usuario', function () {

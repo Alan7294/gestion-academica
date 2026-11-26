@@ -46,7 +46,14 @@ class UpdateUsuarioRequest extends FormRequest
                 'regex:/^\d+$/',
                 Rule::unique('users', 'ci')->ignore($usuario?->id),
             ],
-            'telefono' => ['nullable', 'string', 'min:8', 'max:30', 'regex:/^\d+$/'],
+            'telefono' => [
+                'nullable',
+                'string',
+                'min:8',
+                'max:30',
+                'regex:/^\d+$/',
+                Rule::unique('users', 'telefono')->ignore($usuario?->id),
+            ],
             'email' => [
                 'required',
                 'string',
@@ -154,6 +161,7 @@ class UpdateUsuarioRequest extends FormRequest
             'ci.unique' => 'Ya existe un usuario registrado con ese carnet de identidad.',
             'ci.min' => 'El carnet de identidad debe tener al menos 6 dígitos.',
             'ci.regex' => 'El carnet de identidad solo puede contener números.',
+            'telefono.unique' => 'Ya existe un usuario registrado con ese teléfono.',
             'telefono.min' => 'El teléfono debe tener al menos 8 dígitos.',
             'telefono.regex' => 'El teléfono solo puede contener números.',
             'email.unique' => 'Ya existe un usuario registrado con ese correo.',

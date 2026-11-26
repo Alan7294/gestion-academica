@@ -26,7 +26,14 @@ class ProfileUpdateRequest extends FormRequest
                 'max:20',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'telefono' => ['nullable', 'string', 'max:30'],
+            'telefono' => [
+                'nullable',
+                'string',
+                'min:8',
+                'max:30',
+                'regex:/^\d+$/',
+                Rule::unique(User::class, 'telefono')->ignore($this->user()->id),
+            ],
             'email' => [
                 'required',
                 'string',
@@ -47,6 +54,9 @@ class ProfileUpdateRequest extends FormRequest
             'nombres.regex' => 'Los nombres solo pueden contener letras.',
             'primer_apellido.regex' => 'El primer apellido solo puede contener letras.',
             'segundo_apellido.regex' => 'El segundo apellido solo puede contener letras.',
+            'telefono.unique' => 'Ya existe un usuario registrado con ese teléfono.',
+            'telefono.min' => 'El teléfono debe tener al menos 8 dígitos.',
+            'telefono.regex' => 'El teléfono solo puede contener números.',
         ];
     }
 }
