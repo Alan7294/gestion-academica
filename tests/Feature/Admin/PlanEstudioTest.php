@@ -671,3 +671,35 @@ it('filtra los planes por estado activo', function () {
         ->assertSee('Plan archivado')
         ->assertDontSee('Plan vigente');
 });
+
+it('ofrece solo la opción Ver en la lista de planes', function () {
+    $carrera = Carrera::factory()->create();
+    PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Plan Listado',
+    ]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/planes')
+        ->assertOk()
+        ->assertSee('Plan Listado')
+        ->assertSee('Ver')
+        ->assertDontSee('Editar')
+        ->assertDontSee('Eliminar');
+});
+
+it('muestra Editar y Eliminar en el detalle del plan', function () {
+    $carrera = Carrera::factory()->create();
+    $plan = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Plan Detalle',
+    ]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get("/admin/planes/{$plan->id}")
+        ->assertOk()
+        ->assertSee('Plan Detalle')
+        ->assertSee('Editar')
+        ->assertSee('Eliminar')
+        ->assertSee('¿Eliminar este plan de estudios?');
+});

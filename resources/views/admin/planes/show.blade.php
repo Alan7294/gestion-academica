@@ -7,12 +7,21 @@
                 <p class="mt-0.5 text-sm text-slate-500">{{ $plan->carrera->nombre }}</p>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <a href="{{ route('admin.planes.edit', $plan) }}"
                    class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
                     <x-icon name="pencil" class="h-4 w-4" />
-                    {{ __('Editar plan') }}
+                    {{ __('Editar') }}
                 </a>
+                <form method="POST" action="{{ route('admin.planes.destroy', $plan) }}" class="inline"
+                      onsubmit="return confirm('{{ __('¿Eliminar este plan de estudios?') }}')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit"
+                            class="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50">
+                        {{ __('Eliminar') }}
+                    </button>
+                </form>
                 <a href="{{ route('admin.planes.index') }}" class="text-sm text-slate-600 hover:text-slate-900">
                     {{ __('Volver') }}
                 </a>

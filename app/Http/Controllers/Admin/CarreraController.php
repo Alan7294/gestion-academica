@@ -21,6 +21,22 @@ class CarreraController extends Controller
         ]);
     }
 
+    /**
+     * RF09: detalle de la carrera con sus planes y cursos.
+     */
+    public function show(Carrera $carrera): View
+    {
+        $carrera->load([
+            'facultad',
+            'planesEstudio' => fn ($planes) => $planes->orderBy('nombre'),
+            'cursos' => fn ($cursos) => $cursos
+                ->with(['materia', 'periodo', 'docente'])
+                ->orderBy('nombre'),
+        ]);
+
+        return view('admin.carreras.show', ['carrera' => $carrera]);
+    }
+
     public function create(): View
     {
         return view('admin.carreras.create', $this->opciones());

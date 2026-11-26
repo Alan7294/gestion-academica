@@ -18,6 +18,18 @@ class PeriodoController extends Controller
         ]);
     }
 
+    /**
+     * RF09: detalle del periodo con los cursos que se imparten en él.
+     */
+    public function show(Periodo $periodo): View
+    {
+        $periodo->load(['cursos' => fn ($cursos) => $cursos
+            ->with(['carrera', 'materia', 'docente'])
+            ->orderBy('nombre')]);
+
+        return view('admin.periodos.show', ['periodo' => $periodo]);
+    }
+
     public function create(): View
     {
         return view('admin.periodos.create');

@@ -55,6 +55,16 @@ class UsuarioController extends Controller
         ]);
     }
 
+    /**
+     * RF09: detalle del usuario con sus matrículas y certificados.
+     */
+    public function show(User $usuario): View
+    {
+        $usuario->load(['roles', 'matriculas.carrera', 'certificadosDocentes']);
+
+        return view('admin.usuarios.show', ['usuario' => $usuario]);
+    }
+
     public function create(): View
     {
         return view('admin.usuarios.create', [

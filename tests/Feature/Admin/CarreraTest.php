@@ -166,3 +166,52 @@ it('elimina una carrera sin cursos', function () {
 
     expect(Carrera::find($carrera->id))->toBeNull();
 });
+
+it('ofrece solo la opción Ver en la lista de carreras', function () {
+    Carrera::factory()->create(['nombre' => 'Carrera Listado']);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/carreras')
+        ->assertOk()
+        ->assertSee('Carrera Listado')
+        ->assertSee('Ver')
+        ->assertDontSee('Editar')
+        ->assertDontSee('Eliminar');
+});
+
+it('muestra el detalle de la carrera con sus planes y cursos', function () {
+    $facultad = Facultad::factory()->create(['nombre' => 'Facultad Detalle']);
+    $carrera = Carrera::factory()->create([
+        'facultad_id' => $facultad->id,
+        'nombre' => 'Carrera Detalle',
+    ]);
+    PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Plan Detalle',
+    ]);
+    Curso::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Curso Detalle',
+    ]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get("/admin/carreras/{$carrera->id}")
+        ->assertOk()
+        ->assertSee('Carrera Detalle')
+        ->assertSee('Facultad Detalle')
+        ->assertSee('Plan Detalle')
+        ->assertSee('Curso Detalle')
+        ->assertSee('Editar')
+        ->assertSee('Eliminar');
+});
+
+it('impide que un no administrador vea el detalle de una carrera', function (Rol $rol) {
+    $carrera = Carrera::factory()->create();
+
+    $this->actingAs(usuarioConRol($rol))
+        ->get("/admin/carreras/{$carrera->id}")
+        ->assertForbidden();
+})->with([
+    'docente' => Rol::Docente,
+    'estudiante' => Rol::Estudiante,
+]);

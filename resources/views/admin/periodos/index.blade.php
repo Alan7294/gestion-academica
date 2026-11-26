@@ -40,22 +40,10 @@
                                         <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{{ __('Cerrado') }}</span>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 text-right space-x-3">
-                                    @unless ($periodo->activo)
-                                        <form method="POST" action="{{ route('admin.periodos.activar', $periodo) }}" class="inline">
-                                            @csrf
-                                            <button type="submit" class="text-brand-600 hover:text-brand-900">{{ __('Marcar vigente') }}</button>
-                                        </form>
-                                    @endunless
-
-                                    <a href="{{ route('admin.periodos.edit', $periodo) }}" class="text-slate-700 hover:text-slate-900">{{ __('Editar') }}</a>
-
-                                    <form method="POST" action="{{ route('admin.periodos.destroy', $periodo) }}" class="inline"
-                                          onsubmit="return confirm('{{ __('¿Eliminar este periodo?') }}')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-900">{{ __('Eliminar') }}</button>
-                                    </form>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="{{ route('admin.periodos.show', $periodo) }}" class="text-brand-600 hover:text-brand-900">
+                                        {{ __('Ver') }}
+                                    </a>
                                 </td>
                             </tr>
                         @empty

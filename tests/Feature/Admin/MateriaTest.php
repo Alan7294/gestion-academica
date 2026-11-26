@@ -169,3 +169,51 @@ it('filtra el catálogo por las carreras derivadas de los planes', function () {
         ->assertOk()
         ->assertDontSee('COM-101');
 });
+
+it('ofrece solo la opción Ver en la lista de materias', function () {
+    Materia::factory()->create(['nombre' => 'Materia Listado']);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/materias')
+        ->assertOk()
+        ->assertSee('Materia Listado')
+        ->assertSee('Ver')
+        ->assertDontSee('Editar')
+        ->assertDontSee('Eliminar');
+});
+
+it('muestra el detalle de la materia con sus planes y cursos', function () {
+    $materia = Materia::factory()->create([
+        'codigo' => 'DET-101',
+        'nombre' => 'Materia Detalle',
+    ]);
+    $carrera = Carrera::factory()->create(['nombre' => 'Carrera Detalle']);
+    $plan = PlanEstudio::factory()->create([
+        'carrera_id' => $carrera->id,
+        'nombre' => 'Plan Detalle',
+    ]);
+    $plan->vincularMateria($materia, 2, 3);
+    Curso::factory()->conMateria($materia)->create(['nombre' => 'Curso Detalle']);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get("/admin/materias/{$materia->id}")
+        ->assertOk()
+        ->assertSee('Materia Detalle')
+        ->assertSee('DET-101')
+        ->assertSee('Carrera Detalle')
+        ->assertSee('Plan Detalle')
+        ->assertSee('Curso Detalle')
+        ->assertSee('Editar')
+        ->assertSee('Eliminar');
+});
+
+it('impide que un no administrador vea el detalle de una materia', function (Rol $rol) {
+    $materia = Materia::factory()->create();
+
+    $this->actingAs(usuarioConRol($rol))
+        ->get("/admin/materias/{$materia->id}")
+        ->assertForbidden();
+})->with([
+    'docente' => Rol::Docente,
+    'estudiante' => Rol::Estudiante,
+]);

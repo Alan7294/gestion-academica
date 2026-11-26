@@ -45,6 +45,21 @@ class MateriaController extends Controller
         ]);
     }
 
+    /**
+     * RF09: detalle de la materia con sus planes, cursos y requisitos.
+     */
+    public function show(Materia $materia): View
+    {
+        $materia->load([
+            'planesEstudio.carrera',
+            'cursos.periodo',
+            'cursos.docente',
+            'requisitos',
+        ]);
+
+        return view('admin.materias.show', ['materia' => $materia]);
+    }
+
     public function create(): View
     {
         return view('admin.materias.create');

@@ -73,11 +73,7 @@
                             @php($resumen = $curso->resumenHorarios())
                             <tr>
                                 <td class="px-6 py-4 font-mono text-slate-700">{{ $curso->materia?->codigo ?? '—' }}</td>
-                                <td class="px-6 py-4">
-                                    <a href="{{ route('admin.cursos.show', $curso) }}" class="text-brand-600 hover:text-brand-900">
-                                        {{ $curso->nombre }}
-                                    </a>
-                                </td>
+                                <td class="px-6 py-4 text-slate-900">{{ $curso->nombre }}</td>
                                 <td class="px-4 py-4 text-slate-600">{{ $resumen['dias'] }}</td>
                                 <td class="px-4 py-4 font-mono text-xs text-slate-600">{{ $resumen['horario'] }}</td>
                                 <td class="px-4 py-4 text-slate-600">{{ $resumen['aula'] }}</td>
@@ -85,9 +81,10 @@
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->periodo->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->docente?->name ?? __('Sin asignar') }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->cupo === 0 ? __('Sin límite') : $curso->cupo }}</td>
-                                <td class="px-6 py-4 text-right space-x-3">
-                                    <a href="{{ route('admin.cursos.show', $curso) }}" class="text-slate-700 hover:text-slate-900">{{ __('Ver') }}</a>
-                                    <a href="{{ route('admin.cursos.edit', $curso) }}" class="text-brand-600 hover:text-brand-900">{{ __('Editar') }}</a>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="{{ route('admin.cursos.show', $curso) }}" class="text-brand-600 hover:text-brand-900">
+                                        {{ __('Ver') }}
+                                    </a>
                                 </td>
                             </tr>
                         @empty

@@ -617,3 +617,15 @@ it('muestra el detalle del curso con su horario', function () {
         ->assertSee('Base de Datos II')
         ->assertSee('Horario del curso');
 });
+
+it('ofrece solo la opción Ver en la lista de cursos', function () {
+    Curso::factory()->create(['nombre' => 'Curso Listado']);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/cursos')
+        ->assertOk()
+        ->assertSee('Curso Listado')
+        ->assertSee('Ver')
+        ->assertDontSee('Editar')
+        ->assertDontSee('Eliminar');
+});

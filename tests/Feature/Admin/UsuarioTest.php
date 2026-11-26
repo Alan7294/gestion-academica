@@ -250,6 +250,74 @@ it('muestra las matrículas activas y el historial al editar un estudiante', fun
         ->assertSee('Administración anterior');
 });
 
+it('muestra el detalle del usuario con sus matrículas y certificados', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $carrera = Carrera::factory()->create(['nombre' => 'Ingeniería de Sistemas']);
+    $docente = usuarioConRol(Rol::Docente);
+    $docente->update([
+        'name' => 'Docente Detallado',
+        'ci' => '8765300',
+        'telefono' => '70012345',
+    ]);
+    Matricula::factory()->create([
+        'user_id' => $docente->id,
+        'carrera_id' => $carrera->id,
+    ]);
+    $docente->certificadosDocentes()->create([
+        'titulo' => 'Magíster en Sistemas',
+        'institucion' => 'Universidad Nacional',
+        'codigo' => 'CERT-DET',
+    ]);
+
+    $this->actingAs($admin)
+        ->get("/admin/usuarios/{$docente->id}")
+        ->assertOk()
+        ->assertSee('Docente Detallado')
+        ->assertSee('8765300')
+        ->assertSee('70012345')
+        ->assertSee('Ingeniería de Sistemas')
+        ->assertSee('Magíster en Sistemas')
+        ->assertSee('Universidad Nacional')
+        ->assertSee('CERT-DET')
+        ->assertSee('Editar')
+        ->assertSee('Eliminar');
+});
+
+it('ofrece solo la opción Ver en la lista de usuarios', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $usuario = usuarioConRol(Rol::Docente);
+    $usuario->update(['name' => 'Usuario Listado']);
+
+    $this->actingAs($admin)
+        ->get('/admin/usuarios')
+        ->assertOk()
+        ->assertSee('Usuario Listado')
+        ->assertSee('Ver')
+        ->assertDontSee('Editar')
+        ->assertDontSee('Eliminar');
+});
+
+it('oculta la opción Eliminar al ver el propio usuario', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+
+    $this->actingAs($admin)
+        ->get("/admin/usuarios/{$admin->id}")
+        ->assertOk()
+        ->assertSee('Editar')
+        ->assertDontSee('Eliminar');
+});
+
+it('impide que un no administrador vea el detalle de un usuario', function (Rol $rol) {
+    $usuario = usuarioConRol(Rol::Docente);
+
+    $this->actingAs(usuarioConRol($rol))
+        ->get("/admin/usuarios/{$usuario->id}")
+        ->assertForbidden();
+})->with([
+    'docente' => Rol::Docente,
+    'estudiante' => Rol::Estudiante,
+]);
+
 it('cambia la matrícula principal cuando llega primero en el formulario', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $carreraA = Carrera::factory()->create();

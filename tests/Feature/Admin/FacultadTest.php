@@ -104,3 +104,44 @@ it('elimina una facultad sin carreras', function () {
 
     expect(Facultad::find($facultad->id))->toBeNull();
 });
+
+it('ofrece solo la opción Ver en la lista de facultades', function () {
+    Facultad::factory()->create(['nombre' => 'Facultad Listado']);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/facultades')
+        ->assertOk()
+        ->assertSee('Facultad Listado')
+        ->assertSee('Ver')
+        ->assertDontSee('Editar')
+        ->assertDontSee('Eliminar');
+});
+
+it('muestra el detalle de la facultad con sus carreras', function () {
+    $facultad = Facultad::factory()->create(['nombre' => 'Facultad Detalle']);
+    Carrera::factory()->create([
+        'facultad_id' => $facultad->id,
+        'codigo' => 'FAC-101',
+        'nombre' => 'Carrera Detalle',
+    ]);
+
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get("/admin/facultades/{$facultad->id}")
+        ->assertOk()
+        ->assertSee('Facultad Detalle')
+        ->assertSee('Carrera Detalle')
+        ->assertSee('FAC-101')
+        ->assertSee('Editar')
+        ->assertSee('Eliminar');
+});
+
+it('impide que un no administrador vea el detalle de una facultad', function (Rol $rol) {
+    $facultad = Facultad::factory()->create();
+
+    $this->actingAs(usuarioConRol($rol))
+        ->get("/admin/facultades/{$facultad->id}")
+        ->assertForbidden();
+})->with([
+    'docente' => Rol::Docente,
+    'estudiante' => Rol::Estudiante,
+]);

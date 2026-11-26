@@ -40,7 +40,7 @@ Route::middleware(['auth', 'role:administrador'])
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'admin'])->name('dashboard');
 
-        Route::resource('usuarios', UsuarioController::class)->except('show');
+        Route::resource('usuarios', UsuarioController::class);
 
         Route::get('reportes', [ReporteAdminController::class, 'index'])->name('reportes.index');
         Route::get('reportes/materias-por-carrera/preview', [ReporteAdminController::class, 'preview'])
@@ -49,13 +49,12 @@ Route::middleware(['auth', 'role:administrador'])
             ->name('reportes.materias');
 
         Route::resource('facultades', FacultadController::class)
-            ->parameters(['facultades' => 'facultad'])
-            ->except('show');
-        Route::resource('carreras', CarreraController::class)->except('show');
+            ->parameters(['facultades' => 'facultad']);
+        Route::resource('carreras', CarreraController::class);
 
         Route::get('materias/catalogo', [MateriaController::class, 'catalogo'])->name('materias.catalogo');
 
-        Route::resource('materias', MateriaController::class)->except('show');
+        Route::resource('materias', MateriaController::class);
 
         Route::get('equivalencias', [EquivalenciaController::class, 'index'])->name('equivalencias.index');
         Route::post('equivalencias', [EquivalenciaController::class, 'store'])->name('equivalencias.store');
@@ -64,7 +63,7 @@ Route::middleware(['auth', 'role:administrador'])
         Route::resource('planes', PlanEstudioController::class)
             ->parameters(['planes' => 'planEstudio']);
 
-        Route::resource('periodos', PeriodoController::class)->except('show');
+        Route::resource('periodos', PeriodoController::class);
         Route::post('periodos/{periodo}/activar', [PeriodoController::class, 'activar'])->name('periodos.activar');
 
         Route::resource('cursos', CursoController::class);

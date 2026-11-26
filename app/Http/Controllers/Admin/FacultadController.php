@@ -17,6 +17,18 @@ class FacultadController extends Controller
         ]);
     }
 
+    /**
+     * RF09: detalle de la facultad con las carreras que la integran.
+     */
+    public function show(Facultad $facultad): View
+    {
+        $facultad->load(['carreras' => fn ($carreras) => $carreras
+            ->withCount(['cursos', 'planesEstudio'])
+            ->orderBy('nombre')]);
+
+        return view('admin.facultades.show', ['facultad' => $facultad]);
+    }
+
     public function create(): View
     {
         return view('admin.facultades.create');
