@@ -63,10 +63,6 @@
                         <x-sidebar-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" icon="home">
                             {{ __('Panel') }}
                         </x-sidebar-link>
-
-                        <x-sidebar-link :href="route('notificaciones.index')" :active="request()->routeIs('notificaciones.*')" icon="bell" :badge="$sinLeer ?: null">
-                            {{ __('Avisos') }}
-                        </x-sidebar-link>
                     </div>
 
                     @if ($usuario->esAdministrador())
