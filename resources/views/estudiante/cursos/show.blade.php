@@ -33,10 +33,6 @@
                     <p class="mt-1 font-medium text-slate-900">{{ $curso->docente?->name ?? __('Por asignar') }}</p>
                 </div>
                 <div>
-                    <p class="text-slate-500">{{ __('Créditos') }}</p>
-                    <p class="mt-1 font-medium text-slate-900">{{ $curso->creditos }}</p>
-                </div>
-                <div>
                     <p class="text-slate-500">{{ __('Inscritos') }}</p>
                     <p class="mt-1 font-medium text-slate-900">
                         {{ $curso->alumnos_inscritos_count }}{{ $curso->cupo > 0 ? ' / '.$curso->cupo : '' }}

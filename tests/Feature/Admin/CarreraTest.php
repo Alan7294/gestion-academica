@@ -185,12 +185,13 @@ it('muestra el detalle de la carrera con sus planes y cursos', function () {
         'facultad_id' => $facultad->id,
         'nombre' => 'Carrera Detalle',
     ]);
-    PlanEstudio::factory()->create([
+    $plan = PlanEstudio::factory()->create([
         'carrera_id' => $carrera->id,
         'nombre' => 'Plan Detalle',
     ]);
     Curso::factory()->create([
         'carrera_id' => $carrera->id,
+        'plan_estudio_id' => $plan->id,
         'nombre' => 'Curso Detalle',
     ]);
 

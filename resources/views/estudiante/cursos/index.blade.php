@@ -71,7 +71,6 @@
                                 {{ $curso->planesEstudio->pluck('carrera.nombre')->filter()->unique()->implode(', ') ?: $curso->carrera->nombre }}
                             </div>
                             <div>{{ __('Docente') }}: {{ $curso->docente?->name ?? __('Por asignar') }}</div>
-                            <div>{{ __('Créditos') }}: {{ $curso->creditos }}</div>
                             <div>
                                 {{ __('Cupo') }}:
                                 {{ $curso->cupo === 0 ? __('Sin límite') : ($curso->cupo - $curso->alumnos_inscritos_count).' / '.$curso->cupo }}

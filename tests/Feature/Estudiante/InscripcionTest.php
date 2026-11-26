@@ -297,14 +297,40 @@ it('impide que un docente se inscriba a cursos', function () {
         ->assertForbidden();
 });
 
-it('muestra la oferta académica al estudiante', function () {
+it('muestra la oferta académica al estudiante sin créditos', function () {
     $curso = cursoDisponible(['nombre' => 'Inteligencia Artificial']);
 
     $this->actingAs(estudianteMatriculado($curso))
         ->get('/estudiante/cursos')
         ->assertOk()
         ->assertSee('Inteligencia Artificial')
-        ->assertSee('Inscribirme');
+        ->assertSee('Inscribirme')
+        ->assertDontSee('Créditos');
+});
+
+it('oculta los créditos en el detalle del curso para el estudiante', function () {
+    $curso = cursoDisponible(['nombre' => 'Base de Datos III']);
+
+    $this->actingAs(estudianteMatriculado($curso))
+        ->get("/estudiante/cursos/{$curso->id}")
+        ->assertOk()
+        ->assertSee('Base de Datos III')
+        ->assertDontSee('Créditos');
+});
+
+it('oculta los créditos en el panel del estudiante', function () {
+    $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
+    Inscripcion::factory()->create([
+        'curso_id' => $curso->id,
+        'user_id' => $estudiante->id,
+    ]);
+
+    $this->actingAs($estudiante)
+        ->get('/estudiante/dashboard')
+        ->assertOk()
+        ->assertSee('Cursos inscritos')
+        ->assertDontSee('Créditos');
 });
 
 it('permite inscribirse cuando el requisito tiene nota final 51', function () {

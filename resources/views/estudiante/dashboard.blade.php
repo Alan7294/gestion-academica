@@ -1,7 +1,6 @@
 @php
     $notas = $inscripciones->pluck('nota_final')->filter(fn ($nota) => $nota !== null);
     $promedio = $notas->isEmpty() ? null : number_format($notas->avg(), 2);
-    $creditos = $inscripciones->sum(fn ($inscripcion) => $inscripcion->curso->creditos);
     $matriculaPrincipal = $matriculasActivas->first(fn ($matricula) => $matricula->es_principal)
         ?? $matriculasActivas->first();
 @endphp
@@ -38,9 +37,8 @@
 
     <div class="py-8">
         <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-stat-card :title="__('Cursos inscritos')" :value="$inscripciones->count()" icon="book" tone="brand" />
-                <x-stat-card :title="__('Créditos')" :value="$creditos" icon="academic-cap" tone="ink" />
                 <x-stat-card :title="__('Promedio general')" :value="$promedio ?? '—'" icon="chart" tone="emerald" :hint="__('Sobre las materias con nota final')" />
             </div>
 
