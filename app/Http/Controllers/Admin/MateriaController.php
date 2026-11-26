@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMateriaRequest;
 use App\Models\Carrera;
 use App\Models\Materia;
+use App\Models\PlanEstudio;
 use App\Services\MateriaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -22,7 +24,11 @@ class MateriaController extends Controller
         $filtros = [
             'busqueda' => trim((string) $request->query('busqueda')),
             'carrera_id' => (string) $request->query('carrera_id'),
+            'semestre' => (string) $request->query('semestre'),
         ];
+
+        $carreraId = $filtros['carrera_id'] !== '' ? (int) $filtros['carrera_id'] : null;
+        $semestre = $filtros['semestre'] !== '' ? (int) $filtros['semestre'] : null;
 
         $materias = Materia::query()
             ->with('planesEstudio.carrera')
@@ -33,7 +39,7 @@ class MateriaController extends Controller
                         ->orWhere('nombre', 'ilike', "%{$filtros['busqueda']}%");
                 });
             })
-            ->when($filtros['carrera_id'] !== '', fn ($query) => $query->deCarrera((int) $filtros['carrera_id']))
+            ->when($carreraId !== null || $semestre !== null, fn ($query) => $query->enPlanes($carreraId, $semestre))
             ->orderBy('codigo')
             ->paginate(10)
             ->withQueryString();
@@ -41,6 +47,11 @@ class MateriaController extends Controller
         return view('admin.materias.index', [
             'materias' => $materias,
             'carreras' => Carrera::orderBy('nombre')->get(),
+            'semestres' => DB::table('materia_plan_estudio')
+                ->distinct()
+                ->orderBy('semestre')
+                ->pluck('semestre')
+                ->all(),
             'filtros' => $filtros,
         ]);
     }
@@ -62,7 +73,9 @@ class MateriaController extends Controller
 
     public function create(): View
     {
-        return view('admin.materias.create');
+        return view('admin.materias.create', [
+            'planes' => PlanEstudio::with('carrera')->orderBy('nombre')->get(),
+        ]);
     }
 
     /**
@@ -123,13 +136,21 @@ class MateriaController extends Controller
     }
 
     /**
-     * @return array{codigo: string, nombre: string}
+     * @return array{codigo: string, nombre: string, plan_estudio_id?: int, semestre?: int, creditos?: int}
      */
     private function datos(StoreMateriaRequest $request): array
     {
-        return [
+        $datos = [
             'codigo' => $request->validated('codigo'),
             'nombre' => $request->validated('nombre'),
         ];
+
+        if ($request->isMethod('POST') && $request->validated('plan_estudio_id') !== null) {
+            $datos['plan_estudio_id'] = (int) $request->validated('plan_estudio_id');
+            $datos['semestre'] = (int) $request->validated('semestre');
+            $datos['creditos'] = (int) $request->validated('creditos');
+        }
+
+        return $datos;
     }
 }

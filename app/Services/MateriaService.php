@@ -3,16 +3,30 @@
 namespace App\Services;
 
 use App\Models\Materia;
+use App\Models\PlanEstudio;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class MateriaService
 {
     /**
-     * @param  array{codigo: string, nombre: string}  $datos
+     * @param  array{codigo: string, nombre: string, plan_estudio_id?: int, semestre?: int, creditos?: int}  $datos
      */
     public function crear(array $datos): Materia
     {
-        return Materia::create($datos);
+        return DB::transaction(function () use ($datos): Materia {
+            $materia = Materia::create([
+                'codigo' => $datos['codigo'],
+                'nombre' => $datos['nombre'],
+            ]);
+
+            if (isset($datos['plan_estudio_id'], $datos['semestre'], $datos['creditos'])) {
+                PlanEstudio::findOrFail($datos['plan_estudio_id'])
+                    ->vincularMateria($materia, $datos['semestre'], $datos['creditos']);
+            }
+
+            return $materia;
+        });
     }
 
     /**

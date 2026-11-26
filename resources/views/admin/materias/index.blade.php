@@ -17,7 +17,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             <form method="GET" action="{{ route('admin.materias.index') }}"
                   class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-4">
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
                     <div class="sm:col-span-2">
                         <x-input-label for="busqueda" :value="__('Buscar')" />
                         <x-text-input id="busqueda" name="busqueda" type="text" class="mt-1 block w-full"
@@ -34,6 +34,20 @@
                                 <option value="{{ $carrera->id }}"
                                         @selected($filtros['carrera_id'] === (string) $carrera->id)>
                                     {{ $carrera->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <x-input-label for="semestre" :value="__('Semestre')" />
+                        <select id="semestre" name="semestre"
+                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm">
+                            <option value="">{{ __('Todos') }}</option>
+                            @foreach ($semestres as $semestre)
+                                <option value="{{ $semestre }}"
+                                        @selected($filtros['semestre'] === (string) $semestre)>
+                                    {{ $semestre }}
                                 </option>
                             @endforeach
                         </select>

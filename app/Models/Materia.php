@@ -60,13 +60,18 @@ class Materia extends Model
     }
 
     /**
-     * Materias incluidas en algún plan de la carrera.
+     * Materias incluidas en un plan que cumple los filtros de carrera y semestre.
+     * Los filtros se aplican al mismo vínculo para no mezclar planes distintos.
      *
      * @param  Builder<Materia>  $query
      */
-    public function scopeDeCarrera(Builder $query, int $carreraId): void
+    public function scopeEnPlanes(Builder $query, ?int $carreraId = null, ?int $semestre = null): void
     {
-        $query->whereHas('planesEstudio', fn (Builder $planes) => $planes
-            ->where('planes_estudio.carrera_id', $carreraId));
+        $query->whereHas('planesEstudio', function (Builder $planes) use ($carreraId, $semestre): void {
+            $planes->when($carreraId !== null, fn (Builder $q) => $q
+                ->where('planes_estudio.carrera_id', $carreraId))
+                ->when($semestre !== null, fn (Builder $q) => $q
+                    ->where('materia_plan_estudio.semestre', $semestre));
+        });
     }
 }
