@@ -13,18 +13,13 @@ beforeEach(function () {
 
 function datosMateria(array $sobrescribir = []): array
 {
-    $planId = $sobrescribir['plan_estudio_id'] ?? PlanEstudio::factory()->create()->id;
-
     return array_merge([
         'codigo' => 'MAT-101',
         'nombre' => 'Cálculo I',
-        'plan_estudio_id' => $planId,
-        'semestre' => 1,
-        'creditos' => 4,
     ], $sobrescribir);
 }
 
-it('permite al administrador crear una materia sin elegir carrera', function () {
+it('permite al administrador crear una materia sin elegir plan ni semestre', function () {
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/materias', datosMateria())
         ->assertRedirect('/admin/materias');
@@ -33,6 +28,15 @@ it('permite al administrador crear una materia sin elegir carrera', function () 
         'codigo' => 'MAT-101',
         'nombre' => 'Cálculo I',
     ]);
+});
+
+it('muestra el formulario de alta sin campos de plan ni semestre', function () {
+    $this->actingAs(usuarioConRol(Rol::Administrador))
+        ->get('/admin/materias/create')
+        ->assertOk()
+        ->assertSee('Se incluye en un plan de estudio desde el formulario del plan')
+        ->assertDontSee('name="plan_estudio_id"', false)
+        ->assertDontSee('name="semestre"', false);
 });
 
 it('crea una materia vía AJAX para usarla dentro del formulario de planes', function () {
@@ -78,39 +82,35 @@ it('rechaza el mismo código aunque se envíe una carrera distinta', function ()
     expect(Materia::where('codigo', 'GEN-101')->count())->toBe(1);
 });
 
-it('vincula la materia al plan con el semestre y los créditos elegidos al crearla', function () {
+it('crea la materia en el catálogo sin vincularla a un plan', function () {
     $plan = PlanEstudio::factory()->create(['semestres' => 6]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/materias', datosMateria([
-            'plan_estudio_id' => $plan->id,
             'codigo' => 'DER-301',
             'nombre' => 'Derecho Procesal',
-            'semestre' => 3,
-            'creditos' => 5,
         ]))
         ->assertRedirect('/admin/materias');
 
     $materia = Materia::where('codigo', 'DER-301')->firstOrFail();
-    $vinculo = $plan->fresh()->materias->firstOrFail();
 
-    expect($vinculo->id)->toBe($materia->id)
-        ->and($vinculo->pivot->semestre)->toBe(3)
-        ->and($vinculo->pivot->creditos)->toBe(5);
+    expect($materia->planesEstudio()->count())->toBe(0)
+        ->and($plan->fresh()->materias()->count())->toBe(0);
 });
 
-it('exige plan, semestre y créditos al crear la materia desde el formulario', function () {
+it('no exige plan ni semestre al crear la materia desde el formulario', function () {
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/materias', [
             'codigo' => 'MAT-102',
             'nombre' => 'Cálculo II',
         ])
-        ->assertSessionHasErrors(['plan_estudio_id', 'semestre', 'creditos']);
+        ->assertRedirect('/admin/materias')
+        ->assertSessionHasNoErrors();
 
-    expect(Materia::where('codigo', 'MAT-102')->exists())->toBeFalse();
+    expect(Materia::where('codigo', 'MAT-102')->exists())->toBeTrue();
 });
 
-it('rechaza un semestre mayor que la duración del plan al crear la materia', function () {
+it('ignora el plan y el semestre enviados al crear la materia', function () {
     $plan = PlanEstudio::factory()->create(['semestres' => 2]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -119,11 +119,13 @@ it('rechaza un semestre mayor que la duración del plan al crear la materia', fu
             'codigo' => 'MAT-501',
             'semestre' => 5,
         ]))
-        ->assertSessionHasErrors([
-            'semestre' => 'El semestre no puede superar la duración del plan (2 semestres).',
-        ]);
+        ->assertRedirect('/admin/materias')
+        ->assertSessionHasNoErrors();
 
-    expect(Materia::where('codigo', 'MAT-501')->exists())->toBeFalse();
+    $materia = Materia::where('codigo', 'MAT-501')->firstOrFail();
+
+    expect($materia->planesEstudio()->count())->toBe(0)
+        ->and($plan->fresh()->materias()->count())->toBe(0);
 });
 
 it('filtra el catálogo de materias por el semestre asignado en los planes', function () {
@@ -132,13 +134,11 @@ it('filtra el catálogo de materias por el semestre asignado en los planes', fun
         'codigo' => 'SEM-301',
         'nombre' => 'Materia de tercero',
         'semestre' => 3,
-        'creditos' => 4,
     ]);
     materiaEnPlan($plan, [
         'codigo' => 'SEM-101',
         'nombre' => 'Materia de primero',
         'semestre' => 1,
-        'creditos' => 4,
     ]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -160,8 +160,8 @@ it('aplica carrera y semestre al mismo plan al filtrar las materias', function (
     $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id, 'semestres' => 6]);
     $otroPlan = PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id, 'semestres' => 6]);
     $materia = Materia::factory()->create(['codigo' => 'COM-201', 'nombre' => 'Materia compartida']);
-    $plan->vincularMateria($materia, 1, 4);
-    $otroPlan->vincularMateria($materia, 3, 4);
+    $plan->vincularMateria($materia, 1);
+    $otroPlan->vincularMateria($materia, 3);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->get("/admin/materias?carrera_id={$carrera->id}&semestre=3")
@@ -179,7 +179,6 @@ it('permite editar el catálogo sin alterar los planes que usan la materia', fun
     $materia = materiaEnPlan($plan, [
         'codigo' => 'ORI-101',
         'nombre' => 'Materia original',
-        'creditos' => 4,
     ]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -191,8 +190,7 @@ it('permite editar el catálogo sin alterar los planes que usan la materia', fun
 
     expect($materia->fresh()->codigo)->toBe('ACT-201')
         ->and($materia->fresh()->nombre)->toBe('Materia actualizada')
-        ->and($plan->fresh()->materias->pluck('id')->all())->toBe([$materia->id])
-        ->and($plan->fresh()->materias->first()->pivot->creditos)->toBe(4);
+        ->and($plan->fresh()->materias->pluck('id')->all())->toBe([$materia->id]);
 });
 
 it('impide eliminar una materia que tiene cursos registrados', function () {
@@ -211,7 +209,7 @@ it('elimina una materia sin cursos y limpia sus vínculos con planes y requisito
     $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id]);
     $materia = Materia::factory()->create();
     $otra = Materia::factory()->create();
-    $plan->vincularMateria($materia, 1, 4);
+    $plan->vincularMateria($materia, 1);
     $otra->requisitosDelPlan($plan)->attach($materia);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -246,9 +244,9 @@ it('muestra en el listado las carreras que incluyen la materia en sus planes', f
     $otraCarrera = Carrera::factory()->create(['nombre' => 'Administración']);
     $materia = Materia::factory()->create(['codigo' => 'COM-101']);
     PlanEstudio::factory()->create(['carrera_id' => $carrera->id])
-        ->vincularMateria($materia, 1, 4);
+        ->vincularMateria($materia, 1);
     PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id])
-        ->vincularMateria($materia, 2, 3);
+        ->vincularMateria($materia, 2);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->get('/admin/materias')
@@ -263,7 +261,7 @@ it('filtra el catálogo por las carreras derivadas de los planes', function () {
     $otraCarrera = Carrera::factory()->create();
     $materia = Materia::factory()->create(['codigo' => 'COM-101']);
     PlanEstudio::factory()->create(['carrera_id' => $carrera->id])
-        ->vincularMateria($materia, 1, 4);
+        ->vincularMateria($materia, 1);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->get("/admin/materias?carrera_id={$carrera->id}")
@@ -298,7 +296,7 @@ it('muestra el detalle de la materia con sus planes y cursos', function () {
         'carrera_id' => $carrera->id,
         'nombre' => 'Plan Detalle',
     ]);
-    $plan->vincularMateria($materia, 2, 3);
+    $plan->vincularMateria($materia, 2);
     Curso::factory()->conMateria($materia)->create(['nombre' => 'Curso Detalle']);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))

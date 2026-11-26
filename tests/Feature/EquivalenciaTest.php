@@ -209,7 +209,7 @@ it('rechaza equivalencias entre materias de la misma carrera', function () {
     expect(MateriaEquivalencia::count())->toBe(0);
 });
 
-it('muestra los créditos del plan en la convalidación del historial', function () {
+it('muestra la convalidación en el historial sin créditos del plan', function () {
     $carreraOrigen = Carrera::factory()->create();
     $carreraDestino = Carrera::factory()->create();
     $planDestino = PlanEstudio::factory()->create(['carrera_id' => $carreraDestino->id]);
@@ -219,7 +219,6 @@ it('muestra los créditos del plan en la convalidación del historial', function
         'codigo' => 'DES-201',
         'nombre' => 'Materia destino',
         'semestre' => 1,
-        'creditos' => 4,
     ]);
     MateriaEquivalencia::create([
         'materia_id' => $destino->id,
@@ -239,8 +238,8 @@ it('muestra los créditos del plan en la convalidación del historial', function
     $filaConvalidada = collect((new HistorialAcademicoReporte($estudiante))->filas())
         ->first(fn (array $fila) => $fila[5] === 'Convalidada');
 
-    expect($convalidacion->creditos)->toBe(4)
-        ->and($filaConvalidada[4])->toBe(4);
+    expect($convalidacion->materia->id)->toBe($destino->id)
+        ->and($filaConvalidada[4])->toBe('—');
 });
 
 it('no convalida una materia por una equivalencia transitiva', function () {
@@ -459,7 +458,7 @@ it('acepta una materia destino compartida por varias carreras', function () {
     $origen = materiaEnCarrera($carreraOrigen);
     $destino = materiaEnCarrera($carreraDestino);
     PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id])
-        ->vincularMateria($destino, 3, 2);
+        ->vincularMateria($destino, 3);
 
     $this->actingAs($administrador)
         ->post(route('admin.equivalencias.store'), [
@@ -536,9 +535,9 @@ it('aplica la convalidación con el plan principal cuando la materia destino es 
     $carreraSecundaria = Carrera::factory()->create();
 
     $origen = materiaEnCarrera($carreraOrigen);
-    $destino = materiaEnCarrera($carreraDestino, ['creditos' => 5]);
+    $destino = materiaEnCarrera($carreraDestino);
     $planSecundario = PlanEstudio::factory()->create(['carrera_id' => $carreraSecundaria->id]);
-    $planSecundario->vincularMateria($destino, 2, 3);
+    $planSecundario->vincularMateria($destino, 2);
 
     MateriaEquivalencia::create([
         'materia_id' => $destino->id,
@@ -564,7 +563,6 @@ it('aplica la convalidación con el plan principal cuando la materia destino es 
     $convalidacion = app(ConvalidacionService::class)->paraEstudiante($estudiante)->first();
 
     expect($convalidacion)->not->toBeNull()
-        ->and($convalidacion->creditos)->toBe(5)
         ->and($convalidacion->carreraDestino->id)->toBe($carreraDestino->id);
 });
 

@@ -109,7 +109,7 @@
                     <option :value="String(plan.id)" x-text="plan.etiqueta"></option>
                 </template>
             </select>
-            <p class="mt-1 text-xs text-slate-500">{{ __('Solo se muestran los planes de la carrera y modalidad elegidas. El plan define semestre y créditos.') }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ __('Solo se muestran los planes de la carrera y modalidad elegidas. El plan define el semestre.') }}</p>
             <x-input-error class="mt-2" :messages="$errors->get('plan_estudio_id')" />
         </div>
 
@@ -183,11 +183,17 @@
             <p class="font-medium text-slate-800" x-text="materiaSeleccionada?.etiqueta"></p>
             <p class="mt-1">
                 {{ __('Semestre') }}: <span x-text="materiaSeleccionada?.semestre ?? '—'"></span>
-                · {{ __('Créditos') }}: <span x-text="materiaSeleccionada?.creditos ?? '—'"></span>
             </p>
             <p class="mt-1 text-xs text-slate-500">
-                {{ __('El nombre, el semestre y los créditos se toman del plan y no se editan aquí.') }}
+                {{ __('El nombre, la modalidad y el semestre se toman del plan. Los créditos se registran para este curso.') }}
             </p>
+        </div>
+
+        <div>
+            <x-input-label for="creditos" :value="__('Créditos')" />
+            <x-text-input id="creditos" name="creditos" type="number" min="1" max="20" class="mt-1 block w-full"
+                          :value="old('creditos', $curso?->creditos ?? 1)" required />
+            <x-input-error class="mt-2" :messages="$errors->get('creditos')" />
         </div>
 
         <div>

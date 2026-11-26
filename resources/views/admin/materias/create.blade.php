@@ -11,7 +11,7 @@
                 <form method="POST" action="{{ route('admin.materias.store') }}">
                     @csrf
 
-                    @include('admin.materias._form', ['creando' => true])
+                    @include('admin.materias._form')
 
                     <div class="mt-6 flex items-center gap-3">
                         <x-primary-button>{{ __('Guardar') }}</x-primary-button>

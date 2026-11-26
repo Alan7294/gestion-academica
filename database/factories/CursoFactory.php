@@ -43,7 +43,6 @@ class CursoFactory extends Factory
                     $plan->vincularMateria(
                         Materia::findOrFail($curso->materia_id),
                         $curso->semestre,
-                        $curso->creditos,
                     );
                 }
 

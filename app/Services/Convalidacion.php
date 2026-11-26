@@ -18,7 +18,6 @@ final readonly class Convalidacion
         public ?Carrera $carreraOrigen,
         public float $nota,
         public Carbon $fecha,
-        public ?int $creditos,
     ) {}
 
     public function origen(): string

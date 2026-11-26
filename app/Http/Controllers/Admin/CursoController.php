@@ -144,7 +144,6 @@ class CursoController extends Controller
                             'id' => $materia->id,
                             'etiqueta' => "{$materia->codigo} - {$materia->nombre}",
                             'semestre' => (int) $materia->pivot->semestre,
-                            'creditos' => (int) $materia->pivot->creditos,
                         ])
                         ->values()
                         ->all(),
@@ -183,14 +182,15 @@ class CursoController extends Controller
             'periodo_id' => $request->validated('periodo_id'),
             'docente_id' => $request->validated('docente_id'),
             'cupo' => $request->validated('cupo'),
+            'creditos' => (int) $request->validated('creditos'),
             'activo' => $request->boolean('activo'),
         ], $this->datosAcademicos($planId, $materiaId));
     }
 
     /**
-     * El nombre, el semestre y los créditos no se piden: se derivan del plan.
+     * El nombre, la modalidad y el semestre se derivan del plan; los créditos se piden para el curso.
      *
-     * @return array{nombre: string, modalidad: Modalidad, creditos: int, semestre: int}
+     * @return array{nombre: string, modalidad: Modalidad, semestre: int}
      */
     private function datosAcademicos(int $planId, int $materiaId): array
     {
@@ -200,7 +200,6 @@ class CursoController extends Controller
         return [
             'nombre' => $materia->nombre,
             'modalidad' => $plan->modalidad,
-            'creditos' => (int) $materia->pivot->creditos,
             'semestre' => (int) $materia->pivot->semestre,
         ];
     }

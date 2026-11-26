@@ -108,9 +108,9 @@ function estudianteMatriculado(Curso ...$cursos): User
 }
 
 /**
- * Crea una materia del catálogo y la vincula al plan con sus datos propios.
+ * Crea una materia del catálogo y la vincula al plan en el semestre indicado.
  *
- * @param  array{codigo: string, nombre: string, semestre?: int, creditos?: int}  $atributos
+ * @param  array{codigo: string, nombre: string, semestre?: int}  $atributos
  */
 function materiaEnPlan(PlanEstudio $plan, array $atributos): Materia
 {
@@ -119,11 +119,7 @@ function materiaEnPlan(PlanEstudio $plan, array $atributos): Materia
         'nombre' => $atributos['nombre'],
     ]);
 
-    $plan->vincularMateria(
-        $materia,
-        (int) ($atributos['semestre'] ?? 1),
-        (int) ($atributos['creditos'] ?? 0),
-    );
+    $plan->vincularMateria($materia, (int) ($atributos['semestre'] ?? 1));
 
     return $materia;
 }
@@ -131,7 +127,7 @@ function materiaEnPlan(PlanEstudio $plan, array $atributos): Materia
 /**
  * Crea una materia en el plan de pruebas de la carrera indicada.
  *
- * @param  array{codigo?: string, nombre?: string, semestre?: int, creditos?: int}  $atributos
+ * @param  array{codigo?: string, nombre?: string, semestre?: int}  $atributos
  */
 function materiaEnCarrera(Carrera $carrera, array $atributos = []): Materia
 {

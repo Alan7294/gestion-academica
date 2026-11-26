@@ -23,8 +23,8 @@ class MateriaEquivalenciaFactory extends Factory
         $destino = Materia::factory()->create();
         $origen = Materia::factory()->create();
 
-        $planDestino->vincularMateria($destino, 1, 4);
-        $planOrigen->vincularMateria($origen, 1, 4);
+        $planDestino->vincularMateria($destino, 1);
+        $planOrigen->vincularMateria($origen, 1);
 
         return [
             'materia_id' => $destino->id,

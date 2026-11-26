@@ -102,7 +102,7 @@ class DemoSeeder extends Seeder
                 'materia_id' => $materia?->id,
                 'nombre' => $materia?->nombre ?? $definicion['nombre'],
                 'semestre' => (int) ($pivote?->semestre ?? $definicion['semestre']),
-                'creditos' => (int) ($pivote?->creditos ?? $definicion['creditos']),
+                'creditos' => (int) $definicion['creditos'],
             ]);
 
             if ($plan) {

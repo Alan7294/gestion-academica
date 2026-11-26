@@ -34,7 +34,6 @@ function datosCurso(array $sobrescribir = []): array
         'codigo' => 'SIS-101',
         'nombre' => 'Programación IV',
         'semestre' => 4,
-        'creditos' => 4,
     ]);
 
     return array_merge([
@@ -44,6 +43,7 @@ function datosCurso(array $sobrescribir = []): array
         'materia_id' => $materia->id,
         'periodo_id' => $periodoId,
         'docente_id' => $docenteId,
+        'creditos' => 4,
         'cupo' => 30,
         'activo' => '1',
         'aula' => 'Aula 101',
@@ -277,7 +277,7 @@ it('revierte el curso cuando su horario inicial choca con otra clase del docente
         ->and(Horario::count())->toBe(1);
 });
 
-it('deriva el nombre, el semestre y los créditos del plan de estudios', function () {
+it('deriva el nombre y el semestre del plan y guarda los créditos indicados', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $datos = datosCurso();
 
@@ -295,7 +295,7 @@ it('deriva el nombre, el semestre y los créditos del plan de estudios', functio
     expect($curso->plan_estudio_id)->toBe($datos['plan_estudio_id'])
         ->and($curso->nombre)->toBe($materia->nombre)
         ->and($curso->semestre)->toBe((int) $pivote->semestre)
-        ->and($curso->creditos)->toBe((int) $pivote->creditos);
+        ->and($curso->creditos)->toBe((int) $datos['creditos']);
 });
 
 it('exige que el docente asignado tenga el rol docente', function () {
@@ -517,7 +517,7 @@ it('congela la modalidad de un curso que ya tiene horarios', function () {
     expect($curso->fresh()->modalidad)->toBe(Modalidad::Semestral);
 });
 
-it('actualiza los datos derivados al cambiar el plan y la materia', function () {
+it('actualiza los datos derivados y los créditos al cambiar el plan y la materia', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $datos = datosCurso();
     $curso = cursoDePrueba($datos);
@@ -531,13 +531,13 @@ it('actualiza los datos derivados al cambiar el plan y la materia', function () 
         'codigo' => 'SIS-202',
         'nombre' => 'Base de Datos',
         'semestre' => 3,
-        'creditos' => 2,
     ]);
 
     $this->actingAs($admin)
         ->put("/admin/cursos/{$curso->id}", array_merge($datos, [
             'plan_estudio_id' => $otroPlan->id,
             'materia_id' => $otraMateria->id,
+            'creditos' => 2,
         ]))
         ->assertRedirect();
 
@@ -558,7 +558,7 @@ it('impide quitar un plan participante que ya tiene inscripciones', function () 
         'modalidad' => Modalidad::Semestral,
         'activo' => false,
     ]);
-    $planCompartido->vincularMateria(Materia::findOrFail($datos['materia_id']), 1, 4);
+    $planCompartido->vincularMateria(Materia::findOrFail($datos['materia_id']), 1);
     $curso->planesEstudio()->sync([$datos['plan_estudio_id'], $planCompartido->id]);
 
     $curso->inscripciones()->create([
@@ -587,7 +587,6 @@ it('impide cambiar la identidad de un curso que ya tiene inscripciones', functio
         'codigo' => 'SIS-102',
         'nombre' => 'Otra materia del plan',
         'semestre' => 4,
-        'creditos' => 4,
     ]);
 
     $this->actingAs($admin)
@@ -612,16 +611,16 @@ it('impide eliminar un curso que ya tiene inscripciones', function () {
     expect(Curso::count())->toBe(1);
 });
 
-it('muestra el formulario sin los campos derivados del plan', function () {
+it('muestra el formulario con los créditos editables y sin los campos derivados del plan', function () {
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->get('/admin/cursos/create')
         ->assertOk()
         ->assertSee('Plan de estudios')
         ->assertSee('Modalidad del curso')
         ->assertSee('Agregar otro día')
+        ->assertSee('name="creditos"', false)
         ->assertDontSee('name="nombre"', false)
         ->assertDontSee('name="semestre"', false)
-        ->assertDontSee('name="creditos"', false)
         ->assertDontSee('name="codigo"', false);
 });
 

@@ -88,7 +88,7 @@ class ConvalidacionService
      * alguna matrícula activa. Si está en varios, se toma la matrícula principal.
      *
      * @param  Collection<int, Matricula>  $matriculas
-     * @return Collection<int, array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion, matricula: Matricula, creditos: int|null}>
+     * @return Collection<int, array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion, matricula: Matricula}>
      */
     private function aprobacionesAplicables(User $estudiante, Collection $matriculas): Collection
     {
@@ -109,12 +109,7 @@ class ConvalidacionService
                         continue;
                     }
 
-                    $creditos = $materiaDelPlan->pivot->creditos;
-
-                    return $aprobacion + [
-                        'matricula' => $matricula,
-                        'creditos' => $creditos === null ? null : (int) $creditos,
-                    ];
+                    return $aprobacion + ['matricula' => $matricula];
                 }
 
                 return null;
@@ -156,7 +151,7 @@ class ConvalidacionService
     }
 
     /**
-     * @param  array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion, matricula: Matricula, creditos: int|null}  $aprobacion
+     * @param  array{equivalencia: MateriaEquivalencia, inscripcion: Inscripcion, matricula: Matricula}  $aprobacion
      */
     private function aConvalidacion(array $aprobacion): Convalidacion
     {
@@ -167,7 +162,6 @@ class ConvalidacionService
             carreraOrigen: $aprobacion['inscripcion']->planEstudio?->carrera ?? $aprobacion['inscripcion']->curso->carrera,
             nota: (float) $aprobacion['inscripcion']->nota_final,
             fecha: $aprobacion['inscripcion']->updated_at,
-            creditos: $aprobacion['creditos'],
         );
     }
 }

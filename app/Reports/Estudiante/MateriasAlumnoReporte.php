@@ -53,7 +53,6 @@ class MateriasAlumnoReporte implements Reporte
                 'curso.periodo',
                 'curso.horarios',
                 'planEstudio.carrera',
-                'planEstudio.materias',
             ])
             ->get()
             ->sortBy(fn (Inscripcion $inscripcion) => $inscripcion->curso->nombre)
@@ -63,7 +62,7 @@ class MateriasAlumnoReporte implements Reporte
                 $inscripcion->planEstudio?->carrera?->nombre ?? $inscripcion->curso->carrera->nombre,
                 $inscripcion->curso->docente?->name ?? 'Sin asignar',
                 $inscripcion->curso->periodo->nombre,
-                $inscripcion->creditosSegunPlan(),
+                (int) $inscripcion->curso->creditos,
                 $inscripcion->curso->horarios
                     ->map(fn ($horario) => $horario->descripcion)
                     ->implode('; ') ?: 'Sin horario',
@@ -76,14 +75,14 @@ class MateriasAlumnoReporte implements Reporte
     public function contexto(): array
     {
         $inscripciones = $this->inscripcionesFiltradas()
-            ->with(['curso', 'planEstudio.materias'])
+            ->with('curso')
             ->get();
 
         return array_merge($this->filtros->contexto(), [
             'Estudiante' => $this->estudiante->name,
             'CI' => $this->estudiante->ci ?? '—',
             'Materias inscritas' => (string) $inscripciones->count(),
-            'Créditos' => (string) $inscripciones->sum(fn (Inscripcion $inscripcion) => $inscripcion->creditosSegunPlan()),
+            'Créditos' => (string) $inscripciones->sum(fn (Inscripcion $inscripcion) => (int) $inscripcion->curso->creditos),
         ]);
     }
 

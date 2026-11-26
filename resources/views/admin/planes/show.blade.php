@@ -31,7 +31,7 @@
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-5">
                     <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ __('Modalidad') }}</p>
                     <p class="mt-1 text-lg font-semibold text-slate-900">{{ $plan->modalidad->etiqueta() }}</p>
@@ -47,11 +47,6 @@
                 <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-5">
                     <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ __('Materias') }}</p>
                     <p class="mt-1 text-lg font-semibold text-slate-900">{{ $plan->materias->count() }}</p>
-                </div>
-
-                <div class="rounded-2xl border border-slate-200/70 bg-white shadow-card p-5">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ __('Créditos totales') }}</p>
-                    <p class="mt-1 text-lg font-semibold text-slate-900">{{ $plan->totalCreditos() }}</p>
                 </div>
             </div>
 
@@ -76,7 +71,6 @@
                             <h3 class="font-semibold text-slate-900">{{ __('Semestre') }} {{ $semestre }}</h3>
                             <span class="text-xs text-slate-500">
                                 {{ $materias->count() }} {{ $materias->count() === 1 ? __('materia') : __('materias') }}
-                                · {{ $materias->sum(fn ($materia) => $materia->pivot->creditos) }} {{ __('créditos') }}
                             </span>
                         </div>
 
@@ -91,7 +85,6 @@
                                         <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Código') }}</th>
                                         <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Materia') }}</th>
                                         <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Requisitos') }}</th>
-                                        <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Créditos') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -106,7 +99,6 @@
                                                     {{ $materia->requisitos->map(fn ($requisito) => "{$requisito->codigo} - {$requisito->nombre}")->join(', ') }}
                                                 @endif
                                             </td>
-                                            <td class="px-6 py-3 text-slate-600">{{ $materia->pivot->creditos }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -130,7 +122,6 @@
                                     <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Semestre') }}</th>
                                     <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Código') }}</th>
                                     <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Materia') }}</th>
-                                    <th class="px-6 py-3 text-left font-medium text-amber-800">{{ __('Créditos') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-amber-100">
@@ -139,7 +130,6 @@
                                         <td class="px-6 py-3 text-amber-900">{{ $materia->pivot->semestre }}</td>
                                         <td class="px-6 py-3 font-mono text-amber-900">{{ $materia->codigo }}</td>
                                         <td class="px-6 py-3 text-amber-900">{{ $materia->nombre }}</td>
-                                        <td class="px-6 py-3 text-amber-900">{{ $materia->pivot->creditos }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

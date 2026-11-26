@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMateriaRequest;
 use App\Models\Carrera;
 use App\Models\Materia;
-use App\Models\PlanEstudio;
 use App\Services\MateriaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -73,14 +72,12 @@ class MateriaController extends Controller
 
     public function create(): View
     {
-        return view('admin.materias.create', [
-            'planes' => PlanEstudio::with('carrera')->orderBy('nombre')->get(),
-        ]);
+        return view('admin.materias.create');
     }
 
     /**
      * Catálogo compartido que usa el formulario de planes. Cada plan decide
-     * en qué semestre y con cuántos créditos incluye cada materia.
+     * en qué semestre incluye cada materia.
      */
     public function catalogo(): JsonResponse
     {
@@ -136,21 +133,13 @@ class MateriaController extends Controller
     }
 
     /**
-     * @return array{codigo: string, nombre: string, plan_estudio_id?: int, semestre?: int, creditos?: int}
+     * @return array{codigo: string, nombre: string}
      */
     private function datos(StoreMateriaRequest $request): array
     {
-        $datos = [
+        return [
             'codigo' => $request->validated('codigo'),
             'nombre' => $request->validated('nombre'),
         ];
-
-        if ($request->isMethod('POST') && $request->validated('plan_estudio_id') !== null) {
-            $datos['plan_estudio_id'] = (int) $request->validated('plan_estudio_id');
-            $datos['semestre'] = (int) $request->validated('semestre');
-            $datos['creditos'] = (int) $request->validated('creditos');
-        }
-
-        return $datos;
     }
 }

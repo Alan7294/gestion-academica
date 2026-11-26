@@ -80,7 +80,6 @@
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Modalidad') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Duración') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Materias') }}</th>
-                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Créditos') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Estado') }}</th>
                             <th class="px-6 py-3"></th>
                         </tr>
@@ -107,7 +106,6 @@
                                     {{ $plan->semestres }} {{ $plan->semestres === 1 ? __('semestre') : __('semestres') }}
                                 </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $plan->materias_count }}</td>
-                                <td class="px-6 py-4 text-slate-600">{{ $plan->totalCreditos() }}</td>
                                 <td class="px-6 py-4">
                                     @if ($plan->activo)
                                         <span class="inline-flex rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">{{ __('Activo') }}</span>

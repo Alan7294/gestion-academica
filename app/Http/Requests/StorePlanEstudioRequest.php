@@ -49,7 +49,6 @@ class StorePlanEstudioRequest extends FormRequest
             'materias' => ['required', 'array', 'min:1'],
             'materias.*.id' => ['required', 'integer', 'distinct', $reglaMateria()],
             'materias.*.semestre' => ['required', 'integer', 'min:1', 'max:12'],
-            'materias.*.creditos' => ['required', 'integer', 'min:1', 'max:20'],
             'materias.*.requisitos' => ['nullable', 'array'],
             'materias.*.requisitos.*' => ['integer', $reglaMateria()],
         ];
@@ -230,7 +229,6 @@ class StorePlanEstudioRequest extends FormRequest
             'materias.*.id.required' => 'Selecciona una materia del catálogo.',
             'materias.*.id.distinct' => 'No repitas una materia dentro del mismo plan.',
             'materias.*.id.exists' => 'La materia seleccionada no existe en el catálogo.',
-            'materias.*.creditos.min' => 'Cada materia debe tener al menos 1 crédito.',
             'materias.*.requisitos.array' => 'La lista de requisitos no es válida.',
             'materias.*.requisitos.*.exists' => 'Uno de los requisitos no existe en el catálogo.',
             'nombre.unique' => 'Ya existe un plan de estudios con ese nombre para la carrera seleccionada.',

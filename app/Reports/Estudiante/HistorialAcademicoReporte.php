@@ -48,7 +48,7 @@ class HistorialAcademicoReporte implements Reporte
     {
         $inscripciones = Inscripcion::query()
             ->where('user_id', $this->estudiante->id)
-            ->with(['curso.periodo', 'curso.docente', 'curso.materia', 'planEstudio.carrera', 'planEstudio.materias']);
+            ->with(['curso.periodo', 'curso.docente', 'curso.materia']);
 
         $this->filtros->aplicarAInscripciones($inscripciones);
 
@@ -59,7 +59,7 @@ class HistorialAcademicoReporte implements Reporte
                 $inscripcion->curso->materia?->codigo ?? '—',
                 $inscripcion->curso->nombre,
                 $inscripcion->curso->docente?->name ?? 'Sin asignar',
-                $inscripcion->creditosSegunPlan(),
+                (int) $inscripcion->curso->creditos,
                 $inscripcion->estado->etiqueta(),
                 $inscripcion->nota_final === null ? '—' : number_format((float) $inscripcion->nota_final, 2),
                 $this->resultado($inscripcion->nota_final),
@@ -91,7 +91,7 @@ class HistorialAcademicoReporte implements Reporte
                 $convalidacion->materia->codigo,
                 $convalidacion->materia->nombre,
                 '—',
-                $convalidacion->creditos ?? '—',
+                '—',
                 'Convalidada',
                 number_format($convalidacion->nota, 2),
                 'Aprobado por equivalencia: '.$convalidacion->origen(),

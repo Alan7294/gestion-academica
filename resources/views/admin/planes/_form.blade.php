@@ -26,7 +26,6 @@
                 'codigo' => $materia->codigo,
                 'nombre' => $materia->nombre,
                 'semestre' => (int) $materia->pivot->semestre,
-                'creditos' => (int) $materia->pivot->creditos,
                 'requisitos' => $materia->requisitos->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             ])->values()->all()
             : [];
@@ -44,7 +43,6 @@
                 'codigo' => (string) ($materia['codigo'] ?? $enCatalogo['codigo'] ?? ''),
                 'nombre' => (string) ($materia['nombre'] ?? $enCatalogo['nombre'] ?? ''),
                 'semestre' => (int) ($materia['semestre'] ?? 1),
-                'creditos' => (int) ($materia['creditos'] ?? 1),
                 'requisitos' => collect($materia['requisitos'] ?? [])
                     ->filter(fn ($id) => $id !== '')
                     ->map(fn ($id) => (int) $id)
@@ -90,7 +88,6 @@
                 codigo: materia.codigo,
                 nombre: materia.nombre,
                 semestre: 1,
-                creditos: 1,
                 requisitos: [],
             });
             this.materiaNuevaId = '';
@@ -250,7 +247,7 @@
             <div>
                 <h3 class="font-semibold text-slate-900">{{ __('Materias del plan') }}</h3>
                 <p class="mt-0.5 text-sm text-slate-500">
-                    {{ __('Selecciona materias del catálogo, ajusta su semestre y créditos, e indica sus requisitos.') }}
+                    {{ __('Selecciona materias del catálogo, ajusta su semestre e indica sus requisitos.') }}
                 </p>
             </div>
         </div>
@@ -272,7 +269,7 @@
                         {{ __('Agregar') }}
                     </button>
                 </div>
-                <p class="mt-1 text-xs text-slate-500">{{ __('El catálogo es compartido; cada plan define el semestre y los créditos de la materia.') }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ __('El catálogo es compartido; cada plan define el semestre de la materia.') }}</p>
             </div>
 
             <div>
@@ -317,7 +314,7 @@
                         <p class="mt-0.5 text-sm text-slate-900" x-text="materia.nombre"></p>
                     </div>
 
-                    <div class="sm:col-span-2">
+                    <div class="sm:col-span-3">
                         <label :for="`materia-semestre-${indice}`" class="block text-xs font-medium text-slate-600">
                             {{ __('Semestre') }}
                         </label>
@@ -327,16 +324,7 @@
                                class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                     </div>
 
-                    <div class="sm:col-span-2">
-                        <label :for="`materia-creditos-${indice}`" class="block text-xs font-medium text-slate-600">
-                            {{ __('Créditos') }}
-                        </label>
-                        <input :id="`materia-creditos-${indice}`" :name="`materias[${indice}][creditos]`"
-                               type="number" min="1" max="20" x-model.number="materia.creditos" required
-                               class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
-                    </div>
-
-                    <div class="sm:col-span-4">
+                    <div class="sm:col-span-5">
                         <p class="block text-xs font-medium text-slate-600">
                             {{ __('Requisitos (materias que deben aprobarse antes)') }}
                         </p>
@@ -377,9 +365,7 @@
         </div>
 
         <p class="mt-3 text-sm text-slate-500">
-            <span x-text="materias.length"></span> {{ __('materias') }} ·
-            <span x-text="materias.reduce((total, materia) => total + (Number(materia.creditos) || 0), 0)"></span>
-            {{ __('créditos') }}
+            <span x-text="materias.length"></span> {{ __('materias') }}
         </p>
 
         <p class="mt-1 text-xs text-slate-500">

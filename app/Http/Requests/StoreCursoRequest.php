@@ -70,6 +70,7 @@ class StoreCursoRequest extends FormRequest
                 })],
             ),
             'cupo' => ['required', 'integer', 'min:0', 'max:500'],
+            'creditos' => ['required', 'integer', 'min:1', 'max:20'],
             'activo' => ['boolean'],
 
             'aula_para_todos' => ['sometimes', 'boolean'],
@@ -226,6 +227,8 @@ class StoreCursoRequest extends FormRequest
             'planes_estudio_ids.min' => 'Selecciona al menos un plan participante.',
             'planes_estudio_ids.*.integer' => 'Selecciona planes de estudio válidos.',
             'planes_estudio_ids.*.exists' => 'Selecciona planes de estudio válidos.',
+            'creditos.required' => 'Indica los créditos del curso.',
+            'creditos.min' => 'El curso debe tener al menos 1 crédito.',
             'aula.required' => 'Indica el aula donde se dictará el curso.',
             'horarios.required' => 'Indica al menos un día con su horario.',
             'horarios.*.aula.required' => 'Indica el aula de este día.',

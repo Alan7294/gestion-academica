@@ -132,7 +132,6 @@ return [
         'materias.*.codigo' => 'código de la materia',
         'materias.*.nombre' => 'nombre de la materia',
         'materias.*.semestre' => 'semestre de la materia',
-        'materias.*.creditos' => 'créditos de la materia',
         'materias.*.requisitos' => 'requisitos de la materia',
         'materias.*.requisitos.*' => 'requisito de la materia',
         'materia_id' => 'materia del plan',

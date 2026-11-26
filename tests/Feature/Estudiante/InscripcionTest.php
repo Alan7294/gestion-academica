@@ -73,10 +73,10 @@ function materiaConRequisito(): array
     $plan = PlanEstudio::factory()->create(['semestres' => 3]);
 
     $previa = materiaEnPlan($plan, [
-        'codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4,
+        'codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1,
     ]);
     $posterior = materiaEnPlan($plan, [
-        'codigo' => 'MAT-201', 'nombre' => 'Cálculo II', 'semestre' => 2, 'creditos' => 4,
+        'codigo' => 'MAT-201', 'nombre' => 'Cálculo II', 'semestre' => 2,
     ]);
     $posterior->requisitosDelPlan($plan)->attach($previa);
 
@@ -154,8 +154,8 @@ it('permite a un estudiante de otra carrera inscribirse en un curso compartido',
     ]);
 
     $materia = Materia::factory()->create(['codigo' => 'COM-101', 'nombre' => 'Materia compartida']);
-    $planAnfitrion->vincularMateria($materia, 2, 5);
-    $planCompartido->vincularMateria($materia, 3, 3);
+    $planAnfitrion->vincularMateria($materia, 2);
+    $planCompartido->vincularMateria($materia, 3);
 
     $curso = cursoDisponible(['creditos' => 5, 'semestre' => 2], $materia);
     $curso->planesEstudio()->sync([$planAnfitrion->id, $planCompartido->id]);
@@ -179,7 +179,6 @@ it('permite a un estudiante de otra carrera inscribirse en un curso compartido',
         ->firstOrFail();
 
     expect($inscripcion->plan_estudio_id)->toBe($planCompartido->id)
-        ->and($inscripcion->creditosSegunPlan())->toBe(3)
         ->and((int) $curso->creditos)->toBe(5);
 });
 
@@ -810,9 +809,9 @@ it('bloquea la inscripción cuando el requisito tiene nota final 50', function (
 it('exige que estén aprobados todos los requisitos de la materia', function () {
     $plan = PlanEstudio::factory()->create(['semestres' => 3]);
 
-    $primera = materiaEnPlan($plan, ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4]);
-    $segunda = materiaEnPlan($plan, ['codigo' => 'OTR-101', 'nombre' => 'Otra previa', 'semestre' => 1, 'creditos' => 4]);
-    $posterior = materiaEnPlan($plan, ['codigo' => 'MAT-201', 'nombre' => 'Cálculo II', 'semestre' => 2, 'creditos' => 4]);
+    $primera = materiaEnPlan($plan, ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1]);
+    $segunda = materiaEnPlan($plan, ['codigo' => 'OTR-101', 'nombre' => 'Otra previa', 'semestre' => 1]);
+    $posterior = materiaEnPlan($plan, ['codigo' => 'MAT-201', 'nombre' => 'Cálculo II', 'semestre' => 2]);
     $posterior->requisitosDelPlan($plan)->attach([$primera->id, $segunda->id]);
 
     $cursoPrimera = cursoDisponible([], $primera);
@@ -889,8 +888,8 @@ it('valida los requisitos según el plan asignado al estudiante', function () {
     $posterior = Materia::factory()->create(['codigo' => 'POS-201', 'nombre' => 'Posterior']);
 
     foreach ([$planExigente, $planFlexible] as $plan) {
-        $plan->vincularMateria($previa, 1, 4);
-        $plan->vincularMateria($posterior, 2, 4);
+        $plan->vincularMateria($previa, 1);
+        $plan->vincularMateria($posterior, 2);
     }
 
     // Solo el plan exigente declara que la materia previa es requisito.
@@ -1028,10 +1027,10 @@ it('no usa un plan alternativo cuando el asignado no está habilitado en el curs
     ]);
 
     $previa = materiaEnPlan($planHabilitado, [
-        'codigo' => 'PRE-101', 'nombre' => 'Previa', 'semestre' => 1, 'creditos' => 4,
+        'codigo' => 'PRE-101', 'nombre' => 'Previa', 'semestre' => 1,
     ]);
     $posterior = materiaEnPlan($planHabilitado, [
-        'codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4,
+        'codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2,
     ]);
     $posterior->requisitosDelPlan($planHabilitado)->attach($previa);
 

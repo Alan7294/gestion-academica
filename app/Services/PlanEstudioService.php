@@ -12,7 +12,7 @@ class PlanEstudioService
     /**
      * Crea un plan de estudios, vincula materias del catálogo y registra requisitos.
      *
-     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>}  $datos
+     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id: int, semestre: int, requisitos?: array<int, int>}>}  $datos
      */
     public function crear(array $datos): PlanEstudio
     {
@@ -29,7 +29,7 @@ class PlanEstudioService
     /**
      * Actualiza el plan y sincroniza sus vínculos sin cambiar los identificadores del catálogo.
      *
-     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>}  $datos
+     * @param  array{carrera_id: int, nombre: string, modalidad: string, semestres: int, activo?: bool, materias: array<int, array{id: int, semestre: int, requisitos?: array<int, int>}>}  $datos
      */
     public function actualizar(PlanEstudio $plan, array $datos): PlanEstudio
     {
@@ -65,7 +65,7 @@ class PlanEstudioService
     }
 
     /**
-     * @param  array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>  $materias
+     * @param  array<int, array{id: int, semestre: int, requisitos?: array<int, int>}>  $materias
      * @return Collection<int, Materia>
      */
     private function sincronizarMaterias(PlanEstudio $plan, array $materias): Collection
@@ -73,7 +73,6 @@ class PlanEstudioService
         $valores = collect($materias)->mapWithKeys(fn (array $materia) => [
             (int) $materia['id'] => [
                 'semestre' => (int) $materia['semestre'],
-                'creditos' => (int) $materia['creditos'],
             ],
         ]);
 
@@ -87,7 +86,7 @@ class PlanEstudioService
 
     /**
      * @param  Collection<int, Materia>  $porId
-     * @param  array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int>}>  $materias
+     * @param  array<int, array{id: int, semestre: int, requisitos?: array<int, int>}>  $materias
      */
     private function sincronizarRequisitos(PlanEstudio $plan, Collection $porId, array $materias): void
     {

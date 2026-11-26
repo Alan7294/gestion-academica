@@ -37,7 +37,7 @@
                  @click="sidebarOpen = false"></div>
 
             {{-- Menú lateral --}}
-            <aside class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] -translate-x-full flex-col bg-ink-950 transition-transform duration-300 ease-out lg:translate-x-0"
+            <aside class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] -translate-x-full flex-col bg-ink-950 lg:translate-x-0"
                    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
                    aria-label="{{ __('Navegación principal') }}">
                 <div class="flex items-center gap-3 border-b border-white/10 px-5 py-5">

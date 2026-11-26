@@ -62,7 +62,6 @@
                                 <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Carrera') }}</th>
                                 <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Plan') }}</th>
                                 <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Semestre') }}</th>
-                                <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Créditos') }}</th>
                                 <th class="px-6 py-3"></th>
                             </tr>
                         </thead>
@@ -72,7 +71,6 @@
                                     <td class="px-6 py-3 text-slate-600">{{ $plan->carrera?->nombre ?? '—' }}</td>
                                     <td class="px-6 py-3 text-slate-900">{{ $plan->nombre }}</td>
                                     <td class="px-6 py-3 text-slate-600">{{ $plan->pivot->semestre }}</td>
-                                    <td class="px-6 py-3 text-slate-600">{{ $plan->pivot->creditos }}</td>
                                     <td class="px-6 py-3 text-right">
                                         <a href="{{ route('admin.planes.show', $plan) }}" class="text-brand-600 hover:text-brand-900">
                                             {{ __('Ver') }}

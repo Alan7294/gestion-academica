@@ -8,6 +8,7 @@ use App\Models\Materia;
 use App\Models\Matricula;
 use App\Models\PlanEstudio;
 use Database\Seeders\RolSeeder;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     $this->seed(RolSeeder::class);
@@ -16,8 +17,8 @@ beforeEach(function () {
 /**
  * Crea en el catálogo las materias de una carrera y devuelve los datos que espera el plan.
  *
- * @param  array<int, array{codigo: string, nombre: string, semestre: int, creditos: int, requisitos?: array<int, string|int>}>  $definiciones
- * @return array<int, array{id: int, semestre: int, creditos: int, requisitos?: array<int, int|string>}>
+ * @param  array<int, array{codigo: string, nombre: string, semestre: int, requisitos?: array<int, string|int>}>  $definiciones
+ * @return array<int, array{id: int, semestre: int, requisitos?: array<int, int|string>}>
  */
 function catalogoParaPlan(Carrera $carrera, array $definiciones): array
 {
@@ -34,7 +35,6 @@ function catalogoParaPlan(Carrera $carrera, array $definiciones): array
         $fila = [
             'id' => $porCodigo[$definicion['codigo']]->id,
             'semestre' => $definicion['semestre'],
-            'creditos' => $definicion['creditos'],
         ];
 
         if (array_key_exists('requisitos', $definicion)) {
@@ -61,9 +61,9 @@ function datosPlanEstudio(Carrera $carrera, array $overrides = []): array
         'semestres' => 4,
         'activo' => '1',
         'materias' => catalogoParaPlan($carrera, [
-            ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4],
-            ['codigo' => 'PRO-101', 'nombre' => 'Programación I', 'semestre' => 1, 'creditos' => 5],
-            ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2, 'creditos' => 4],
+            ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1],
+            ['codigo' => 'PRO-101', 'nombre' => 'Programación I', 'semestre' => 1],
+            ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2],
         ]),
     ], $overrides);
 }
@@ -113,8 +113,8 @@ it('lista y filtra los planes de estudio', function () {
 it('muestra el detalle del plan agrupado por semestre', function () {
     $plan = PlanEstudio::factory()->create(['semestres' => 3]);
 
-    materiaEnPlan($plan, ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4]);
-    materiaEnPlan($plan, ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2, 'creditos' => 4]);
+    materiaEnPlan($plan, ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1]);
+    materiaEnPlan($plan, ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->get("/admin/planes/{$plan->id}")
@@ -142,7 +142,7 @@ it('rechaza una materia ubicada fuera de la duración del plan', function () {
         ->post('/admin/planes', datosPlanEstudio($carrera, [
             'semestres' => 2,
             'materias' => catalogoParaPlan($carrera, [
-                ['codigo' => 'MAT-301', 'nombre' => 'Cálculo III', 'semestre' => 3, 'creditos' => 4],
+                ['codigo' => 'MAT-301', 'nombre' => 'Cálculo III', 'semestre' => 3],
             ]),
         ]))
         ->assertSessionHasErrors('materias.0.semestre');
@@ -157,8 +157,8 @@ it('rechaza una materia repetida dentro del plan', function () {
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/planes', datosPlanEstudio($carrera, [
             'materias' => [
-                ['id' => $materia->id, 'semestre' => 1, 'creditos' => 4],
-                ['id' => $materia->id, 'semestre' => 1, 'creditos' => 4],
+                ['id' => $materia->id, 'semestre' => 1],
+                ['id' => $materia->id, 'semestre' => 1],
             ],
         ]))
         ->assertSessionHasErrors('materias.1.id');
@@ -171,7 +171,7 @@ it('permite incluir en un plan una materia compartida con otra carrera', functio
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/planes', datosPlanEstudio($carrera, [
-            'materias' => [['id' => $materia->id, 'semestre' => 1, 'creditos' => 4]],
+            'materias' => [['id' => $materia->id, 'semestre' => 1]],
         ]))
         ->assertSessionHasNoErrors()
         ->assertRedirect();
@@ -181,7 +181,7 @@ it('permite incluir en un plan una materia compartida con otra carrera', functio
     expect($plan->materias->pluck('id')->all())->toBe([$materia->id]);
 });
 
-it('conserva semestres y créditos distintos para una misma materia en dos planes', function () {
+it('conserva semestres distintos para una misma materia en dos planes', function () {
     $carrera = Carrera::factory()->create();
     $otraCarrera = Carrera::factory()->create();
     $materia = Materia::factory()->create(['codigo' => 'COM-101', 'nombre' => 'Materia compartida']);
@@ -189,13 +189,11 @@ it('conserva semestres y créditos distintos para una misma materia en dos plane
     $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id]);
     $otroPlan = PlanEstudio::factory()->create(['carrera_id' => $otraCarrera->id]);
 
-    $plan->vincularMateria($materia, 2, 5);
-    $otroPlan->vincularMateria($materia, 4, 3);
+    $plan->vincularMateria($materia, 2);
+    $otroPlan->vincularMateria($materia, 4);
 
     expect($plan->materias->first()->pivot->semestre)->toBe(2)
-        ->and($plan->materias->first()->pivot->creditos)->toBe(5)
-        ->and($otroPlan->fresh()->materias->first()->pivot->semestre)->toBe(4)
-        ->and($otroPlan->fresh()->materias->first()->pivot->creditos)->toBe(3);
+        ->and($otroPlan->fresh()->materias->first()->pivot->semestre)->toBe(4);
 });
 
 it('rechaza un plan con el mismo nombre dentro de la carrera', function () {
@@ -221,7 +219,7 @@ it('actualiza el plan y reemplaza sus materias sin borrar las del catálogo', fu
     ]);
 
     $anterior = materiaEnPlan($plan, [
-        'codigo' => 'OLD-101', 'nombre' => 'Materia anterior', 'semestre' => 1, 'creditos' => 3,
+        'codigo' => 'OLD-101', 'nombre' => 'Materia anterior', 'semestre' => 1,
     ]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -285,7 +283,7 @@ it('no permite cambiar la modalidad de un plan con cursos asociados', function (
         'modalidad' => Modalidad::Semestral,
     ]);
     $materia = materiaEnPlan($plan, [
-        'codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4,
+        'codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1,
     ]);
     Curso::factory()->conMateria($materia)->create();
 
@@ -293,7 +291,7 @@ it('no permite cambiar la modalidad de un plan con cursos asociados', function (
         ->put("/admin/planes/{$plan->id}", datosPlanEstudio($carrera, [
             'nombre' => 'Plan editado',
             'modalidad' => Modalidad::Modular->value,
-            'materias' => [['id' => $materia->id, 'semestre' => 1, 'creditos' => 4]],
+            'materias' => [['id' => $materia->id, 'semestre' => 1]],
         ]))
         ->assertSessionHasErrors(['modalidad' => 'No puedes cambiar la modalidad de un plan que ya tiene matrículas o cursos asociados. Crea un plan nuevo y reasigna las matrículas.']);
 
@@ -303,7 +301,7 @@ it('no permite cambiar la modalidad de un plan con cursos asociados', function (
 it('elimina el plan y sus vínculos sin borrar las materias del catálogo', function () {
     $plan = PlanEstudio::factory()->create();
     $materia = materiaEnPlan($plan, [
-        'codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4,
+        'codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1,
     ]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -329,9 +327,9 @@ it('crea un plan con varias materias requisito y las muestra en el detalle', fun
     $this->actingAs($admin)
         ->post('/admin/planes', datosPlanEstudio($carrera, [
             'materias' => catalogoParaPlan($carrera, [
-                ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4],
-                ['codigo' => 'PRO-101', 'nombre' => 'Programación I', 'semestre' => 1, 'creditos' => 5],
-                ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2, 'creditos' => 4,
+                ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1],
+                ['codigo' => 'PRO-101', 'nombre' => 'Programación I', 'semestre' => 1],
+                ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2,
                     'requisitos' => ['MAT-101', 'PRO-101']],
             ]),
         ]))
@@ -356,10 +354,10 @@ it('rechaza requisitos inválidos en las materias del plan', function (array $re
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->post('/admin/planes', datosPlanEstudio($carrera, [
             'materias' => catalogoParaPlan($carrera, [
-                ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4],
-                ['codigo' => 'PAR-201', 'nombre' => 'Paralelo', 'semestre' => 2, 'creditos' => 4],
-                ['codigo' => 'NIV-301', 'nombre' => 'Nivel III', 'semestre' => 3, 'creditos' => 4],
-                ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2, 'creditos' => 4,
+                ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1],
+                ['codigo' => 'PAR-201', 'nombre' => 'Paralelo', 'semestre' => 2],
+                ['codigo' => 'NIV-301', 'nombre' => 'Nivel III', 'semestre' => 3],
+                ['codigo' => 'BD-201', 'nombre' => 'Base de Datos', 'semestre' => 2,
                     'requisitos' => $requisitos],
             ]),
         ]))
@@ -382,18 +380,18 @@ it('actualiza los requisitos al editar el plan sin perder las materias', functio
         'semestres' => 3,
     ]);
 
-    $previa = materiaEnPlan($plan, ['codigo' => 'PRE-101', 'nombre' => 'Previo', 'semestre' => 1, 'creditos' => 4]);
-    $posterior = materiaEnPlan($plan, ['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4]);
-    $otra = materiaEnPlan($plan, ['codigo' => 'OTR-101', 'nombre' => 'Otra', 'semestre' => 1, 'creditos' => 4]);
+    $previa = materiaEnPlan($plan, ['codigo' => 'PRE-101', 'nombre' => 'Previo', 'semestre' => 1]);
+    $posterior = materiaEnPlan($plan, ['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2]);
+    $otra = materiaEnPlan($plan, ['codigo' => 'OTR-101', 'nombre' => 'Otra', 'semestre' => 1]);
     $posterior->requisitosDelPlan($plan)->attach($previa);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->put("/admin/planes/{$plan->id}", datosPlanEstudio($carrera, [
             'nombre' => 'Plan actualizado',
             'materias' => [
-                ['id' => $previa->id, 'semestre' => 1, 'creditos' => 4],
-                ['id' => $otra->id, 'semestre' => 1, 'creditos' => 4],
-                ['id' => $posterior->id, 'semestre' => 2, 'creditos' => 4, 'requisitos' => [$otra->id]],
+                ['id' => $previa->id, 'semestre' => 1],
+                ['id' => $otra->id, 'semestre' => 1],
+                ['id' => $posterior->id, 'semestre' => 2, 'requisitos' => [$otra->id]],
             ],
         ]))
         ->assertRedirect("/admin/planes/{$plan->id}");
@@ -412,13 +410,13 @@ it('elimina los vínculos de requisitos al quitar una materia del plan', functio
     $carrera = Carrera::factory()->create();
     $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id, 'semestres' => 2]);
 
-    materiaEnPlan($plan, ['codigo' => 'PRE-101', 'nombre' => 'Previo', 'semestre' => 1, 'creditos' => 4]);
-    $posterior = materiaEnPlan($plan, ['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4]);
+    materiaEnPlan($plan, ['codigo' => 'PRE-101', 'nombre' => 'Previo', 'semestre' => 1]);
+    $posterior = materiaEnPlan($plan, ['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->put("/admin/planes/{$plan->id}", datosPlanEstudio($carrera, [
             'materias' => [
-                ['id' => $posterior->id, 'semestre' => 2, 'creditos' => 4],
+                ['id' => $posterior->id, 'semestre' => 2],
             ],
         ]))
         ->assertRedirect();
@@ -432,7 +430,7 @@ it('elimina los vínculos de requisitos al quitar una materia del plan', functio
 it('permite quitar una materia desde el formulario del plan', function () {
     $plan = PlanEstudio::factory()->create();
 
-    materiaEnPlan($plan, ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1, 'creditos' => 4]);
+    materiaEnPlan($plan, ['codigo' => 'MAT-101', 'nombre' => 'Cálculo I', 'semestre' => 1]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
         ->get("/admin/planes/{$plan->id}/edit")
@@ -463,7 +461,7 @@ it('respeta que se quitaron todas las materias aunque falle otra validación', f
     $plan = PlanEstudio::factory()->create(['carrera_id' => $carrera->id]);
 
     materiaEnPlan($plan, [
-        'codigo' => 'OLD-101', 'nombre' => 'Materia anterior', 'semestre' => 1, 'creditos' => 4,
+        'codigo' => 'OLD-101', 'nombre' => 'Materia anterior', 'semestre' => 1,
     ]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -500,9 +498,9 @@ it('mantiene los requisitos separados por plan aunque compartan materias', funct
     $posterior = Materia::factory()->create(['codigo' => 'POS-201', 'nombre' => 'Posterior']);
 
     foreach ([$planSemestral, $planModular] as $plan) {
-        $plan->vincularMateria($previa, 1, 4);
-        $plan->vincularMateria($otra, 1, 4);
-        $plan->vincularMateria($posterior, 2, 4);
+        $plan->vincularMateria($previa, 1);
+        $plan->vincularMateria($otra, 1);
+        $plan->vincularMateria($posterior, 2);
     }
 
     $posterior->requisitosDelPlan($planSemestral)->attach($previa);
@@ -515,9 +513,9 @@ it('mantiene los requisitos separados por plan aunque compartan materias', funct
             'semestres' => 2,
             'activo' => '1',
             'materias' => [
-                ['id' => $previa->id, 'semestre' => 1, 'creditos' => 4],
-                ['id' => $otra->id, 'semestre' => 1, 'creditos' => 4],
-                ['id' => $posterior->id, 'semestre' => 2, 'creditos' => 4, 'requisitos' => [$otra->id]],
+                ['id' => $previa->id, 'semestre' => 1],
+                ['id' => $otra->id, 'semestre' => 1],
+                ['id' => $posterior->id, 'semestre' => 2, 'requisitos' => [$otra->id]],
             ],
         ])
         ->assertRedirect("/admin/planes/{$planModular->id}");
@@ -529,8 +527,8 @@ it('mantiene los requisitos separados por plan aunque compartan materias', funct
 it('elimina los requisitos del plan al borrar el plan', function () {
     $plan = PlanEstudio::factory()->create(['semestres' => 2]);
 
-    $previa = materiaEnPlan($plan, ['codigo' => 'PRE-101', 'nombre' => 'Previa', 'semestre' => 1, 'creditos' => 4]);
-    $posterior = materiaEnPlan($plan, ['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2, 'creditos' => 4]);
+    $previa = materiaEnPlan($plan, ['codigo' => 'PRE-101', 'nombre' => 'Previa', 'semestre' => 1]);
+    $posterior = materiaEnPlan($plan, ['codigo' => 'POS-201', 'nombre' => 'Posterior', 'semestre' => 2]);
     $posterior->requisitosDelPlan($plan)->attach($previa);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
@@ -610,19 +608,15 @@ it('permite activar un plan cuando el anterior de la misma modalidad está inact
     expect(PlanEstudio::where('nombre', 'Plan nuevo')->where('activo', true)->exists())->toBeTrue();
 });
 
-it('rechaza materias con cero créditos', function () {
+it('no guarda créditos en la relación entre planes y materias', function () {
     $carrera = Carrera::factory()->create();
-    $materia = Materia::factory()->create();
 
     $this->actingAs(usuarioConRol(Rol::Administrador))
-        ->post('/admin/planes', datosPlanEstudio($carrera, [
-            'materias' => [
-                ['id' => $materia->id, 'semestre' => 1, 'creditos' => 0],
-            ],
-        ]))
-        ->assertSessionHasErrors(['materias.0.creditos' => 'Cada materia debe tener al menos 1 crédito.']);
+        ->post('/admin/planes', datosPlanEstudio($carrera))
+        ->assertRedirect();
 
-    expect(PlanEstudio::count())->toBe(0);
+    expect(PlanEstudio::count())->toBe(1)
+        ->and(Schema::hasColumn('materia_plan_estudio', 'creditos'))->toBeFalse();
 });
 
 it('muestra las materias que quedaron fuera de la duración del plan', function () {
@@ -632,7 +626,6 @@ it('muestra las materias que quedaron fuera de la duración del plan', function 
         'codigo' => 'FUE-301',
         'nombre' => 'Materia fuera de duración',
         'semestre' => 3,
-        'creditos' => 4,
     ]);
 
     $this->actingAs(usuarioConRol(Rol::Administrador))

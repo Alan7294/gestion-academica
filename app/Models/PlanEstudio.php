@@ -34,20 +34,15 @@ class PlanEstudio extends Model
     }
 
     /**
-     * Materias del catálogo incluidas en el plan, con semestre y créditos propios.
+     * Materias del catálogo incluidas en el plan, con el semestre asignado.
      */
     public function materias(): BelongsToMany
     {
         return $this->belongsToMany(Materia::class, 'materia_plan_estudio')
-            ->withPivot(['semestre', 'creditos'])
+            ->withPivot(['semestre'])
             ->withTimestamps()
             ->orderBy('materia_plan_estudio.semestre')
             ->orderBy('materias.nombre');
-    }
-
-    public function totalCreditos(): int
-    {
-        return (int) $this->materias->sum(fn (Materia $materia) => $materia->pivot->creditos);
     }
 
     /**
@@ -63,10 +58,10 @@ class PlanEstudio extends Model
     /**
      * Vincula una materia del catálogo al plan sin duplicarla ni crear otra.
      */
-    public function vincularMateria(Materia $materia, int $semestre, int $creditos): void
+    public function vincularMateria(Materia $materia, int $semestre): void
     {
         $this->materias()->syncWithoutDetaching([
-            $materia->id => ['semestre' => $semestre, 'creditos' => $creditos],
+            $materia->id => ['semestre' => $semestre],
         ]);
     }
 

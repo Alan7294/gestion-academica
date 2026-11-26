@@ -15,12 +15,12 @@ class Materia extends Model
     use HasFactory;
 
     /**
-     * Planes que incluyen esta materia, con el semestre y los créditos propios de cada plan.
+     * Planes que incluyen esta materia, con el semestre asignado en cada uno.
      */
     public function planesEstudio(): BelongsToMany
     {
         return $this->belongsToMany(PlanEstudio::class, 'materia_plan_estudio')
-            ->withPivot(['semestre', 'creditos'])
+            ->withPivot(['semestre'])
             ->withTimestamps();
     }
 

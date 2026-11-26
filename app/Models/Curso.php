@@ -49,7 +49,7 @@ class Curso extends Model
     }
 
     /**
-     * Plan que aporta el semestre y los créditos de la materia del curso.
+     * Plan que aporta el semestre de la materia del curso.
      */
     public function planEstudio(): BelongsTo
     {
