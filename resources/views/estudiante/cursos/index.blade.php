@@ -78,11 +78,14 @@
                         </dl>
 
                         @if ($curso->horarios->isNotEmpty())
-                            <ul class="mt-3 text-xs text-slate-500 space-y-0.5">
-                                @foreach ($curso->horarios as $horario)
-                                    <li>{{ $horario->descripcion }}</li>
-                                @endforeach
-                            </ul>
+                            @php($inicio = $curso->horarios->pluck('fecha_inicio')->filter()->sort()->first())
+                            @php($fin = $curso->horarios->pluck('fecha_fin')->filter()->sort()->last())
+                            @php($rangos = $curso->horarios->pluck('rango_texto')->unique()->implode(', '))
+                            <dl class="mt-3 grid gap-0.5 text-xs text-slate-500">
+                                <div>{{ __('Fecha de Inicio') }}: {{ $inicio?->format('d/m/Y') ?? '—' }}</div>
+                                <div>{{ __('Fecha de Fin') }}: {{ $fin?->format('d/m/Y') ?? '—' }}</div>
+                                <div>{{ __('Horario') }}: {{ $rangos ?: '—' }}</div>
+                            </dl>
                         @endif
 
                         @if ($curso->materia_id && $convalidadas->contains($curso->materia_id))

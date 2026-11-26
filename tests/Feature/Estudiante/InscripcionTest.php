@@ -28,6 +28,24 @@ function cursoDisponible(array $atributos = [], ?Materia $materia = null, ?Perio
 }
 
 /**
+ * @param  array<int, string>  $fechasSesion
+ */
+function horariosDeModulo(Curso $curso, array $fechasSesion): void
+{
+    foreach ($fechasSesion as $fechaSesion) {
+        $curso->horarios()->create([
+            'docente_id' => $curso->docente_id,
+            'dia_semana' => 1,
+            'hora_inicio' => '08:00',
+            'hora_fin' => '10:00',
+            'fecha_inicio' => '2026-01-05',
+            'fecha_fin' => '2026-01-30',
+            'fecha_sesion' => $fechaSesion,
+        ]);
+    }
+}
+
+/**
  * @return array{0: Materia, 1: Materia}
  */
 function materiaConRequisito(): array
@@ -440,6 +458,23 @@ it('muestra la oferta académica al estudiante sin créditos', function () {
         ->assertSee('Inteligencia Artificial')
         ->assertSee('Inscribirme')
         ->assertDontSee('Créditos');
+});
+
+it('muestra el rango de fechas y la hora sin los días de la semana en la oferta', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $curso = cursoDisponible([], null, $periodo);
+    horariosDeModulo($curso, ['2026-01-05', '2026-01-12']);
+
+    $this->actingAs(estudianteMatriculado($curso))
+        ->get('/estudiante/cursos')
+        ->assertOk()
+        ->assertSee('Fecha de Inicio: 05/01/2026')
+        ->assertSee('Fecha de Fin: 30/01/2026')
+        ->assertSee('Horario: 08:00 - 10:00')
+        ->assertDontSee('Lunes 08:00 - 10:00');
 });
 
 it('oculta los créditos en el detalle del curso para el estudiante', function () {
