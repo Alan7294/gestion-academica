@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Modalidad;
 use App\Enums\Rol;
 use App\Models\Curso;
 use App\Models\Inscripcion;
@@ -43,7 +44,7 @@ it('muestra al docente solo sus propios cursos', function () {
 
 it('muestra el rango de fechas y la hora sin los días en los cursos del docente', function () {
     $docente = usuarioConRol(Rol::Docente);
-    $curso = Curso::factory()->create(['docente_id' => $docente->id]);
+    $curso = Curso::factory()->create(['docente_id' => $docente->id, 'modalidad' => Modalidad::Modular]);
     horariosModular($curso, ['2026-01-05', '2026-01-12']);
 
     $this->actingAs($docente)
@@ -52,12 +53,12 @@ it('muestra el rango de fechas y la hora sin los días en los cursos del docente
         ->assertSee('Fecha de Inicio: 05/01/2026')
         ->assertSee('Fecha de Fin: 30/01/2026')
         ->assertSee('Horario: 08:30 - 11:45')
-        ->assertDontSee('Lunes 08:30 - 11:45');
+        ->assertDontSee('Lunes: 08:30 - 11:45');
 });
 
 it('muestra el mismo resumen de horario en el detalle del curso del docente', function () {
     $docente = usuarioConRol(Rol::Docente);
-    $curso = Curso::factory()->create(['docente_id' => $docente->id]);
+    $curso = Curso::factory()->create(['docente_id' => $docente->id, 'modalidad' => Modalidad::Modular]);
     horariosModular($curso, ['2026-01-05', '2026-01-12']);
 
     $this->actingAs($docente)
@@ -66,7 +67,7 @@ it('muestra el mismo resumen de horario en el detalle del curso del docente', fu
         ->assertSee('Fecha de Inicio: 05/01/2026')
         ->assertSee('Fecha de Fin: 30/01/2026')
         ->assertSee('Horario: 08:30 - 11:45')
-        ->assertDontSee('Lunes 08:30 - 11:45');
+        ->assertDontSee('Lunes: 08:30 - 11:45');
 });
 
 it('impide que un docente abra un curso que no dicta', function () {

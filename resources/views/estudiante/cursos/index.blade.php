@@ -78,13 +78,13 @@
                         </dl>
 
                         @if ($curso->horarios->isNotEmpty())
-                            @php($inicio = $curso->horarios->pluck('fecha_inicio')->filter()->sort()->first())
-                            @php($fin = $curso->horarios->pluck('fecha_fin')->filter()->sort()->last())
-                            @php($rangos = $curso->horarios->pluck('rango_texto')->unique()->implode(', '))
+                            @php($resumen = $curso->resumenFechasHorarios())
                             <dl class="mt-3 grid gap-0.5 text-xs text-slate-500">
-                                <div>{{ __('Fecha de Inicio') }}: {{ $inicio?->format('d/m/Y') ?? '—' }}</div>
-                                <div>{{ __('Fecha de Fin') }}: {{ $fin?->format('d/m/Y') ?? '—' }}</div>
-                                <div>{{ __('Horario') }}: {{ $rangos ?: '—' }}</div>
+                                <div>{{ __('Fecha de Inicio') }}: {{ $resumen['inicio'] ?? '—' }}</div>
+                                <div>{{ __('Fecha de Fin') }}: {{ $resumen['fin'] ?? '—' }}</div>
+                                @foreach ($resumen['lineas'] as $linea)
+                                    <div>{{ $linea }}</div>
+                                @endforeach
                             </dl>
                         @endif
 

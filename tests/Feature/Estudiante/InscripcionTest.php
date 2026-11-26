@@ -651,7 +651,7 @@ it('muestra el rango de fechas y la hora sin los días de la semana en la oferta
         'fecha_inicio' => '2026-01-01',
         'fecha_fin' => '2026-12-31',
     ]);
-    $curso = cursoDisponible([], null, $periodo);
+    $curso = cursoDisponible(['modalidad' => Modalidad::Modular], null, $periodo);
     horariosDeModulo($curso, ['2026-01-05', '2026-01-12']);
 
     $this->actingAs(estudianteMatriculado($curso))
@@ -660,7 +660,43 @@ it('muestra el rango de fechas y la hora sin los días de la semana en la oferta
         ->assertSee('Fecha de Inicio: 05/01/2026')
         ->assertSee('Fecha de Fin: 30/01/2026')
         ->assertSee('Horario: 08:00 - 10:00')
-        ->assertDontSee('Lunes 08:00 - 10:00');
+        ->assertDontSee('Lunes: 08:00 - 10:00');
+});
+
+it('muestra los días y sus franjas en la oferta de un curso semestral', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $curso = cursoDisponible([
+        'modalidad' => Modalidad::Semestral,
+        'nombre' => 'Curso semestral con horarios por día',
+    ], null, $periodo);
+
+    foreach ([
+        [4, '10:30', '12:45'],
+        [1, '15:00', '18:00'],
+        [5, '11:00', '13:00'],
+    ] as [$dia, $inicio, $fin]) {
+        $curso->horarios()->create([
+            'docente_id' => $curso->docente_id,
+            'dia_semana' => $dia,
+            'hora_inicio' => $inicio,
+            'hora_fin' => $fin,
+            'fecha_inicio' => '2026-01-05',
+            'fecha_fin' => '2026-06-30',
+        ]);
+    }
+
+    $this->actingAs(estudianteMatriculado($curso))
+        ->get('/estudiante/cursos')
+        ->assertOk()
+        ->assertSee('Fecha de Inicio: 05/01/2026')
+        ->assertSee('Fecha de Fin: 30/06/2026')
+        ->assertSee('Lunes: 15:00 - 18:00')
+        ->assertSee('Jueves: 10:30 - 12:45')
+        ->assertSee('Viernes: 11:00 - 13:00')
+        ->assertDontSee('Horario: 15:00 - 18:00');
 });
 
 it('muestra el rango de fechas y la hora sin los días de la semana en mis cursos', function () {
@@ -668,7 +704,7 @@ it('muestra el rango de fechas y la hora sin los días de la semana en mis curso
         'fecha_inicio' => '2026-01-01',
         'fecha_fin' => '2026-12-31',
     ]);
-    $curso = cursoDisponible([], null, $periodo);
+    $curso = cursoDisponible(['modalidad' => Modalidad::Modular], null, $periodo);
     horariosDeModulo($curso, ['2026-01-05', '2026-01-12']);
     $estudiante = estudianteMatriculado($curso);
     Inscripcion::factory()->create([
@@ -682,7 +718,7 @@ it('muestra el rango de fechas y la hora sin los días de la semana en mis curso
         ->assertSee('Fecha de Inicio: 05/01/2026')
         ->assertSee('Fecha de Fin: 30/01/2026')
         ->assertSee('Horario: 08:00 - 10:00')
-        ->assertDontSee('Lunes 08:00 - 10:00');
+        ->assertDontSee('Lunes: 08:00 - 10:00');
 });
 
 it('oculta los créditos en el detalle del curso para el estudiante', function () {

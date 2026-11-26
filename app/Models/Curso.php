@@ -136,6 +136,45 @@ class Curso extends Model
     }
 
     /**
+     * Resumen para listados: en modalidad semestral muestra cada día con su franja;
+     * en modalidad modular muestra una sola vez las franjas de las sesiones.
+     *
+     * @return array{inicio: string|null, fin: string|null, lineas: array<int, string>}
+     */
+    public function resumenFechasHorarios(): array
+    {
+        $horarios = $this->horarios;
+
+        $inicio = $horarios->pluck('fecha_inicio')->filter()->sort()->first();
+        $fin = $horarios->pluck('fecha_fin')->filter()->sort()->last();
+
+        if ($this->modalidad === Modalidad::Semestral) {
+            $lineas = $horarios
+                ->groupBy(fn (Horario $horario) => $horario->dia_semana->value)
+                ->map(fn ($sesiones) => $sesiones
+                    ->pluck('rango_texto')
+                    ->unique()
+                    ->implode(', '))
+                ->map(fn (string $rangos, int $dia) => DiaSemana::from($dia)->etiqueta().': '.$rangos)
+                ->values()
+                ->all();
+        } else {
+            $rangos = $horarios
+                ->pluck('rango_texto')
+                ->unique()
+                ->implode(', ');
+
+            $lineas = $rangos !== '' ? [__('Horario').': '.$rangos] : [];
+        }
+
+        return [
+            'inicio' => $inicio?->format('d/m/Y'),
+            'fin' => $fin?->format('d/m/Y'),
+            'lineas' => $lineas,
+        ];
+    }
+
+    /**
      * Primera fecha de inicio del ciclo: la de los horarios o, si no hay, la del periodo.
      */
     public function fechaInicio(): ?Carbon

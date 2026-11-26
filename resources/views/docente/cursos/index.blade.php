@@ -29,14 +29,13 @@
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->carrera->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->periodo->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">
-                                    @php($inicio = $curso->horarios->pluck('fecha_inicio')->filter()->sort()->first())
-                                    @php($fin = $curso->horarios->pluck('fecha_fin')->filter()->sort()->last())
-                                    @php($rangos = $curso->horarios->pluck('rango_texto')->unique()->implode(', '))
-
                                     @if ($curso->horarios->isNotEmpty())
-                                        <div>{{ __('Fecha de Inicio') }}: {{ $inicio?->format('d/m/Y') ?? '—' }}</div>
-                                        <div>{{ __('Fecha de Fin') }}: {{ $fin?->format('d/m/Y') ?? '—' }}</div>
-                                        <div>{{ __('Horario') }}: {{ $rangos ?: '—' }}</div>
+                                        @php($resumen = $curso->resumenFechasHorarios())
+                                        <div>{{ __('Fecha de Inicio') }}: {{ $resumen['inicio'] ?? '—' }}</div>
+                                        <div>{{ __('Fecha de Fin') }}: {{ $resumen['fin'] ?? '—' }}</div>
+                                        @foreach ($resumen['lineas'] as $linea)
+                                            <div>{{ $linea }}</div>
+                                        @endforeach
                                     @else
                                         {{ __('Sin horario') }}
                                     @endif
