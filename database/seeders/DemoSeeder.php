@@ -16,7 +16,6 @@ use App\Models\Periodo;
 use App\Models\PlanEstudio;
 use App\Models\User;
 use App\Services\CalificacionService;
-use App\Services\InscripcionService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
@@ -141,7 +140,6 @@ class DemoSeeder extends Seeder
             'estudiante6@academica.test' => ['ADM-101', 'DER-101'],
         ];
 
-        $inscripciones = app(InscripcionService::class);
         $calificaciones = app(CalificacionService::class);
         $definicionEvaluaciones = [
             ['nombre' => 'Primer parcial', 'ponderacion' => 30],
@@ -173,7 +171,10 @@ class DemoSeeder extends Seeder
                     ->first();
 
                 if (! $inscripcion) {
-                    $inscripcion = $inscripciones->inscribir($estudiante, $curso);
+                    $inscripcion = Inscripcion::factory()->create([
+                        'curso_id' => $curso->id,
+                        'user_id' => $estudiante->id,
+                    ]);
                 }
 
                 if ($inscripcion->calificaciones()->exists()) {

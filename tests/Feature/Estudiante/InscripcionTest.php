@@ -15,6 +15,7 @@ use Database\Seeders\RolSeeder;
 
 beforeEach(function () {
     $this->seed(RolSeeder::class);
+    $this->travelTo('2026-01-06 10:00:00');
 });
 
 function cursoDisponible(array $atributos = [], ?Materia $materia = null, ?Periodo $periodo = null): Curso
@@ -47,16 +48,21 @@ function horariosDeModulo(Curso $curso, array $fechasSesion): void
     }
 }
 
-function horarioHasta(Curso $curso, string $fechaFin): void
+function horarioEntre(Curso $curso, string $fechaInicio, string $fechaFin): void
 {
     $curso->horarios()->create([
         'docente_id' => $curso->docente_id,
         'dia_semana' => 1,
         'hora_inicio' => '08:00',
         'hora_fin' => '10:00',
-        'fecha_inicio' => $fechaFin,
+        'fecha_inicio' => $fechaInicio,
         'fecha_fin' => $fechaFin,
     ]);
+}
+
+function horarioHasta(Curso $curso, string $fechaFin): void
+{
+    horarioEntre($curso, $fechaFin, $fechaFin);
 }
 
 /**
@@ -86,6 +92,51 @@ it('permite al estudiante inscribirse en un curso disponible', function () {
         ->assertRedirect('/estudiante/inscripciones');
 
     expect(Inscripcion::where('user_id', $estudiante->id)->where('curso_id', $curso->id)->exists())->toBeTrue();
+});
+
+it('permite inscribirse hasta el tercer día del ciclo contando el inicio', function (int $dias) {
+    $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
+
+    $this->travelTo(today()->addDays($dias)->toDateString());
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertRedirect('/estudiante/inscripciones');
+
+    expect(Inscripcion::where('user_id', $estudiante->id)->where('curso_id', $curso->id)->exists())->toBeTrue();
+})->with([
+    'día del inicio' => 0,
+    'segundo día' => 1,
+    'tercer día' => 2,
+]);
+
+it('rechaza inscribirse desde el cuarto día del ciclo', function () {
+    $curso = cursoDisponible();
+    $estudiante = estudianteMatriculado($curso);
+
+    $this->travelTo(today()->addDays(3)->toDateString());
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertSessionHasErrors(['curso' => 'No puedes inscribirte: el periodo de inscripción del curso ya cerró.']);
+
+    expect(Inscripcion::where('user_id', $estudiante->id)->where('curso_id', $curso->id)->exists())->toBeFalse();
+});
+
+it('rechaza inscribirse sin horarios cuando el periodo empezó hace más de dos días', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => today()->subDays(3)->toDateString(),
+        'fecha_fin' => today()->addMonth()->toDateString(),
+    ]);
+    $curso = cursoDisponible([], null, $periodo);
+    $estudiante = estudianteMatriculado($curso);
+
+    $this->actingAs($estudiante)
+        ->post("/estudiante/cursos/{$curso->id}/inscribirse")
+        ->assertSessionHasErrors(['curso' => 'No puedes inscribirte: el periodo de inscripción del curso ya cerró.']);
+
+    expect(Inscripcion::where('user_id', $estudiante->id)->where('curso_id', $curso->id)->exists())->toBeFalse();
 });
 
 it('permite a un estudiante de otra carrera inscribirse en un curso compartido', function () {
@@ -555,6 +606,44 @@ it('muestra la oferta académica al estudiante sin créditos', function () {
         ->assertSee('Inteligencia Artificial')
         ->assertSee('Inscribirme')
         ->assertDontSee('Créditos');
+});
+
+it('oculta de la oferta los cursos cuya inscripción ya cerró', function () {
+    $abierto = cursoDisponible(['nombre' => 'Curso con inscripción abierta']);
+    $cerrado = cursoDisponible(['nombre' => 'Curso con inscripción cerrada']);
+    horarioEntre($cerrado, today()->subDays(3)->toDateString(), today()->addMonth()->toDateString());
+    $estudiante = estudianteMatriculado($abierto, $cerrado);
+
+    $this->actingAs($estudiante)
+        ->get('/estudiante/cursos')
+        ->assertOk()
+        ->assertSee('Curso con inscripción abierta')
+        ->assertDontSee('Curso con inscripción cerrada');
+});
+
+it('oculta de la oferta un curso sin horarios cuando el periodo empezó hace más de dos días', function () {
+    $periodo = Periodo::factory()->vigente()->create([
+        'fecha_inicio' => today()->subDays(3)->toDateString(),
+        'fecha_fin' => today()->addMonth()->toDateString(),
+    ]);
+    $curso = cursoDisponible(['nombre' => 'Curso sin horarios'], null, $periodo);
+    $estudiante = estudianteMatriculado($curso);
+
+    $this->actingAs($estudiante)
+        ->get('/estudiante/cursos')
+        ->assertOk()
+        ->assertDontSee('Curso sin horarios');
+});
+
+it('muestra inscripción cerrada en el detalle desde el cuarto día del ciclo', function () {
+    $curso = cursoDisponible(['nombre' => 'Curso con detalle cerrado']);
+    horarioEntre($curso, today()->subDays(3)->toDateString(), today()->addMonth()->toDateString());
+
+    $this->actingAs(estudianteMatriculado($curso))
+        ->get("/estudiante/cursos/{$curso->id}")
+        ->assertOk()
+        ->assertSee('Inscripción cerrada')
+        ->assertDontSee('Inscribirme');
 });
 
 it('muestra el rango de fechas y la hora sin los días de la semana en la oferta', function () {

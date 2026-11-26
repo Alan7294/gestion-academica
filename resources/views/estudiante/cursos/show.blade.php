@@ -72,11 +72,15 @@
                     <span class="inline-flex px-3 py-1 rounded text-sm font-medium bg-green-100 text-green-800">
                         {{ __('Ya estás inscrito') }}
                     </span>
-                @else
+                @elseif ($curso->inscripcionesAbiertas())
                     <form method="POST" action="{{ route('estudiante.inscripciones.store', $curso) }}">
                         @csrf
                         <x-primary-button>{{ __('Inscribirme') }}</x-primary-button>
                     </form>
+                @else
+                    <span class="inline-flex px-3 py-1 rounded text-sm font-medium bg-slate-100 text-slate-600">
+                        {{ __('Inscripción cerrada') }}
+                    </span>
                 @endif
             </div>
         </div>

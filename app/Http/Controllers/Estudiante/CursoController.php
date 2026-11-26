@@ -46,6 +46,7 @@ class CursoController extends Controller
             ->with(['carrera', 'planesEstudio.carrera', 'docente', 'materia', 'horarios'])
             ->withCount('alumnosInscritos')
             ->where('activo', true)
+            ->inscripcionesAbiertas()
             ->whereHas('planesEstudio', function ($query) use ($planesIds, $carreraId): void {
                 $query->whereIn('planes_estudio.id', $planesIds ?: [0])
                     ->when($carreraId, fn ($sub) => $sub->where('planes_estudio.carrera_id', $carreraId));

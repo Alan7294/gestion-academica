@@ -12,8 +12,8 @@ class PeriodoSeeder extends Seeder
         Periodo::firstOrCreate(
             ['nombre' => '2026-II'],
             [
-                'fecha_inicio' => '2026-08-03',
-                'fecha_fin' => '2026-12-18',
+                'fecha_inicio' => today()->toDateString(),
+                'fecha_fin' => today()->addMonths(4)->toDateString(),
                 'activo' => true,
             ],
         );

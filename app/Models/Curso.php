@@ -136,19 +136,53 @@ class Curso extends Model
     }
 
     /**
+     * Primera fecha de inicio del ciclo: la de los horarios o, si no hay, la del periodo.
+     */
+    public function fechaInicio(): ?Carbon
+    {
+        $fecha = $this->horarios
+            ->pluck('fecha_inicio')
+            ->filter()
+            ->map(fn (Carbon $inicio): string => $inicio->toDateString())
+            ->min();
+
+        return $fecha !== null ? Carbon::parse($fecha) : $this->periodo?->fecha_inicio;
+    }
+
+    /**
+     * Última fecha de fin del ciclo: la de los horarios o, si no hay, la del periodo.
+     */
+    public function fechaFin(): ?Carbon
+    {
+        $fecha = $this->horarios
+            ->pluck('fecha_fin')
+            ->filter()
+            ->map(fn (Carbon $fin): string => $fin->toDateString())
+            ->max();
+
+        return $fecha !== null ? Carbon::parse($fecha) : $this->periodo?->fecha_fin;
+    }
+
+    /**
+     * La inscripción está abierta hasta el tercer día del ciclo, contando el inicio, inclusive.
+     */
+    public function inscripcionesAbiertas(): bool
+    {
+        $inicio = $this->fechaInicio();
+
+        return $inicio !== null
+            && today()->toDateString() <= $inicio->copy()->addDays(2)->toDateString();
+    }
+
+    /**
      * El ciclo termina cuando pasa la última fecha de fin de los horarios.
      * Si el curso no tiene horarios, se usa la fecha de fin del periodo.
      */
     public function cicloFinalizado(): bool
     {
-        $fechaFin = $this->horarios
-            ->pluck('fecha_fin')
-            ->filter()
-            ->map(fn (Carbon $fecha): string => $fecha->toDateString())
-            ->max()
-            ?? $this->periodo?->fecha_fin?->toDateString();
+        $fechaFin = $this->fechaFin();
 
-        return $fechaFin !== null && $fechaFin < today()->toDateString();
+        return $fechaFin !== null && $fechaFin->toDateString() < today()->toDateString();
     }
 
     /**
@@ -187,6 +221,23 @@ class Curso extends Model
     public function scopeActivo(Builder $query): void
     {
         $query->where('activo', true);
+    }
+
+    /**
+     * La oferta solo incluye cursos cuya inscripción sigue abierta.
+     * Se compara con la mínima fecha de inicio de los horarios, o con la del periodo si no hay horarios.
+     */
+    public function scopeInscripcionesAbiertas(Builder $query): void
+    {
+        $fechaMinima = today()->subDays(2)->toDateString();
+
+        $query->whereRaw(
+            'coalesce('.
+                '(select min(h.fecha_inicio) from horarios h where h.curso_id = cursos.id), '.
+                '(select p.fecha_inicio from periodos p where p.id = cursos.periodo_id)'.
+            ') >= ?',
+            [$fechaMinima],
+        );
     }
 
     public function scopeDelDocente(Builder $query, User $docente): void

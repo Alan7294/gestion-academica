@@ -29,7 +29,10 @@ class InscripcionService
     {
         return DB::transaction(function () use ($estudiante, $curso) {
             // Bloquea el curso para que dos inscripciones simultáneas no superen el cupo.
-            $curso = Curso::whereKey($curso->id)->lockForUpdate()->firstOrFail();
+            $curso = Curso::whereKey($curso->id)
+                ->with(['horarios', 'periodo'])
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if (! $estudiante->esEstudiante()) {
                 throw ValidationException::withMessages([
@@ -48,6 +51,12 @@ class InscripcionService
             if (! $curso->periodo->activo) {
                 throw ValidationException::withMessages([
                     'curso' => 'El curso pertenece a un periodo que ya no está vigente.',
+                ]);
+            }
+
+            if (! $curso->inscripcionesAbiertas()) {
+                throw ValidationException::withMessages([
+                    'curso' => 'No puedes inscribirte: el periodo de inscripción del curso ya cerró.',
                 ]);
             }
 

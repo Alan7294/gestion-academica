@@ -27,6 +27,10 @@ class PeriodoFactory extends Factory
 
     public function vigente(): static
     {
-        return $this->state(fn () => ['activo' => true]);
+        return $this->state(fn () => [
+            'activo' => true,
+            'fecha_inicio' => today()->toDateString(),
+            'fecha_fin' => today()->addMonths(4)->toDateString(),
+        ]);
     }
 }
