@@ -6,7 +6,8 @@
           planId: @js((string) old('plan_estudio_id', $curso?->plan_estudio_id)),
           materiaId: @js((string) old('materia_id', $curso?->materia_id)),
           modalidad: @js((string) old('modalidad', $curso?->modalidad?->value ?? '')),
-          horarios: @js(old('horarios', [['dia_semana' => '', 'hora_inicio' => '', 'hora_fin' => '']])),
+          aulaParaTodos: @js((bool) old('aula_para_todos', false)),
+          horarios: @js(old('horarios', [['dia_semana' => '', 'hora_inicio' => '', 'hora_fin' => '', 'aula' => '']])),
           planes: @js($planes),
            planesSeleccionados: @js(old('planes_estudio_ids', $curso?->planesEstudio->pluck('id')->map(fn ($id) => (string) $id)->all() ?? [])),
           errores: @js($errors->messages()),
@@ -58,7 +59,7 @@
                this.planesSeleccionados = this.planesSeleccionados.filter((id) => permitidos.has(String(id)));
            },
            agregarHorario() {
-              this.horarios.push({dia_semana: '', hora_inicio: '', hora_fin: ''});
+              this.horarios.push({dia_semana: '', hora_inicio: '', hora_fin: '', aula: ''});
           },
           quitarHorario(indice) {
               if (this.horarios.length > 1) {
@@ -207,17 +208,35 @@
         <div class="mt-8 border-t border-slate-200 pt-6">
             <h3 class="font-semibold text-slate-900">{{ __('Horario del curso') }}</h3>
             <p class="mt-1 text-sm text-slate-600">
-                {{ __('Define el horario inicial junto con el curso. El docente y el aula son obligatorios.') }}
+                <span x-show="esSemestral">
+                    {{ __('Define el horario inicial junto con el curso. El docente es obligatorio; indica el aula de cada día o usa la misma para todos.') }}
+                </span>
+                <span x-show="esModular">
+                    {{ __('Define el horario inicial del módulo junto con el curso. El docente y el aula son obligatorios.') }}
+                </span>
             </p>
 
-            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <x-input-label for="aula" :value="__('Aula')" />
-                    <x-text-input id="aula" name="aula" type="text" class="mt-1 block w-full"
-                                  :value="old('aula')" placeholder="Ej. Aula 101" required />
-                    <x-input-error class="mt-2" :messages="$errors->get('aula')" />
+            <template x-if="esSemestral">
+                <label class="mt-4 inline-flex items-center">
+                    <input type="hidden" name="aula_para_todos" value="0">
+                    <input type="checkbox" name="aula_para_todos" value="1" x-model="aulaParaTodos"
+                           class="rounded border-slate-300 text-brand-600 shadow-sm">
+                    <span class="ms-2 text-sm text-slate-600">
+                        {{ __('Usar la misma aula para todos los días') }}
+                    </span>
+                </label>
+            </template>
+
+            <template x-if="esModular || aulaParaTodos">
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <x-input-label for="aula" :value="__('Aula')" />
+                        <x-text-input id="aula" name="aula" type="text" class="mt-1 block w-full"
+                                      :value="old('aula')" placeholder="Ej. Aula 101" required />
+                        <x-input-error class="mt-2" :messages="$errors->get('aula')" />
+                    </div>
                 </div>
-            </div>
+            </template>
 
             <template x-if="esSemestral">
                 <div class="mt-6 space-y-4">
@@ -226,7 +245,7 @@
                     </p>
 
                     <template x-for="(horario, indice) in horarios" :key="indice">
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-start rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 items-start rounded-lg border border-slate-200 bg-slate-50 p-4">
                             <div>
                                 <x-input-label :value="__('Día')" />
                                 <select :name="`horarios[${indice}][dia_semana]`" x-model="horario.dia_semana" required
@@ -261,6 +280,17 @@
                                 </template>
                             </div>
 
+                            <div x-show="! aulaParaTodos">
+                                <x-input-label :value="__('Aula')" />
+                                <input :name="`horarios[${indice}][aula]`" x-model="horario.aula"
+                                       type="text" placeholder="Ej. Aula 101"
+                                       :required="! aulaParaTodos" :disabled="aulaParaTodos"
+                                       class="mt-1 block w-full rounded-lg border-slate-300 text-slate-900 shadow-sm sm:text-sm">
+                                <template x-for="mensaje in (errores['horarios.' + indice + '.aula'] ?? [])" :key="mensaje">
+                                    <p class="mt-1.5 text-sm text-rose-600" x-text="mensaje"></p>
+                                </template>
+                            </div>
+
                             <div class="flex items-end justify-end">
                                 <button type="button" @click="quitarHorario(indice)" x-show="horarios.length > 1"
                                         class="text-sm text-red-600 hover:text-red-900">
@@ -278,7 +308,7 @@
                     <x-input-error class="mt-2" :messages="$errors->get('hora_inicio')" />
                     <x-input-error class="mt-2" :messages="$errors->get('hora_fin')" />
                     <p class="text-xs text-slate-500">
-                        {{ __('Cada día rige durante todo el periodo. El sistema rechaza cruces con otras clases del docente.') }}
+                        {{ __('Cada día rige durante todo el periodo. El aula se indica por día salvo que actives la opción de usar la misma para todos. El sistema rechaza cruces con otras clases del docente.') }}
                     </p>
                 </div>
             </template>

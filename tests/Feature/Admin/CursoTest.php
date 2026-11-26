@@ -47,6 +47,7 @@ function datosCurso(array $sobrescribir = []): array
         'cupo' => 30,
         'activo' => '1',
         'aula' => 'Aula 101',
+        'aula_para_todos' => '1',
         'horarios' => [
             ['dia_semana' => 1, 'hora_inicio' => '08:00', 'hora_fin' => '10:00'],
         ],
@@ -58,6 +59,7 @@ function cursoDePrueba(array $datos = []): Curso
     // Los campos de horario pertenecen al formulario, no a la tabla cursos.
     return Curso::factory()->create(Arr::except($datos, [
         'aula',
+        'aula_para_todos',
         'horarios',
         'fecha_inicio',
         'hora_inicio',
@@ -107,6 +109,46 @@ it('crea el curso con varios días y horarios semestrales', function () {
         ->and($horarios->every(fn ($horario) => $horario->fecha_fin->toDateString() === $curso->periodo->fecha_fin->toDateString()))->toBeTrue();
 });
 
+it('crea el curso semestral con un aula por día cuando no se elige un aula única', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $docente = usuarioConRol(Rol::Docente);
+    $datos = datosCurso([
+        'docente_id' => $docente->id,
+        'aula_para_todos' => '0',
+        'horarios' => [
+            ['dia_semana' => 1, 'hora_inicio' => '08:00', 'hora_fin' => '10:00', 'aula' => 'A-101'],
+            ['dia_semana' => 3, 'hora_inicio' => '14:00', 'hora_fin' => '16:00', 'aula' => 'B-202'],
+        ],
+    ]);
+
+    $this->actingAs($admin)
+        ->post('/admin/cursos', $datos)
+        ->assertRedirect()
+        ->assertSessionHas('status', 'Curso y horario registrados correctamente.');
+
+    $horarios = Curso::firstOrFail()->horarios()->orderBy('dia_semana')->get();
+
+    expect($horarios->pluck('aula')->all())->toBe(['A-101', 'B-202'])
+        ->and($horarios->pluck('aula')->unique())->toHaveCount(2);
+});
+
+it('exige el aula de cada día cuando no se elige un aula única', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $datos = datosCurso([
+        'aula_para_todos' => '0',
+        'horarios' => [
+            ['dia_semana' => 1, 'hora_inicio' => '08:00', 'hora_fin' => '10:00'],
+        ],
+    ]);
+    unset($datos['aula']);
+
+    $this->actingAs($admin)
+        ->post('/admin/cursos', $datos)
+        ->assertSessionHasErrors(['horarios.0.aula' => 'Indica el aula de este día.']);
+
+    expect(Curso::count())->toBe(0);
+});
+
 it('crea el curso modular con veinte sesiones de lunes a viernes', function () {
     $admin = usuarioConRol(Rol::Administrador);
     $docente = usuarioConRol(Rol::Docente);
@@ -136,6 +178,32 @@ it('crea el curso modular con veinte sesiones de lunes a viernes', function () {
     expect($curso->modalidad)->toBe(Modalidad::Modular)
         ->and($horarios)->toHaveCount(20)
         ->and($horarios->first()->fecha_fin->toDateString())->toBe('2026-01-30')
+        ->and($horarios->every(fn ($horario) => $horario->aula === 'Aula 101'))->toBeTrue();
+});
+
+it('usa el aula única del módulo aunque el checkbox no esté marcado', function () {
+    $admin = usuarioConRol(Rol::Administrador);
+    $periodo = Periodo::factory()->create([
+        'fecha_inicio' => '2026-01-01',
+        'fecha_fin' => '2026-12-31',
+    ]);
+    $datos = datosCurso([
+        'periodo_id' => $periodo->id,
+        'modalidad' => Modalidad::Modular->value,
+        'aula_para_todos' => '0',
+    ]);
+    unset($datos['horarios']);
+    $datos['fecha_inicio'] = '2026-01-05';
+    $datos['hora_inicio'] = '08:00';
+    $datos['hora_fin'] = '10:00';
+
+    $this->actingAs($admin)
+        ->post('/admin/cursos', $datos)
+        ->assertRedirect();
+
+    $horarios = Curso::firstOrFail()->horarios()->get();
+
+    expect($horarios)->toHaveCount(20)
         ->and($horarios->every(fn ($horario) => $horario->aula === 'Aula 101'))->toBeTrue();
 });
 

@@ -54,6 +54,7 @@ class CursoController extends Controller
             'hora_inicio',
             'hora_fin',
             'aula',
+            'aula_para_todos',
         ]);
 
         // Curso y horario inicial se guardan juntos: si una sesión choca, no queda el curso creado.

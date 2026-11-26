@@ -35,6 +35,9 @@ class StoreCursoRequest extends FormRequest
         $creando = $this->isMethod('POST');
         $semestral = $creando && $this->input('modalidad') === Modalidad::Semestral->value;
         $modular = $creando && $this->input('modalidad') === Modalidad::Modular->value;
+        // El checkbox no está marcado por defecto: cada día lleva su aula salvo que se pida lo contrario.
+        $mismaAula = $this->boolean('aula_para_todos');
+        $usaAulaGlobal = ! $semestral || $mismaAula;
 
         return [
             'carrera_id' => ['required', 'integer', Rule::exists('carreras', 'id')],
@@ -69,8 +72,9 @@ class StoreCursoRequest extends FormRequest
             'cupo' => ['required', 'integer', 'min:0', 'max:500'],
             'activo' => ['boolean'],
 
+            'aula_para_todos' => ['sometimes', 'boolean'],
             'aula' => $creando
-                ? ['required', 'string', 'max:50']
+                ? [$usaAulaGlobal ? 'required' : 'sometimes', 'nullable', 'string', 'max:50']
                 : ['sometimes', 'nullable', 'string', 'max:50'],
             'horarios' => $semestral
                 ? ['required', 'array', 'min:1']
@@ -84,6 +88,9 @@ class StoreCursoRequest extends FormRequest
             'horarios.*.hora_fin' => $semestral
                 ? ['required', 'date_format:H:i']
                 : ['sometimes', 'date_format:H:i'],
+            'horarios.*.aula' => $semestral && ! $mismaAula
+                ? ['required', 'string', 'max:50']
+                : ['sometimes', 'nullable', 'string', 'max:50'],
             'fecha_inicio' => $modular
                 ? ['required', 'date_format:Y-m-d']
                 : ['sometimes', 'nullable', 'date_format:Y-m-d'],
@@ -221,6 +228,8 @@ class StoreCursoRequest extends FormRequest
             'planes_estudio_ids.*.exists' => 'Selecciona planes de estudio válidos.',
             'aula.required' => 'Indica el aula donde se dictará el curso.',
             'horarios.required' => 'Indica al menos un día con su horario.',
+            'horarios.*.aula.required' => 'Indica el aula de este día.',
+            'horarios.*.aula.max' => 'El aula no puede superar los 50 caracteres.',
             'horarios.min' => 'Indica al menos un día con su horario.',
             'horarios.*.dia_semana.required' => 'Selecciona el día de la semana.',
             'horarios.*.dia_semana.distinct' => 'No puedes repetir el mismo día en el horario semestral.',

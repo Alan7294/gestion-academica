@@ -94,7 +94,7 @@ class HorarioService
      * Horario inicial del alta de un curso. La transacción que lo envuelve
      * también cubre la creación del curso, así que un choque revierte todo.
      *
-     * @param  array{horarios?: array<int, array{dia_semana: int, hora_inicio: string, hora_fin: string}>, fecha_inicio?: string, hora_inicio?: string, hora_fin?: string, aula?: string|null}  $datos
+     * @param  array{horarios?: array<int, array{dia_semana: int, hora_inicio: string, hora_fin: string, aula?: string|null}>, fecha_inicio?: string, hora_inicio?: string, hora_fin?: string, aula?: string|null, aula_para_todos?: bool}  $datos
      * @return Collection<int, Horario>
      *
      * @throws ValidationException
@@ -102,6 +102,7 @@ class HorarioService
     public function registrarInicial(Curso $curso, array $datos): Collection
     {
         $aula = $datos['aula'] ?? null;
+        $mismaAula = (bool) ($datos['aula_para_todos'] ?? false);
 
         if ($curso->modalidad === Modalidad::Modular) {
             return $this->agregar($curso, [
@@ -118,12 +119,12 @@ class HorarioService
             ]);
         }
 
-        return DB::transaction(function () use ($curso, $datos, $aula): Collection {
+        return DB::transaction(function () use ($curso, $datos, $aula, $mismaAula): Collection {
             return collect($datos['horarios'])->flatMap(fn (array $sesion) => $this->agregar($curso, [
                 'dia_semana' => $sesion['dia_semana'],
                 'hora_inicio' => $sesion['hora_inicio'],
                 'hora_fin' => $sesion['hora_fin'],
-                'aula' => $aula,
+                'aula' => $mismaAula ? $aula : ($sesion['aula'] ?? null),
             ]));
         });
     }
