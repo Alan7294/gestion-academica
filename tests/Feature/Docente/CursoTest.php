@@ -9,6 +9,24 @@ beforeEach(function () {
     $this->seed(RolSeeder::class);
 });
 
+/**
+ * @param  array<int, string>  $fechasSesion
+ */
+function horariosModular(Curso $curso, array $fechasSesion): void
+{
+    foreach ($fechasSesion as $fechaSesion) {
+        $curso->horarios()->create([
+            'docente_id' => $curso->docente_id,
+            'dia_semana' => 1,
+            'hora_inicio' => '08:30',
+            'hora_fin' => '11:45',
+            'fecha_inicio' => '2026-01-05',
+            'fecha_fin' => '2026-01-30',
+            'fecha_sesion' => $fechaSesion,
+        ]);
+    }
+}
+
 it('muestra al docente solo sus propios cursos', function () {
     $docente = usuarioConRol(Rol::Docente);
     $otroDocente = usuarioConRol(Rol::Docente);
@@ -21,6 +39,34 @@ it('muestra al docente solo sus propios cursos', function () {
         ->assertOk()
         ->assertSee('Mi Curso')
         ->assertDontSee('Curso Ajeno');
+});
+
+it('muestra el rango de fechas y la hora sin los días en los cursos del docente', function () {
+    $docente = usuarioConRol(Rol::Docente);
+    $curso = Curso::factory()->create(['docente_id' => $docente->id]);
+    horariosModular($curso, ['2026-01-05', '2026-01-12']);
+
+    $this->actingAs($docente)
+        ->get('/docente/cursos')
+        ->assertOk()
+        ->assertSee('Fecha de Inicio: 05/01/2026')
+        ->assertSee('Fecha de Fin: 30/01/2026')
+        ->assertSee('Horario: 08:30 - 11:45')
+        ->assertDontSee('Lunes 08:30 - 11:45');
+});
+
+it('muestra el mismo resumen de horario en el detalle del curso del docente', function () {
+    $docente = usuarioConRol(Rol::Docente);
+    $curso = Curso::factory()->create(['docente_id' => $docente->id]);
+    horariosModular($curso, ['2026-01-05', '2026-01-12']);
+
+    $this->actingAs($docente)
+        ->get("/docente/cursos/{$curso->id}")
+        ->assertOk()
+        ->assertSee('Fecha de Inicio: 05/01/2026')
+        ->assertSee('Fecha de Fin: 30/01/2026')
+        ->assertSee('Horario: 08:30 - 11:45')
+        ->assertDontSee('Lunes 08:30 - 11:45');
 });
 
 it('impide que un docente abra un curso que no dicta', function () {

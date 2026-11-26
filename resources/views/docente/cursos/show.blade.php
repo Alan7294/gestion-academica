@@ -40,11 +40,17 @@
                 <div>
                     <p class="text-slate-500">{{ __('Horario') }}</p>
                     <div class="mt-1 font-medium text-slate-900">
-                        @forelse ($curso->horarios as $horario)
-                            <div class="text-sm">{{ $horario->descripcion }}</div>
-                        @empty
+                        @php($inicio = $curso->horarios->pluck('fecha_inicio')->filter()->sort()->first())
+                        @php($fin = $curso->horarios->pluck('fecha_fin')->filter()->sort()->last())
+                        @php($rangos = $curso->horarios->pluck('rango_texto')->unique()->implode(', '))
+
+                        @if ($curso->horarios->isNotEmpty())
+                            <div class="text-sm">{{ __('Fecha de Inicio') }}: {{ $inicio?->format('d/m/Y') ?? '—' }}</div>
+                            <div class="text-sm">{{ __('Fecha de Fin') }}: {{ $fin?->format('d/m/Y') ?? '—' }}</div>
+                            <div class="text-sm">{{ __('Horario') }}: {{ $rangos ?: '—' }}</div>
+                        @else
                             <span class="text-sm">{{ __('Por definir') }}</span>
-                        @endforelse
+                        @endif
                     </div>
                 </div>
             </div>

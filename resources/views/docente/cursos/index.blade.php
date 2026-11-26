@@ -14,6 +14,7 @@
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Curso') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Carrera') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Periodo') }}</th>
+                            <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Horario') }}</th>
                             <th class="px-6 py-3 text-left font-medium text-slate-500">{{ __('Inscritos') }}</th>
                             <th class="px-6 py-3"></th>
                         </tr>
@@ -27,6 +28,19 @@
                                 </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->carrera->nombre }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->periodo->nombre }}</td>
+                                <td class="px-6 py-4 text-slate-600">
+                                    @php($inicio = $curso->horarios->pluck('fecha_inicio')->filter()->sort()->first())
+                                    @php($fin = $curso->horarios->pluck('fecha_fin')->filter()->sort()->last())
+                                    @php($rangos = $curso->horarios->pluck('rango_texto')->unique()->implode(', '))
+
+                                    @if ($curso->horarios->isNotEmpty())
+                                        <div>{{ __('Fecha de Inicio') }}: {{ $inicio?->format('d/m/Y') ?? '—' }}</div>
+                                        <div>{{ __('Fecha de Fin') }}: {{ $fin?->format('d/m/Y') ?? '—' }}</div>
+                                        <div>{{ __('Horario') }}: {{ $rangos ?: '—' }}</div>
+                                    @else
+                                        {{ __('Sin horario') }}
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 text-slate-600">{{ $curso->alumnos_inscritos_count }}</td>
                                 <td class="px-6 py-4 text-right space-x-3">
                                     <a href="{{ route('docente.cursos.calificaciones', $curso) }}" class="text-brand-600 hover:text-brand-900">
@@ -40,7 +54,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-slate-500">
+                                <td colspan="6" class="px-6 py-8 text-center text-slate-500">
                                     {{ __('No tienes cursos asignados en este momento.') }}
                                 </td>
                             </tr>
